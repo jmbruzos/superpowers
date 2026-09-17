@@ -121,4 +121,15 @@ must_contain skills/finishing-a-development-branch/SKILL.md "pending consolidati
 must_contain skills/finishing-a-development-branch/SKILL.md "archived" "archive transition"
 must_contain skills/finishing-a-development-branch/frag-adversary-prompt.md "| Attack | Scenario | Result | Evidence |" "A6 prompt uses the attack table"
 
+# --- docs (Task 018) ---
+must_contain README.md "# kdd-superpowers" "README title"
+must_contain README.md "/plugin install kdd-superpowers" "README install command"
+must_contain README.md "Requires the \`kdd\` toolkit plugin" "README states the dependency"
+must_contain README.md "derived from" "README attributes upstream"
+must_not_contain README.md "Visual companion telemetry" "README has no telemetry section"
+must_contain CLAUDE.md "P13" "CLAUDE.md lists the principles"
+must_contain CLAUDE.md "tests/scripts/run.sh" "CLAUDE.md says how to test"
+must_not_contain CLAUDE.md "94% PR rejection rate" "CLAUDE.md is no longer upstream's PR policy"
+must_contain LICENSE "obra/superpowers" "LICENSE carries the derivation note"
+
 finish

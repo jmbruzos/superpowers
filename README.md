@@ -1,346 +1,108 @@
-# Superpowers
+# kdd-superpowers
 
-Superpowers is a complete software development methodology for your coding agents, built on top of a set of composable skills and some initial instructions that make sure your agent uses them.
+Knowledge-Driven Development for Claude Code: the superpowers development
+discipline — brainstorm → spec → plan → subagent-driven execution → review →
+finish — producing and consuming **KDD artifacts**. Every piece of work is a
+`WRK-SPEC` that activates knowledge, freezes that activation, is executed
+against it, is reviewed against it, and returns what it learned to the
+knowledge base.
 
-## Table of Contents
+`kdd-superpowers` is derived from [superpowers](https://github.com/obra/superpowers)
+v6.3.0 by Jesse Vincent (MIT). Claude Code is the only supported harness.
 
-- [How it works](#how-it-works)
-- [Commercial Services](#commercial-services)
-- [Getting Started](#installation)
-  - [Claude Code](#claude-code)
-  - [Antigravity](#antigravity)
-  - [Codex App](#codex-app)
-  - [Codex CLI](#codex-cli)
-  - [Cursor](#cursor)
-  - [Devin CLI](#devin-cli)
-  - [Factory Droid](#factory-droid)
-  - [Gemini CLI](#gemini-cli)
-  - [GitHub Copilot CLI](#github-copilot-cli)
-  - [Grok Build CLI](#grok-build-cli)
-  - [Kimi Code](#kimi-code)
-  - [OpenCode](#opencode)
-  - [Pi](#pi)
-  - [Hermes Agent](#hermes-agent)
-- [The Basic Workflow](#the-basic-workflow)
-- [Community](#community)
-- [What's Inside](#whats-inside)
-- [Philosophy](#philosophy)
-- [Contributing](#contributing)
-- [Updating](#updating)
-- [License](#license)
-- [Visual companion telemetry](#visual-companion-telemetry)
+## Requirements
 
-## How it works
-
-It starts from the moment you fire up your coding agent. As soon as it sees that you're building something, it *doesn't* just jump into trying to write code. Instead, it steps back and asks you what you're really trying to do. 
-
-Once it's teased a spec out of the conversation, it shows it to you in chunks short enough to actually read and digest. 
-
-After you've signed off on the design, your agent puts together an implementation plan that's clear enough for an enthusiastic junior engineer with poor taste, no judgement, no project context, and an aversion to testing to follow. It emphasizes true red/green TDD, YAGNI (You Aren't Gonna Need It), and DRY. 
-
-Next up, once you say "go", it launches a *subagent-driven-development* process, having agents work through each engineering task, inspecting and reviewing their work, and continuing forward. It's not uncommon for your agent to work autonomously for a couple hours at a time without deviating from the plan you put together.
-
-There's a bunch more to it, but that's the core of the system. And because the skills trigger automatically, you don't need to do anything special. Your coding agent just has Superpowers.
-
-## Commercial Services
-
-If you're using Superpowers in enterprise and could benefit from commercial support, additional tooling, or managed spending, please don't hesitate to drop us a line at sales@primeradiant.com.
+- Claude Code.
+- **Requires the `kdd` toolkit plugin** (`kdd-toolkit`): the `spec-graph` CLI and the
+  `/kdd:spec-*` skills. kdd-superpowers never re-implements what the toolkit does; it
+  calls it. Without it, the session bootstrap reports `toolkit: NOT FOUND` and the
+  workflow skills stop before doing anything.
+- Node ≥ 18 (for the toolkit CLI and two brief scripts). No npm dependencies of its own.
 
 ## Installation
 
-Installation differs by harness. If you use more than one, install Superpowers separately for each one.
+Uninstall upstream `superpowers` first — both inject a session bootstrap and
+they would fight:
 
-### Claude Code
-
-Superpowers is available via the [official Claude plugin marketplace](https://claude.com/plugins/superpowers)
-
-#### Official Marketplace
-
-- Install the plugin from Anthropic's official marketplace:
-
-  ```bash
-  /plugin install superpowers@claude-plugins-official
-  ```
-
-#### Superpowers Marketplace
-
-The Superpowers marketplace provides Superpowers and some other related plugins for Claude Code.
-
-- Register the marketplace:
-
-  ```bash
-  /plugin marketplace add obra/superpowers-marketplace
-  ```
-
-- Install the plugin from this marketplace:
-
-  ```bash
-  /plugin install superpowers@superpowers-marketplace
-  ```
-
-### Antigravity
-
-Install Superpowers as a plugin from this repository:
-
-```bash
-agy plugin install https://github.com/obra/superpowers
+```
+/plugin uninstall superpowers
+/plugin marketplace add <owner>/superpowers
+/plugin install kdd-superpowers
 ```
 
-Antigravity runs the plugin's session-start hook, so Superpowers is active from
-the first message. Reinstall with the same command to update.
-
-### Codex App
-
-Superpowers is available via the [official Codex plugin marketplace](https://github.com/openai/plugins).
-
-- In the Codex app, click on Plugins in the sidebar.
-- You should see `Superpowers` in the Coding section.
-- Click the `+` next to Superpowers and follow the prompts.
-
-### Codex CLI
-
-Superpowers is available via the [official Codex plugin marketplace](https://github.com/openai/plugins).
-
-- Open the plugin search interface:
-
-  ```bash
-  /plugins
-  ```
-
-- Search for Superpowers:
-
-  ```bash
-  superpowers
-  ```
-
-- Select `Install Plugin`.
-
-### Cursor
-
-- In Cursor Agent chat, install from marketplace:
-
-  ```text
-  /add-plugin superpowers
-  ```
-
-- Or search for "superpowers" in the plugin marketplace.
-
-### Devin CLI
-
-- Install the plugin from this repository:
-
-  ```bash
-  devin plugins install obra/superpowers
-  ```
-
-- Update to the latest version with:
-
-  ```bash
-  devin plugins update superpowers
-  ```
-
-### Factory Droid
-
-- Register the marketplace:
-
-  ```bash
-  droid plugin marketplace add https://github.com/obra/superpowers
-  ```
-
-- Install the plugin:
-
-  ```bash
-  droid plugin install superpowers@superpowers
-  ```
-
-### Gemini CLI
-
-- Install the extension:
-
-  ```bash
-  gemini extensions install https://github.com/obra/superpowers
-  ```
-
-- Update later:
-
-  ```bash
-  gemini extensions update superpowers
-  ```
-
-### GitHub Copilot CLI
-
-- Register the marketplace:
-
-  ```bash
-  copilot plugin marketplace add obra/superpowers-marketplace
-  ```
-
-- Install the plugin:
-
-  ```bash
-  copilot plugin install superpowers@superpowers-marketplace
-  ```
-
-### Grok Build CLI
-
-Superpowers is available via the [official Grok plugin marketplace](https://github.com/xai-org/plugin-marketplace).
-
-- Install the plugin from xAI's official marketplace:
-
-  ```bash
-  grok plugin install superpowers@xai-official --trust
-  ```
-
-- Or open the marketplace in the TUI, search for Superpowers, and install it:
-
-  ```text
-  /marketplace
-  ```
-
-### Kimi Code
-
-Superpowers is available in Kimi Code's plugin marketplace.
-
-- Open Kimi Code's plugin manager:
-
-  ```text
-  /plugins
-  ```
-
-- Go to `Marketplace` > `Superpowers` and install it.
-
-- Or install directly from this repository:
-
-  ```text
-  /plugins install https://github.com/obra/superpowers
-  ```
-
-- Detailed docs: [docs/README.kimi.md](docs/README.kimi.md)
-
-### OpenCode
-
-OpenCode uses its own plugin install; install Superpowers separately even if you
-already use it in another harness.
-
-- Tell OpenCode:
-
-  ```
-  Fetch and follow instructions from https://raw.githubusercontent.com/obra/superpowers/refs/heads/main/.opencode/INSTALL.md
-  ```
-
-- Detailed docs: [docs/README.opencode.md](docs/README.opencode.md)
-
-### Pi
-
-Install Superpowers as a Pi package from this repository:
-
-```bash
-pi install git:github.com/obra/superpowers
-```
-
-For local development, run Pi with this checkout loaded as a temporary package:
-
-```bash
-pi -e /path/to/superpowers
-```
-
-The Pi package loads the Superpowers skills and a small extension that injects the `using-superpowers` bootstrap at session startup and again after compaction. Pi has native skills, so no compatibility `Skill` tool is required. Subagent and task-list tools remain optional Pi companion packages.
-
-### Hermes Agent
-
-Install Superpowers as a Hermes plugin from this repository:
-
-```bash
-hermes plugins install obra/superpowers --enable
-```
-
-Restart any active Hermes sessions after installing. Note: Hermes has no
-post-compaction hook, so a very long session that compacts over its first
-turn loses the bootstrap — start a fresh session if skills stop triggering.
-
-## The Basic Workflow
-
-1. **brainstorming** - Activates before writing code. Refines rough ideas through questions, explores alternatives, presents design in sections for validation. Saves design document.
-
-2. **using-git-worktrees** - Activates after design approval. Creates isolated workspace on new branch, runs project setup, verifies clean test baseline.
-
-3. **writing-plans** - Activates with approved design. Breaks work into bite-sized tasks (2-5 minutes each). Every task has exact file paths, complete code, verification steps.
-
-4. **subagent-driven-development** or **executing-plans** - Activates with plan. Dispatches fresh subagent per task with two-stage review (spec compliance, then code quality), or executes in batches with human checkpoints.
-
-5. **test-driven-development** - Activates during implementation. Enforces RED-GREEN-REFACTOR: write failing test, watch it fail, write minimal code, watch it pass, commit. Deletes code written before tests.
-
-6. **requesting-code-review** - Activates between tasks. Reviews against plan, reports issues by severity. Critical issues block progress.
-
-7. **finishing-a-development-branch** - Activates when tasks complete. Verifies tests, presents options (merge/PR/keep/discard), cleans up worktree.
-
-**The agent checks for relevant skills before any task.** Mandatory workflows, not suggestions.
-
-## Community
-
-Superpowers is built by [Jesse Vincent](https://blog.fsck.com) and the rest of the folks at [Prime Radiant](https://primeradiant.com).
-
-- **Discord**: [Join us](https://discord.gg/35wsABTejz) for community support, questions, and sharing what you're building with Superpowers
-- **Issues**: https://github.com/obra/superpowers/issues
-- **Release announcements**: [Sign up](https://primeradiant.com/superpowers/) to get notified about new versions
-
-## What's Inside
-
-### Skills Library
-
-**Testing**
-- **test-driven-development** - RED-GREEN-REFACTOR cycle (includes testing anti-patterns reference)
-
-**Debugging**
-- **systematic-debugging** - 4-phase root cause process (includes root-cause-tracing, defense-in-depth, condition-based-waiting techniques)
-- **verification-before-completion** - Ensure it's actually fixed
-
-**Collaboration** 
-- **brainstorming** - Socratic design refinement
-- **writing-plans** - Detailed implementation plans
-- **executing-plans** - Batch execution with checkpoints
-- **dispatching-parallel-agents** - Concurrent subagent workflows
-- **requesting-code-review** - Pre-review checklist
-- **receiving-code-review** - Responding to feedback
-- **using-git-worktrees** - Parallel development branches
-- **finishing-a-development-branch** - Merge/PR decision workflow
-- **subagent-driven-development** - Fast iteration with two-stage review (spec compliance, then code quality)
-
-**Meta**
-- **writing-skills** - Create new skills following best practices (includes testing methodology)
-- **using-superpowers** - Introduction to the skills system
-
-## Philosophy
-
-- **Test-Driven Development** - Write tests first, always
-- **Systematic over ad-hoc** - Process over guessing
-- **Complexity reduction** - Simplicity as primary goal
-- **Evidence over claims** - Verify before declaring success
-
-Read [the original release announcement](https://blog.fsck.com/2025/10/09/superpowers/).
-
-## Contributing
-
-The general contribution process for Superpowers is below. Keep in mind that we don't generally accept contributions of new skills and that any updates to skills must work across all of the coding agents we support.
-
-1. Fork the repository
-2. Switch to the 'dev' branch
-3. Create a branch for your work
-4. Follow the `writing-skills` skill for creating and testing new and modified skills
-5. Submit a PR, being sure to fill in the pull request template.
-
-Skill-behavior tests use the drill eval harness from [superpowers-evals](https://github.com/prime-radiant-inc/superpowers-evals/), cloned into `evals/` — see `evals/README.md` for setup. Plugin-infrastructure tests live at `tests/` and run via the relevant `run-*.sh` or `npm test`.
-
-See `skills/writing-skills/SKILL.md` for the complete guide.
-
-## Updating
-
-Superpowers updates are somewhat coding-agent dependent, but are often automatic.
+Install the toolkit from its own marketplace (`/plugin install kdd`), or point
+`KDD_SPEC_GRAPH` at a `spec-graph.mjs` checkout.
+
+## How it works
+
+At session start the bootstrap injects the `using-superpowers` skill plus a
+`<KDD-ENVIRONMENT>` probe: where the toolkit is, whether the project has a
+`specs/` directory, which work is open, which OKF bundles are waiting to be
+imported.
+
+When you ask to build or change something:
+
+1. **brainstorming** discovers the relevant knowledge (`kdd:spec-context`), captures
+   what the code embodies when no spec does (anchored `FRAG-*`, never from memory),
+   asks its questions, presents the design — and its last section, *Knowledge
+   activation*, is the one you approve to **freeze** which specs this work depends on.
+   A red-team subagent attacks the draft. The result is a `WRK-SPEC` under
+   `specs/work/`, validated, `active` and human-verified.
+2. **writing-plans** turns it into a `WRK-PLAN` and one `WRK-TASK` file per task, each
+   with the 2–5 specs it touches and the rules copied verbatim.
+3. **subagent-driven-development** dispatches a fresh implementer per task with a
+   deterministic brief (task + constraints + activated specs + evidence), then a
+   reviewer that returns three verdicts: spec, **knowledge**, quality. Violating an
+   activated rule is blocking. Selected tasks get a test adversary.
+4. **finishing-a-development-branch** refuses to offer merge until the graph validates,
+   every task is `completed` and `export-okf` runs; it persists the execution log into
+   the plan and consolidates (`kdd:spec-consolidate`) — ADRs, spec deltas, fragments
+   distilled after an adversary — so the knowledge change ships with the code change.
+
+Identifiers read as paths: `WRK-SPEC-RISK-VAR-ENGINE-001` → `WRK-PLAN-RISK-VAR-ENGINE-001`
+→ `WRK-TASK-RISK-VAR-ENGINE-001-003`. Runtime state lives under `.kdd/` (git-ignored);
+no path contains `superpowers`.
+
+## Principles
+
+| # | Principle |
+|---|---|
+| P1 | Work artifacts are KDD specs, not documents |
+| P2 | Every piece of work declares the knowledge it activates — `activates: []` is said out loud |
+| P3 | Activation is decided once, with a human, and frozen |
+| P4 | Deterministic → CLI; judgment → toolkit skill |
+| P5 | Three layers of authority: WRK-SPEC, WRK-PLAN, activated specs |
+| P6 | Everything written carries the trust family; a skill never verifies its own output |
+| P7 | No work closes without returning knowledge |
+| P8 | OKF by construction, not by extra steps |
+| P9 | Same methodology with or without `specs/` |
+| P10 | KDD changes the *what* and the *with which context*; superpowers keeps the *how* |
+| P11 | In brownfield, code is the source of knowledge — captured, not ignored |
+| P12 | A FRAG extracted from code contains only what can be pointed at |
+| P13 | No path contains `superpowers` |
+
+The full design is the work spec that produced this plugin:
+`specs/work/WRK-SPEC-FORK-CORE-001-kdd-adaptation-core-flow.md`.
+
+## What's inside
+
+| Skill | Role |
+|---|---|
+| `using-superpowers` | bootstrap; reads the KDD environment; routes knowledge specs to `kdd:*` and work to brainstorming |
+| `kdd-conventions` | IDs, locations, transitions, trust family, templates, capturing from code, adversarial gates |
+| `brainstorming` | design → `WRK-SPEC` with frozen activation; gate A1 |
+| `writing-plans` | `WRK-PLAN` + `WRK-TASK`s; gate A2 |
+| `subagent-driven-development` / `executing-plans` | execution with deterministic briefs; gates A3, A4, A5 |
+| `requesting-code-review` / `receiving-code-review` | three review modes; knowledge compliance; capture candidates |
+| `finishing-a-development-branch` | knowledge integrity, execution log, consolidation; gate A6 |
+| `test-driven-development`, `systematic-debugging`, `verification-before-completion`, `using-git-worktrees`, `dispatching-parallel-agents`, `writing-skills` | as upstream (verification lists the KDD evidence) |
+
+## Testing
+
+- `bash tests/scripts/run.sh` — deterministic suite (no Claude): scripts, fixture, invariants, skill content. Set `KDD_SPEC_GRAPH` to a `spec-graph.mjs` to run the CLI-backed tests.
+- `bash tests/hooks/test-session-start.sh`, `bash tests/claude-code/test-sdd-workspace.sh`, `cd tests/brainstorm-server && npm test`.
+- `bash tests/claude-code/test-kdd-flow.sh` — headless Claude scenarios (slow; needs Claude Code and the toolkit).
 
 ## License
 
-MIT License - see LICENSE file for details
-
-## Visual companion telemetry
-
-Because skills and plugins don't provide any feedback to creators, we have no idea how many of you are using Superpowers. By default, the Prime Radiant logo on brainstorming's optional visual companion feature is loaded from our website. It includes the version of Superpowers in use. It does not include any details about your project, prompt, or coding agent. We don't see your clicks or anything about what you're building. This helps us have a rough idea of how many folks are using Superpowers and which version of Superpowers they're using. It's 100% optional. To disable this, set the environment variable `SUPERPOWERS_DISABLE_TELEMETRY` to any true value. Superpowers also honors Claude Code's `DISABLE_TELEMETRY` and `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC` opt-outs.
+MIT. See `LICENSE` — this project is a derivative work of superpowers.
