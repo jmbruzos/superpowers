@@ -3,7 +3,7 @@ id: WRK-PLAN-FORK-CORE-001
 type: spec
 layer: work-plan
 scope: ephemeral
-status: active
+status: completed
 confidence: low
 version: 0.1.0
 created: 2026-09-17
@@ -108,3 +108,67 @@ Constraints inherited from the WRK-SPEC (no knowledge specs are activated; these
 - `kdd` toolkit CLI at `../knowledge-driven-development/apps/spec-graph/spec-graph.mjs` (dev machine) — `npm install` already done there.
 - `node` ≥ 18, `bash`, `git`, `sha256sum`, `jq` (only `scripts/bump-version.sh` uses jq, as upstream).
 - Claude Code CLI for Task 019 only.
+
+## Execution Log
+
+Executed 2026-09-17 with upstream superpowers 6.3.0 (subagent-driven-development), 19 tasks, 25 commits (551f06e..4a9bf04), one final-review fix wave. Ledger transcribed here before the workspace was deleted.
+
+### Rulings
+- Ruling: execute in the existing checkout on branch kdd/core-flow, not a worktree — the plan's conventions and tests resolve the KDD CLI via `../knowledge-driven-development`, which a worktree under .worktrees/ would break; the branch already isolates from main — costs if wrong: none beyond having to move to a worktree later.
+- Ruling: upstream task-brief is skipped; each WRK-TASK file is handed to the implementer as its brief (plan header documents this) — costs if wrong: none.
+- Ruling: KDD_SPEC_GRAPH for every dispatch = /home/bruzos/Documentos/projects/knowledge-driven-development/apps/spec-graph/spec-graph.mjs (kdd plugin not installed) — costs if wrong: tests skip instead of running.
+- Ruling: rototill design docs are not restored (upstream design history removed by design); the three assertions referencing them were dropped — costs if wrong: none (docs remain in git history).
+- Ruling: sourceIds fragility (brief-mandated code) fixed now rather than deferred, because review-brief and skills reuse brief-lib — costs if wrong: none.
+- Ruling: probe rewritten to a frontmatter index (brief code violated the spec's "frontmatter layer/status" constraint) — costs if wrong: none.
+- Ruling: work count enumerates work-spec|work-plan|work-task exactly (KDD anatomy enum), not a work- prefix — costs if wrong: a future work-* layer would need adding here.
+- Ruling: implementer's minimal rewording of two environment-table cells accepted (the brief's assertions could not match its own table markup) — costs if wrong: none.
+- Ruling: Final Review must not restate workspace deletion/hand-off; it defers to ## Finish so rulings are collected before deletion — costs if wrong: none.
+- Ruling (Task 019): nested `claude -p` runs must unset CLAUDECODE/CLAUDE_CODE_* inherited from this session (env -u) — the brief's script did not anticipate running inside Claude Code — costs if wrong: none.
+- Ruling (C1): SDD no longer deletes the workspace; finishing deletes .kdd/sdd/<PLAN-ID>/ after Step 3d (Execution Log committed) — costs if wrong: stale scratch dirs.
+- Ruling (I2): bounded brainstorming gets a short review gate of the written compact WRK-SPEC before `verified` (P6 over ceremony) — costs if wrong: one extra question per bounded task.
+- Ruling (I3): finishing gains a bounded branch (no plan: skip task/plan checks; Execution Log into the WRK-SPEC); "this plan" = the WRK-PLAN named in conversation/ledger, else ask — costs if wrong: none.
+- Ruling (I4): A1/A2 BROKEN rows + rulings persist in a `## Adversarial Review` section of the WRK-SPEC (A1) / WRK-PLAN (A2); finishing harvests them; A1 draft scratch at .kdd/brainstorm/<ID>-draft.md — costs if wrong: an extra body section validate tolerates.
+- Ruling (I5): A4 may modify implementation files in the worktree, restored with git stash/checkout, never committed — costs if wrong: none.
+- Ruling (I7): frag-cite-check warns on working-tree fallback and gains --strict (used by capturing-from-code step 6) — costs if wrong: none.
+
+### Rulings made during fix loops and the final review
+- Final: parked — task-brief/review-brief print the sdd-workspace error twice on failure — Ruling: real but cosmetic, deferred (no second fix wave).
+- Final: parked — brainstorming A1 draft is named with the WRK-SPEC ID before next-id allocates it in step 9 — Ruling: the ID is proposed and human-confirmed in the Knowledge activation section (step 7), so the draft can use it; next-id only confirms the number; wording to tighten in sub-project 2.
+- Final: parked — finishing Step 3b commit subject has no bounded variant; Step 3d parenthetical about bounded archive is confusing — Ruling: cosmetic, deferred.
+- Final: parked — verification-before-completion cites frag-cite-check without --strict — Ruling: deferred; the capture reference (authoritative) uses --strict.
+
+### Knowledge gaps
+- none — this work activates no knowledge specs (`activates: []`); framework gaps are recorded in the WRK-SPEC's Open Questions (`source_type: code` for fragments; SDD ledger vs RFC-KDD-003 flow runs; activation manifests; opencode).
+
+### Attacks broken and adjudicated
+- none — no adversarial gates ran during this execution (the gates are what this work builds; they apply from the next sub-project on).
+
+### Capture candidates (pending)
+- none.
+
+### Parked / deferred
+- Task 002: minor (deferred): kdd-cli falls through silently when KDD_SPEC_GRAPH points at a missing file
+- Task 002: minor (deferred): test-kdd-cli.sh does not assert exit-code pass-through of the underlying node process
+- Task 003: minor (deferred): --prefer not validated numeric (crashes exit 1 on `--prefer abc`); `WRK-TASK-001` (digits-only segment) passes grammar
+- Task 004: minor (deferred): working-tree fallback resolves paths relative to $PWD (documented: run from repo root); anchor paths containing ':' are silently skipped
+- Task 005: minor (deferred): CRLF plan files fall back to basename (awk compares first line to "---")
+- Task 007: minor (deferred): child-plan pick order follows readdir order (toolkit, unsorted); exit-4 path and empty-activates placeholder untested
+- Task 008: minor (deferred): frontmatter without a closing --- is still indexed (reads to EOF)
+- Task 010: minor (deferred): toolkit row phrasing slightly redundant ("When `toolkit: NOT FOUND`: before …")
+- Task 011: minor (deferred): server.cjs isTruthyEnv() is dead code; branding.test.js IIFE has no top-level catch
+- Task 012: minor (deferred): skills/writing-plans/plan-document-reviewer-prompt.md is an upstream orphan (unreferenced) — remove in the final wave
+- Task 014: minor (deferred): the whole-file replacement dropped the upstream Remember bullet "Never start implementation on main/master branch without explicit user consent" — restore in the final wave
+- Task 017: minor (deferred): new red-flag bullet is quote+rebuttal shaped, unlike the gerund bullets around it
+- Task 015: minor (deferred): code-reviewer.md "**Reviewer returns:**" one-liner and Example Output do not mention the four new sections; no explicit "Requirements Compliance" verdict line (asymmetric with task-reviewer)
+- Task 016: minor (deferred): finishing never states how "this plan" is resolved (the WRK-PLAN being finished); "confirmed the close explicitly" has no crisp trigger — candidates for the final wave
+- Task 018: minor (deferred): README install uses `<owner>` placeholder (repo is jmbruzos/superpowers); feature_request.md still has harness fields
+- Task 019: minor (deferred): env -u block duplicated in two call sites; Scenario 5 fallback grep hardcodes the fixture plan ID; shellcheck not installed (bash -n used)
+- Final: parked — task-brief/review-brief print the sdd-workspace error twice on failure — Ruling: real but cosmetic, deferred (no second fix wave).
+- Final: parked — brainstorming A1 draft is named with the WRK-SPEC ID before next-id allocates it in step 9 — Ruling: the ID is proposed and human-confirmed in the Knowledge activation section (step 7), so the draft can use it; next-id only confirms the number; wording to tighten in sub-project 2.
+- Final: parked — finishing Step 3b commit subject has no bounded variant; Step 3d parenthetical about bounded archive is confusing — Ruling: cosmetic, deferred.
+- Final: parked — verification-before-completion cites frag-cite-check without --strict — Ruling: deferred; the capture reference (authoritative) uses --strict.
+
+### Review record
+- Per-task reviews: 001 (1 fix round), 002, 003+004 (batched), 005, 006 (1 fix round), 007, 008 (2 fix rounds), 009, 010, 011, 012, 013 (1 fix round), 014+017 (batched), 015, 016, 018, 019 — all clean.
+- Final whole-branch review (opus): 1 Critical (SDD deleted the ledger before finishing could persist it), 9 Important, 11 Minor → one fix wave (4a9bf04) → scoped re-review: all addressed, ready to merge.
+- Headless scenarios (tests/claude-code/test-kdd-flow.sh): 6/6 PASS in ~26 min; deterministic suites green.
