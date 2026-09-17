@@ -16,9 +16,17 @@ Subagent (general-purpose):
 
     [DESCRIPTION]
 
-    ## Requirements / Plan
+    ## Requirements and Knowledge
 
-    [PLAN_OR_REQUIREMENTS]
+    Mode: [MODE]
+    Read the brief: [KNOWLEDGE_BRIEF]
+    In mode `kdd-work` it holds the WRK-SPEC's acceptance criteria and
+    constraints, the plan's Architecture Impact, the activated specs in
+    full and the cited fragments — the WRK-SPEC is the authority, the plan
+    its argument, the activated specs its constraints; verify against all
+    three. In the other modes it holds the requirements and, when present,
+    the specs your human partner confirmed apply.
+    Before merge: [BEFORE_MERGE]
 
     ## Git Range to Review
 
@@ -49,6 +57,30 @@ Subagent (general-purpose):
     - Does the implementation match the plan / requirements?
     - Are deviations justified improvements, or problematic departures?
     - Is all planned functionality present?
+
+    **Knowledge compliance (all modes with specs):**
+    - Does any change contradict a rule of an activated/confirmed spec, or a
+      FRAG-observed behaviour the brief cites? Quote rule ID and number. Always Critical.
+    - Gate A3: for every rule the diff touches, name the test that guards it
+      (file, test name, assertion) or give one concrete input that would violate
+      it undetected. A counterexample without a guarding test is Critical:
+      "missing test for <rule>: <input>".
+    - Knowledge findings: rules the surrounding code already contradicted
+      before this diff.
+
+    **Capture candidates (all modes; mandatory in `brownfield`):**
+    - Behaviour the code embodies that no spec documents and this diff
+      touches: invariants, validations, orderings, formulas, conventions.
+      Each one anchored — `path:start-end@sha` plus the literal line — so the
+      controller can write a fragment without re-exploring. You do not write
+      fragments and you do not guess: no anchor, no candidate.
+
+    **Gate A5 — acceptance attack (only when Before merge is `yes` and the
+    brief has acceptance criteria):**
+    - For each acceptance criterion, one scenario that would make it fail.
+      Execute it when a command or test can (paste the command and output);
+      otherwise reason from the diff and say so. Report as an attack table:
+      `| Attack | Scenario | Result | Evidence |` with BROKEN / RESISTED.
 
     **Code quality:**
     - Clean separation of concerns?
@@ -90,6 +122,21 @@ Subagent (general-purpose):
 
     ### Strengths
     [What's well done? Be specific.]
+
+    ### Knowledge Compliance
+
+    - ✅ No activated rule violated | ❌ Violated: [rule ID + number, file:line] | n/a (no specs in this mode)
+    - Rules touched → guard: [rule → test name, or → counterexample input]
+
+    ### Knowledge Findings
+    [pre-existing contradictions, or "none"]
+
+    ### Capture Candidates
+    [- `path:start-end@sha`: `literal` — what it embodies; or "none"]
+
+    ### Acceptance Attacks (before merge only)
+    | Attack | Scenario | Result | Evidence |
+    |---|---|---|---|
 
     ### Issues
 
@@ -136,7 +183,9 @@ Subagent (general-purpose):
 
 **Placeholders:**
 - `[DESCRIPTION]` — brief summary of what was built
-- `[PLAN_OR_REQUIREMENTS]` — what it should do (plan file path, task text, or requirements)
+- `[KNOWLEDGE_BRIEF]` — path of the brief (review-brief output in mode kdd-work; scratch brief otherwise)
+- `[MODE]` — `kdd-work` | `knowledge-no-spec` | `brownfield`
+- `[BEFORE_MERGE]` — `yes` | `no` (enables the acceptance attack)
 - `[BASE_SHA]` — starting commit
 - `[HEAD_SHA]` — ending commit
 

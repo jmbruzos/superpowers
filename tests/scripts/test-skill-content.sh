@@ -100,4 +100,15 @@ must_contain skills/verification-before-completion/SKILL.md "frag-cite-check" "c
 must_contain skills/verification-before-completion/SKILL.md "export-okf" "OKF export as evidence"
 must_contain skills/verification-before-completion/SKILL.md "the file with its version is what counts" "spec red flag"
 
+# --- code review (Task 015) ---
+must_contain skills/requesting-code-review/SKILL.md "scripts/review-brief" "mode 1 uses review-brief"
+must_contain skills/requesting-code-review/SKILL.md "kdd:spec-context" "mode 2 uses spec-context"
+must_contain skills/requesting-code-review/SKILL.md "Pure brownfield" "mode 3 exists"
+must_contain skills/requesting-code-review/SKILL.md "{KNOWLEDGE_BRIEF}" "knowledge brief placeholder"
+must_contain skills/requesting-code-review/code-reviewer.md "### Knowledge Compliance" "reviewer outputs knowledge verdict"
+must_contain skills/requesting-code-review/code-reviewer.md "### Capture Candidates" "reviewer outputs capture candidates"
+must_contain skills/requesting-code-review/code-reviewer.md "Gate A5" "A5 before merge"
+must_contain skills/requesting-code-review/code-reviewer.md "test that guards it" "A3 contract"
+must_contain skills/receiving-code-review/SKILL.md "## When Feedback Conflicts With Knowledge" "receiving: knowledge rule"
+
 finish

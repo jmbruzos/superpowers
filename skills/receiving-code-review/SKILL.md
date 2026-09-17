@@ -85,6 +85,26 @@ IF conflicts with your human partner's prior decisions:
 
 **your human partner's rule:** "External feedback - be skeptical, but check carefully"
 
+## When Feedback Conflicts With Knowledge
+
+Feedback is checked against the codebase — and the codebase includes the
+knowledge graph.
+
+- A comment that contradicts a rule of an activated spec does not win by
+  default: the rule does. Verify the rule's text (the spec file, its
+  version), then respond with it: "DOM-BILL-PRORATA-001 rule 3 requires
+  half-up rounding; this change keeps it. If the rule is wrong, that is a
+  spec change."
+- If the rule *is* wrong — the reviewer shows it, or the code proves it —
+  do not follow the comment silently. Record a `Knowledge gap: <rule> — <why
+  it is wrong> — <evidence>` (ledger in SDD; a note for consolidation
+  otherwise) so consolidation bumps the spec or opens an ADR. Then decide
+  the code change with your human partner, on the record.
+- A human reviewer who reveals an undocumented rule ("we always do X here
+  because the regulator…") is a capture candidate: note it with
+  `source_type: chat`, the human actor and the date, for
+  kdd-superpowers:kdd-conventions capture at consolidation.
+
 ## YAGNI Check for "Professional" Features
 
 ```
