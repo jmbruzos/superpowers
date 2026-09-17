@@ -55,4 +55,16 @@ must_not_contain skills/brainstorming/scripts/server.cjs "primeradiant" "compani
 must_not_contain skills/brainstorming/scripts/server.cjs "TELEMETRY" "companion has no telemetry switch"
 must_contain skills/brainstorming/scripts/frame-template.html "<title>kdd-superpowers Brainstorming</title>" "companion title renamed"
 
+# --- writing-plans (Task 012) ---
+must_contain skills/writing-plans/SKILL.md "status: active" "requires an active WRK-SPEC"
+must_contain skills/writing-plans/SKILL.md "one WRK-TASK file per task" "one file per task"
+must_contain skills/writing-plans/SKILL.md "WRK-TASK-<path>-<PPP>-<TTT>" "task ID scheme"
+must_contain skills/writing-plans/SKILL.md "## Architecture Impact" "Architecture Impact replaces Global Constraints"
+must_contain skills/writing-plans/SKILL.md "activates nothing the spec does not" "task activation subset rule"
+must_contain skills/writing-plans/SKILL.md "plan-adversary-prompt.md" "gate A2 wired"
+must_contain skills/writing-plans/SKILL.md "Activation coverage" "self-review checks activation"
+must_contain skills/writing-plans/SKILL.md ".kdd/sdd/" "workspace path named"
+must_not_contain skills/writing-plans/SKILL.md "Global Constraints" "no Global Constraints header left"
+must_contain skills/writing-plans/plan-adversary-prompt.md "| Attack | Scenario | Result | Evidence |" "A2 prompt uses the attack table"
+
 finish

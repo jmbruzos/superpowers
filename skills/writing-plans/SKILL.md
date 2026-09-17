@@ -1,6 +1,6 @@
 ---
 name: writing-plans
-description: Use when you have a spec or requirements for a multi-step task, before touching code
+description: Use when you have an approved WRK-SPEC for a multi-step task, before touching code — produces the WRK-PLAN and one WRK-TASK per task
 ---
 
 # Writing Plans
@@ -15,16 +15,23 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 **Context:** If working in an isolated worktree, it should have been created via the `kdd-superpowers:using-git-worktrees` skill at execution time.
 
-**Save plans to:** `specs/work/YYYY-MM-DD-<feature-name>.md`
-- (User preferences for plan location override this default)
+**Input:** a WRK-SPEC in `status: active` (approved in brainstorming). If there is none, or it is still `draft`, stop and go back to kdd-superpowers:brainstorming — there is no planning from free text or from an unapproved spec.
+
+**Output:** one WRK-PLAN plus **one WRK-TASK file per task**, all under `specs/work/`, written per kdd-superpowers:kdd-conventions (REQUIRED SUB-SKILL). Separate task files are what let a subagent read only its task, and what let each task carry its own activations.
+
+## Read Before You Plan
+
+1. The WRK-SPEC — the authority. Its *Constraints* and *Acceptance Criteria* are what the plan must cover.
+2. **Every activated spec, in full** (`activates` in the WRK-SPEC frontmatter; find the files with `<kdd-cli> --specs specs filter --format json`). Constraints are copied from these files verbatim, never paraphrased from memory.
+3. Every FRAG the spec cites in `sources` — the observed behaviour the plan must preserve.
 
 ## Scope Check
 
-If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
+If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, write several WRK-PLANs — one per subsystem, all with the same `parent` — each producing working, testable software on its own.
 
 ## File Structure
 
-Before defining tasks, map out which files will be created or modified and what each one is responsible for. This is where decomposition decisions get locked in.
+Before defining tasks, map out which files will be created or modified and what each one is responsible for. This is where decomposition decisions get locked in — and where activations get assigned: for each file, which activated spec constrains it.
 
 - Design units with clear boundaries and well-defined interfaces. Each file should have one clear responsibility.
 - You reason best about code you can hold in context at once, and your edits are more reliable when files are focused. Prefer smaller, focused files over large ones that do too much.
@@ -51,14 +58,24 @@ independently testable deliverable.
 - "Run the tests and make sure they pass" - step
 - "Commit" - step
 
-## Plan Document Header
+## Identifiers
 
-**Every plan MUST start with this header:**
+- Plan: `next-id --prefer <spec number> WRK-PLAN-<spec path>` — a plan takes its spec's number when free.
+- Tasks: `WRK-TASK-<path>-<PPP>-<TTT>`, PPP = the plan's number, TTT = the task's position in *Task Breakdown* (001, 002, …). The ID says plan and position without opening the file; use it in commits (`feat(WRK-TASK-…-003): …`).
+- Files: `specs/work/<ID>-<lowercase-slug>.md`.
+
+## The WRK-PLAN
+
+Frontmatter per the kdd-conventions template: `layer: work-plan`, `parent: <WRK-SPEC-ID>`, `dependencies` (`implements` the spec, `constrained-by` each activated spec), `activates`/`equips` **⊆ the spec's frozen set with the same pins**, `activation_frozen: true`, `sources` (the spec, the activated specs, the FRAGs), `generated`, `stale_after`, `status: draft`, `confidence: low`.
+
+**Every plan body MUST start with this header:**
 
 ```markdown
-# [Feature Name] Implementation Plan
+# <WRK-PLAN-ID> — <title>
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use kdd-superpowers:subagent-driven-development (recommended) or kdd-superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use kdd-superpowers:subagent-driven-development (recommended) or kdd-superpowers:executing-plans to implement this plan task-by-task. Each task is its own WRK-TASK file under `specs/work/`; steps use checkbox (`- [ ]`) syntax for tracking.
+
+## Approach
 
 **Goal:** [One sentence describing what this builds]
 
@@ -66,23 +83,42 @@ independently testable deliverable.
 
 **Tech Stack:** [Key technologies/libraries]
 
-**Spec:** [path to the spec/design doc this plan implements — the plan
-argues from the spec, so the spec travels with it; executors read both]
+**Spec:** `specs/work/<WRK-SPEC file>` — the plan argues from the spec, so executors read both.
 
-## Global Constraints
+## Task Breakdown
 
-[The spec's project-wide requirements — version floors, dependency limits,
-naming and copy rules, platform requirements — one line each, with exact
-values copied verbatim from the spec. Every task's requirements implicitly
-include this section.]
+| Task ID | Description | Dependencies |
+|---|---|---|
+(table order is execution order)
+
+## Architecture Impact
+
+| Constraint | Source | Impact on plan |
+|---|---|---|
+[Every rule from an activated spec that binds this work, **copied verbatim** with its spec ID and rule number; every FRAG-observed behaviour with its anchor. Every task's requirements implicitly include this table — it is what reviewers hold the diff against.]
+
+## Risk Assessment
+
+| Risk | Likelihood | Impact | Mitigation |
+|---|---|---|---|
+
+## Dependencies
 
 ---
 ```
 
-## Task Structure
+## The WRK-TASK
+
+One file per task. Frontmatter per the template: `layer: work-task`, `parent: <WRK-PLAN-ID>`, `dependencies` (`implements` the plan), **`activates`: the 2–5 specs this task actually touches**, pins inherited — a task **activates nothing the spec does not** (P3); `equips` likewise; `sources` for the FRAGs it relies on; trust family; `status: draft`, `confidence: low`.
 
 ````markdown
-### Task N: [Component Name]
+# <WRK-TASK-ID> — <component name>
+
+## Objective
+
+[What this task delivers and why it exists in the plan — two or three sentences.]
+
+## Implementation Notes
 
 **Files:**
 - Create: `exact/path/to/file.py`
@@ -124,8 +160,16 @@ Expected: PASS
 
 ```bash
 git add tests/path/test.py src/path/file.py
-git commit -m "feat: add specific feature"
+git commit -m "feat(<WRK-TASK-ID>): add specific feature"
 ```
+
+## Acceptance Criteria
+
+- [ ] [testable; each maps to a WRK-SPEC criterion or to a rule in an activated spec — name it]
+
+## Test Plan
+
+[the tests above, and any integration/regression check]
 ````
 
 ## No Placeholders
@@ -137,6 +181,11 @@ Every step must contain the actual content an engineer needs. These are **plan f
 - "Similar to Task N" (repeat the code — the engineer may be reading tasks out of order)
 - Steps that describe what to do without showing how (code blocks required for code steps)
 - References to types, functions, or methods not defined in any task
+- "Follow DOM-X" without the rule's text (copy the rule; the implementer's brief carries the spec, but the step must say which line binds it)
+
+## Validate
+
+`<kdd-cli> --specs specs validate` after writing the plan and every task: 0 errors, and no warning naming your files. An artifact that does not validate is not written.
 
 ## Self-Review
 
@@ -148,19 +197,29 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 **3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
 
+**4. Activation coverage:** Does every row of *Architecture Impact* cite a spec or a FRAG? Does every task's `activates` stay inside the spec's set? Does every activated spec bind at least one task (otherwise why activate it)?
+
+**5. Roll-up:** Do the tasks' acceptance criteria, taken together, cover every acceptance criterion of the WRK-SPEC?
+
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
+
+## Gate A2 — plan red-team (conditional)
+
+Dispatch [plan-adversary-prompt.md](plan-adversary-prompt.md) when **any** of these holds: more than 4 tasks; the spec activates a spec with `confidence: low` or no `verified`; the work touches security, money or regulatory logic. Otherwise skip it and say so. The adversary returns an attack table (kdd-superpowers:kdd-conventions `references/adversarial-gates.md`); adjudicate every `BROKEN` row, fix the plan or the tasks, re-validate.
 
 ## Execution Handoff
 
 After saving the plan, offer execution choice:
 
-**"Plan complete and saved to `specs/work/<filename>.md`. Two execution options:**
+**"Plan complete: `specs/work/<WRK-PLAN file>` with <N> tasks. Two execution options:**
 
 **1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
 
 **2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
 
 **Which approach?"**
+
+When your human partner chooses, set `status: active` and `updated` on the plan and every task, re-validate, commit (`plan(<WRK-PLAN-ID>): activate`). The SDD workspace for this plan will be `.kdd/sdd/<WRK-PLAN-ID>/`.
 
 **If Subagent-Driven chosen:**
 - **REQUIRED SUB-SKILL:** Use kdd-superpowers:subagent-driven-development
