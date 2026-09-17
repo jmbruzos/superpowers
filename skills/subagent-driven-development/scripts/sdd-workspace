@@ -3,7 +3,7 @@
 # short-lived artifacts: task briefs, implementer reports, review packages,
 # and the progress ledger. Print the plan directory's absolute path.
 #
-# One directory per plan (.kdd/sdd/<plan-basename>/) so a follow-up
+# One directory per plan (.kdd/sdd/<plan id>/, basename fallback) so a follow-up
 # plan in the same working tree can never read or overwrite another plan's
 # artifacts. A stale ledger misread as current progress makes controllers
 # skip whole task sequences — plan-scoping removes that failure structurally.
@@ -28,8 +28,12 @@ fi
 plan=$1
 [ -f "$plan" ] || { echo "no such plan file: $plan" >&2; exit 2; }
 
-slug=$(basename "$plan" .md)
-[ -n "$slug" ] && [ "$slug" != "." ] && [ "$slug" != ".." ] \
+# Workspace key: the plan's KDD id (frontmatter `id:`), so every artifact of
+# WRK-PLAN-X-001 lives under .kdd/sdd/WRK-PLAN-X-001/ regardless of the file's
+# slug. Plain plan files without frontmatter fall back to their basename.
+slug=$(awk 'NR==1&&$0!="---"{exit} /^---$/{c++; if(c==2) exit; next} c==1&&/^id:[[:space:]]*/{sub(/^id:[[:space:]]*/,""); sub(/[[:space:]]+$/,""); print; exit}' "$plan")
+[ -n "$slug" ] || slug=$(basename "$plan" .md)
+[ -n "$slug" ] && [ "$slug" != "." ] && [ "$slug" != ".." ] && [[ "$slug" != */* ]] \
   || { echo "cannot derive a workspace name from: $plan" >&2; exit 2; }
 
 root=$(git rev-parse --show-toplevel)

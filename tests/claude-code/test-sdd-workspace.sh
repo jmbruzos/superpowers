@@ -50,6 +50,8 @@ PLAN
 
 Do the other thing.
 PLAN
+    mkdir -p "$repo/specs/work"
+    cp "$REPO_ROOT/tests/scripts/fixtures/specs/work/WRK-PLAN-BILL-PRORATA-001-mid-cycle-activation.md" "$repo/specs/work/"
 
     # --- argument validation ---
     local rc=0
@@ -76,9 +78,9 @@ PLAN
     dir_b="$(cd "$repo" && "$SDD_SCRIPTS/sdd-workspace" plan-b.md)"
 
     if [[ "$dir_a" == "$repo/.kdd/sdd/plan-a" ]]; then
-        pass "prints <repo-root>/.kdd/sdd/<plan-basename>"
+        pass "prints <repo-root>/.kdd/sdd/<plan-basename> (no frontmatter)"
     else
-        fail "prints <repo-root>/.kdd/sdd/<plan-basename>"
+        fail "prints <repo-root>/.kdd/sdd/<plan-basename> (no frontmatter)"
         echo "    got: $dir_a"
     fi
 
@@ -88,6 +90,20 @@ PLAN
         fail "two plans resolve to two distinct directories"
         echo "    a: $dir_a"
         echo "    b: $dir_b"
+    fi
+
+    local dir_k
+    dir_k="$(cd "$repo" && "$SDD_SCRIPTS/sdd-workspace" specs/work/WRK-PLAN-BILL-PRORATA-001-mid-cycle-activation.md)"
+    if [[ "$dir_k" == "$repo/.kdd/sdd/WRK-PLAN-BILL-PRORATA-001" ]]; then
+        pass "a WRK-PLAN resolves to .kdd/sdd/<frontmatter id>"
+    else
+        fail "a WRK-PLAN resolves to .kdd/sdd/<frontmatter id>"
+        echo "    got: $dir_k"
+    fi
+    if [[ "$dir_a" == "$repo/.kdd/sdd/plan-a" ]]; then
+        pass "a plan without frontmatter falls back to its basename"
+    else
+        fail "a plan without frontmatter falls back to its basename"
     fi
 
     if [[ -f "$repo/.kdd/sdd/.gitignore" && "$(cat "$repo/.kdd/sdd/.gitignore")" == "*" ]]; then
