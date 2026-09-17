@@ -3,8 +3,8 @@ id: WRK-SPEC-FORK-CORE-001
 type: spec
 layer: work-spec
 scope: ephemeral
-status: draft
-confidence: low
+status: active
+confidence: high
 version: 0.1.0
 created: 2026-09-17
 updated: 2026-09-17
@@ -43,6 +43,9 @@ sources:
 generated:
   by: claude-code/claude-opus-5
   at: 2026-09-17T00:00:00+02:00
+verified:
+  - by: human:jmbruzos
+    at: 2026-09-17T15:22:12+02:00
 stale_after: 2026-12-16T00:00:00+01:00
 tags: [kdd, superpowers, fork, methodology, skills, claude-code]
 ---
