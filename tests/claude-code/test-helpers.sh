@@ -144,57 +144,15 @@ cleanup_test_project() {
     fi
 }
 
-# Create a simple plan file for testing
+# Create a simple plan file for testing (copies the hello-plan fixture:
+# tests/claude-code/fixtures/hello-plan/specs/)
 # Usage: create_test_plan "$project_dir" "$plan_name"
 create_test_plan() {
     local project_dir="$1"
-    local plan_name="${2:-test-plan}"
-    local plan_file="$project_dir/specs/work/$plan_name.md"
-
-    mkdir -p "$(dirname "$plan_file")"
-
-    cat > "$plan_file" <<'EOF'
-# Test Implementation Plan
-
-## Task 1: Create Hello Function
-
-Create a simple hello function that returns "Hello, World!".
-
-**File:** `src/hello.js`
-
-**Implementation:**
-```javascript
-export function hello() {
-  return "Hello, World!";
-}
-```
-
-**Tests:** Write a test that verifies the function returns the expected string.
-
-**Verification:** `npm test`
-
-## Task 2: Create Goodbye Function
-
-Create a goodbye function that takes a name and returns a goodbye message.
-
-**File:** `src/goodbye.js`
-
-**Implementation:**
-```javascript
-export function goodbye(name) {
-  return `Goodbye, ${name}!`;
-}
-```
-
-**Tests:** Write tests for:
-- Default name
-- Custom name
-- Edge cases (empty string, null)
-
-**Verification:** `npm test`
-EOF
-
-    echo "$plan_file"
+    local helpers_dir
+    helpers_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    cp -R "$helpers_dir/fixtures/hello-plan/specs" "$project_dir/specs"
+    echo "$project_dir/specs/work/WRK-PLAN-DEMO-HELLO-001-hello-library.md"
 }
 
 # Export functions for use in tests

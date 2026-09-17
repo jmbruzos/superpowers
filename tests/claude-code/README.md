@@ -48,7 +48,7 @@ Common functions for skills testing:
 - `assert_count output pattern count name` - Verify exact count
 - `assert_order output pattern_a pattern_b name` - Verify order
 - `create_test_project` - Create temp test directory
-- `create_test_plan project_dir` - Create sample plan file
+- `create_test_plan project_dir` - Copy the hello-plan fixture's `specs/` into project_dir, return the plan path
 
 ### Test Files
 
@@ -114,6 +114,38 @@ Full workflow execution test (~10-30 minutes):
 - Our improvements are actually applied
 - Subagents follow the skill correctly
 - Final code is functional and tested
+
+#### test-kdd-flow.sh
+Headless Claude Code scenarios for the kdd-superpowers flow, loaded with both
+`--plugin-dir` this repo and the `kdd` toolkit plugin (~10-30 minutes total,
+six scenarios, up to 15 minutes each):
+1. toolkit missing → brainstorming stops with an install instruction and
+   writes no work artifact.
+2. brainstorming with a knowledge base → a frozen, compact WRK-SPEC that
+   activates the pinned domain spec and is transitioned to `active` with a
+   `human:test` verification entry.
+3. brainstorming without `specs/` → `specs/work` created, `activates: []`
+   stated, and a FRAG captured with verifiable anchors at `confidence: low`.
+4. writing-plans from an active WRK-SPEC → a WRK-PLAN and WRK-TASK files
+   whose task activations stay within the spec's activated set, with an
+   Architecture Impact section citing the activated domain spec.
+5. subagent-driven-development executes the `hello-plan` fixture end to end
+   (see `fixtures/hello-plan/`) — tests pass, the plan/tasks/spec close out,
+   and commits carry task IDs.
+6. requesting-code-review flags a violation of an activated rule as Critical
+   with a Knowledge Compliance section naming the rule.
+
+Isolation: each scenario runs with `CLAUDE_CONFIG_DIR` pointing at a fresh
+temp directory into which `~/.claude/.credentials.json` is copied when
+present (otherwise `ANTHROPIC_API_KEY` must be set in the environment), so
+no user-scope plugins (e.g. upstream `superpowers`) load — only the two
+`--plugin-dir`s under test. Requires `KDD_TOOLKIT_DIR` (default
+`../knowledge-driven-development/kdd-toolkit`) and `KDD_SPEC_GRAPH` (default
+`$KDD_TOOLKIT_DIR/cli/spec-graph.mjs`); the test skips itself if either
+`claude` or the kdd toolkit is not found. When run from inside a Claude Code
+session, it strips the inherited `CLAUDECODE` / `CLAUDE_CODE_*` env vars
+before launching the nested headless `claude -p` calls (otherwise they
+refuse to start).
 
 #### test-worktree-native-preference.sh
 RED-GREEN-REFACTOR validation for the using-git-worktrees skill (~5 minutes):

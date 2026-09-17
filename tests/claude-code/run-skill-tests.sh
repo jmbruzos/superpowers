@@ -62,6 +62,7 @@ while [[ $# -gt 0 ]]; do
             echo ""
             echo "Integration Tests (use --integration):"
             echo "  test-subagent-driven-development-integration.sh  Full workflow execution"
+            echo "  test-kdd-flow.sh                                 Headless kdd-superpowers scenarios"
             exit 0
             ;;
         *)
@@ -82,6 +83,7 @@ tests=(
 # Integration tests (slow, full execution)
 integration_tests=(
     "test-subagent-driven-development-integration.sh"
+    "test-kdd-flow.sh"
 )
 
 # Add integration tests if requested
