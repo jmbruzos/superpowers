@@ -1,0 +1,196 @@
+---
+id: WRK-TASK-FORK-CORE-001-007
+type: spec
+layer: work-task
+scope: ephemeral
+status: draft
+confidence: low
+version: 0.1.0
+created: 2026-09-17
+updated: 2026-09-17
+owner: jmbruzos
+title: "review-brief"
+parent: WRK-PLAN-FORK-CORE-001
+activates: []
+equips: []
+dependencies:
+  - id: WRK-PLAN-FORK-CORE-001
+    relation: implements
+sources:
+  - id: WRK-SPEC-FORK-CORE-001
+    resource: specs/work/WRK-SPEC-FORK-CORE-001-kdd-adaptation-core-flow.md
+generated:
+  by: claude-code/claude-opus-5
+  at: 2026-09-17T00:00:00+02:00
+stale_after: 2026-12-16T00:00:00+01:00
+tags: [kdd, fork, task, tooling]
+---
+
+# WRK-TASK-FORK-CORE-001-007 — `review-brief`
+
+## Objective
+
+The spec/plan-level counterpart of `task-brief` for code review (spec
+Skill 5, mode 1): acceptance criteria and constraints of the WRK-SPEC, the
+plan's *Architecture Impact*, activated specs in full with pin check, and
+cited FRAGs — one file the reviewer reads in one call.
+
+## Implementation Notes
+
+**Files:**
+- Modify: `skills/kdd-conventions/scripts/brief-lib.mjs` (add `buildReviewBrief`)
+- Create: `skills/requesting-code-review/scripts/review-brief`, `tests/scripts/test-review-brief.sh`
+- Test: `tests/scripts/test-review-brief.sh`
+
+**Interfaces:**
+- Consumes: `brief-lib.mjs` exports (006), `kdd-cli --path` (002), `sdd-workspace` (005), fixture (002).
+- Produces:
+  - `buildReviewBrief({nodes, specNode, specText, planNode}) → string` with headings `# Review brief — <SPEC-ID>`, `## 1. Acceptance criteria (<SPEC-ID>)`, `## 2. Constraints (<SPEC-ID>)`, `## 3. Architecture Impact (<PLAN-ID>)`, `## 4. Activated knowledge`, optional `## 4b. Equipped capabilities`, `## 5. Evidence (fragments cited in sources)`.
+  - `review-brief SPEC_OR_PLAN_FILE [OUTFILE]` → given a WRK-PLAN it resolves its `parent` WRK-SPEC; given a WRK-SPEC it picks the first child plan (`parent` == spec id) if any. Default OUTFILE `<sdd-workspace of the plan, or of the spec when there is none>/review-brief.md`. Prints `wrote <path>: <N> lines`. Exit codes as `task-brief`.
+
+- [ ] **Step 1: Write the failing test**
+
+`tests/scripts/test-review-brief.sh`:
+
+```bash
+#!/usr/bin/env bash
+set -uo pipefail
+. "$(dirname "$0")/lib.sh"
+RB="$REPO_ROOT/skills/requesting-code-review/scripts/review-brief"
+echo "=== Test: review-brief ==="
+require_cli
+repo="$(make_fixture_repo)"; trap 'rm -rf "$repo"' EXIT
+export KDD_SPEC_GRAPH="$KDD_CLI"
+
+out="$(cd "$repo" && "$RB" specs/work/WRK-SPEC-BILL-PRORATA-001-mid-cycle-activation.md)"; rc=$?
+path="$(printf '%s\n' "$out" | sed -n 's/^wrote \(.*\): [0-9][0-9]* lines$/\1/p')"
+[[ "$rc" -eq 0 && "$path" == "$repo/.kdd/sdd/WRK-PLAN-BILL-PRORATA-001/review-brief.md" ]] && pass "spec input → child plan's workspace/review-brief.md" || { fail "spec input → child plan's workspace/review-brief.md"; echo "    rc=$rc out=$out"; }
+b="$(cat "$path" 2>/dev/null)"
+for h in "# Review brief — WRK-SPEC-BILL-PRORATA-001" "## 1. Acceptance criteria (WRK-SPEC-BILL-PRORATA-001)" "## 2. Constraints (WRK-SPEC-BILL-PRORATA-001)" "## 3. Architecture Impact (WRK-PLAN-BILL-PRORATA-001)" "## 4. Activated knowledge" "### DOM-BILL-PRORATA-001 @1.0.0" "## 5. Evidence (fragments cited in sources)" "### FRAG-BILL-ROUNDING-001"; do
+  [[ "$b" == *"$h"* ]] && pass "contains '$h'" || fail "contains '$h'"
+done
+[[ "$b" == *"Activation on day 15 of a 30-day month charges half the fee."* ]] && pass "acceptance criteria inlined" || fail "acceptance criteria inlined"
+[[ "$b" == *"Round to 2 decimal places, half-up (DOM-BILL-PRORATA-001, Rule 3)."* ]] && pass "constraints inlined" || fail "constraints inlined"
+[[ "$b" != *"PIN DRIFT"* ]] && pass "no drift for the spec's pins" || fail "no drift for the spec's pins"
+
+out2="$(cd "$repo" && "$RB" specs/work/WRK-PLAN-BILL-PRORATA-001-mid-cycle-activation.md)"
+path2="$(printf '%s\n' "$out2" | sed -n 's/^wrote \(.*\): [0-9][0-9]* lines$/\1/p')"
+[[ "$path2" == "$path" && "$(head -1 "$path2")" == "# Review brief — WRK-SPEC-BILL-PRORATA-001" ]] && pass "plan input resolves its parent spec" || { fail "plan input resolves its parent spec"; echo "    got: $path2"; }
+
+rc=0; (cd "$repo" && "$RB" >/dev/null 2>&1) || rc=$?
+[[ "$rc" -eq 2 ]] && pass "usage error exits 2" || fail "usage error exits 2 (rc=$rc)"
+finish
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `bash tests/scripts/test-review-brief.sh` — Expected: FAIL (script missing).
+
+- [ ] **Step 3: Add `buildReviewBrief` to `brief-lib.mjs`**
+
+Append to `skills/kdd-conventions/scripts/brief-lib.mjs`:
+
+```js
+/** The review brief: what the WRK-SPEC demands, what the plan constrains, what knowledge binds. */
+export function buildReviewBrief({ nodes, specNode, specText, planNode }) {
+  const { fm, body } = parseFrontmatter(specText);
+  const activates = listField(fm, 'activates').map(splitPin);
+  const equips = listField(fm, 'equips').map(splitPin);
+  const frags = sourceIds(fm).filter((id) => /^FRAG-/.test(id));
+  const parts = [];
+  parts.push(`# Review brief — ${specNode.id}\n`);
+  parts.push(`Generated by review-brief from \`${specNode.file}\`${planNode ? ` and \`${planNode.file}\`` : ''}. The WRK-SPEC is the authority, the plan is its argument, the activated specs are its constraints — verify the diff against all three.\n`);
+  parts.push(`## 1. Acceptance criteria (${specNode.id})\n\n${sectionOf(body, 'Acceptance Criteria') || '_(none stated)_'}\n`);
+  parts.push(`## 2. Constraints (${specNode.id})\n\n${sectionOf(body, 'Constraints') || '_(none stated)_'}\n`);
+  parts.push(`## 3. Architecture Impact (${planNode ? planNode.id : 'no plan'})\n\n${planNode ? (sectionOf(planNode.body || '', 'Architecture Impact') || '_(the plan has no Architecture Impact section)_') : '_(no WRK-PLAN for this spec)_'}\n`);
+  parts.push(`## 4. Activated knowledge\n\n${activates.length ? activates.map(({ id, version }) => { const n = findNode(nodes, id); return n ? renderSpecBlock(n, version) : missing(id, 'activated spec'); }).join('\n') : '_(this work activates no knowledge — activates: [])_\n'}`);
+  if (equips.length) parts.push(`## 4b. Equipped capabilities\n\n${equips.map(({ id, version }) => { const n = findNode(nodes, id); return n ? renderSpecBlock(n, version) : missing(id, 'equipped artifact'); }).join('\n')}`);
+  parts.push(`## 5. Evidence (fragments cited in sources)\n\n${frags.length ? frags.map((id) => { const n = findNode(nodes, id); return n ? renderFragBlock(n) : missing(id, 'fragment'); }).join('\n') : '_(no fragments cited)_\n'}`);
+  return parts.join('\n');
+}
+```
+
+- [ ] **Step 4: Write `review-brief`**
+
+`skills/requesting-code-review/scripts/review-brief`:
+
+```js
+#!/usr/bin/env node
+// review-brief — write the spec/plan-level review brief for a piece of KDD work.
+//
+// Usage: review-brief SPEC_OR_PLAN_FILE [OUTFILE]
+// Default OUTFILE: <sdd-workspace of the plan (or of the spec when no plan exists)>/review-brief.md
+// Prints: wrote <path>: <N> lines
+// Exit 2 usage · 3 kdd toolkit not found · 4 spec not found in the graph
+import { execFileSync } from 'node:child_process';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname, resolve, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseFrontmatter, scalarField, loadNodes, findNode, buildReviewBrief } from '../../kdd-conventions/scripts/brief-lib.mjs';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const [fileArg, outArg] = process.argv.slice(2);
+if (!fileArg || process.argv.length > 4) { console.error('usage: review-brief SPEC_OR_PLAN_FILE [OUTFILE]'); process.exit(2); }
+
+let text;
+try { text = readFileSync(fileArg, 'utf8'); } catch { console.error(`no such file: ${fileArg}`); process.exit(2); }
+const { fm } = parseFrontmatter(text);
+const id = scalarField(fm, 'id');
+const layer = scalarField(fm, 'layer');
+if (!id || !layer) { console.error(`no frontmatter id/layer in ${fileArg}`); process.exit(2); }
+
+const abs = resolve(fileArg);
+let specsDir = dirname(abs);
+for (let d = dirname(abs); d !== dirname(d); d = dirname(d)) if (d.endsWith('/specs')) { specsDir = d; break; }
+
+let cli;
+try { cli = execFileSync(join(here, '../../using-superpowers/scripts/kdd-cli'), ['--path'], { encoding: 'utf8' }).trim(); }
+catch { console.error('kdd toolkit not found: install the kdd plugin or set KDD_SPEC_GRAPH'); process.exit(3); }
+
+const nodes = loadNodes(cli, specsDir);
+let specNode, planNode;
+if (layer === 'work-plan') {
+  planNode = findNode(nodes, id);
+  specNode = findNode(nodes, scalarField(fm, 'parent') || '');
+} else {
+  specNode = findNode(nodes, id);
+  planNode = nodes.find((n) => n.layer === 'work-plan' && n.parent === id) || null;
+}
+if (!specNode) { console.error(`WRK-SPEC not found in the graph for ${fileArg}`); process.exit(4); }
+const specText = readFileSync(specNode.file, 'utf8');
+
+let outPath;
+if (outArg) outPath = resolve(outArg);
+else {
+  const ws = execFileSync(join(here, '../../subagent-driven-development/scripts/sdd-workspace'), [planNode ? planNode.file : specNode.file], { encoding: 'utf8' }).trim();
+  outPath = join(ws, 'review-brief.md');
+}
+mkdirSync(dirname(outPath), { recursive: true });
+const brief = buildReviewBrief({ nodes, specNode, specText, planNode });
+writeFileSync(outPath, brief);
+console.log(`wrote ${outPath}: ${brief.split('\n').length} lines`);
+```
+
+`chmod +x` it.
+
+- [ ] **Step 5: Run the test**
+
+Run: `bash tests/scripts/test-review-brief.sh` — Expected: 13 `[PASS]`, `PASS`.
+
+- [ ] **Step 6: Run the suite and commit**
+
+Run: `bash tests/scripts/run.sh` — Expected: all ok.
+
+```bash
+git add skills/kdd-conventions/scripts/brief-lib.mjs skills/requesting-code-review/scripts/review-brief tests/scripts/test-review-brief.sh
+git commit -m "feat(WRK-TASK-FORK-CORE-001-007): review-brief with acceptance criteria, constraints, plan impact and activated specs"
+```
+
+## Acceptance Criteria
+
+- [ ] Spec or plan input both yield the same brief in the plan's workspace (spec AC 9 — reviewer inputs).
+- [ ] Sections 1–5 present; acceptance criteria and constraints inlined verbatim.
+
+## Test Plan
+
+1. `tests/scripts/test-review-brief.sh` — 13 assertions.
