@@ -40,4 +40,19 @@ must_contain skills/using-superpowers/SKILL.md "Activation is an auditable recor
 must_not_contain skills/using-superpowers/SKILL.md "## Platform Adaptation" "platform adaptation removed"
 must_not_contain skills/using-superpowers/SKILL.md "references/codex-tools.md" "no dangling reference links"
 
+# --- brainstorming (Task 011) ---
+must_contain skills/brainstorming/SKILL.md "kdd:spec-context" "brainstorming discovers via spec-context"
+must_contain skills/brainstorming/SKILL.md "compact WRK-SPEC" "bounded path writes a compact WRK-SPEC"
+must_contain skills/brainstorming/SKILL.md "Knowledge activation" "knowledge activation design section"
+must_contain skills/brainstorming/SKILL.md "activation_frozen: true" "activation is frozen"
+must_contain skills/brainstorming/SKILL.md "spec-adversary-prompt.md" "gate A1 wired"
+must_contain skills/brainstorming/SKILL.md "capturing-from-code.md" "brownfield capture wired"
+must_contain skills/brainstorming/SKILL.md "verified:" "records human verification on approval"
+must_contain skills/brainstorming/SKILL.md "draft → active" "status transition on approval"
+must_not_contain skills/brainstorming/SKILL.md "docs/" "no docs/ paths left"
+must_contain skills/brainstorming/spec-adversary-prompt.md "| Attack | Scenario | Result | Evidence |" "A1 prompt uses the attack table"
+must_not_contain skills/brainstorming/scripts/server.cjs "primeradiant" "companion has no upstream brand URL"
+must_not_contain skills/brainstorming/scripts/server.cjs "TELEMETRY" "companion has no telemetry switch"
+must_contain skills/brainstorming/scripts/frame-template.html "<title>kdd-superpowers Brainstorming</title>" "companion title renamed"
+
 finish
