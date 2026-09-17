@@ -7,7 +7,7 @@ description: Use when implementation is complete, all tests pass, and you need t
 
 ## Overview
 
-**Core principle:** Verify tests → Detect environment → Present options → Execute choice → Clean up.
+**Core principle:** Verify tests → Verify knowledge integrity → Detect environment → Persist the chronicle → Consolidate → Present options → Execute choice → Clean up.
 
 **Announce at start:** "I'm using the finishing-a-development-branch skill to complete this work."
 
@@ -24,6 +24,29 @@ Tests failing (<N> failures). Must fix before completing:
 ```
 
 **If tests pass:** continue to Step 2.
+
+## Step 1b: Verify Knowledge Integrity
+
+Same standing as the tests — a red result means no menu.
+
+```bash
+<kdd-cli> --specs specs validate                       # 0 errors; no warning naming this work's artifacts
+<kdd-cli> --specs specs filter --layer work-task --format json   # every task of this plan: status completed
+<kdd-cli> --specs specs export-okf --out "$(mktemp -d)/okf"      # exit 0; the bundle is evidence, discard it
+```
+
+Check by reading the output: every WRK-TASK whose `parent` is this plan is
+`completed`; the WRK-PLAN is `completed`; the WRK-SPEC is `active`.
+Anything else is unfinished work — report it and stop:
+
+```
+Knowledge integrity failing. Must fix before completing:
+
+- WRK-TASK-…-003 is still `active` (no completion commit)
+- validate: 1 error — <message>
+```
+
+Find the CLI with `skills/using-superpowers/scripts/kdd-cli --path`.
 
 ## Step 2: Detect Environment
 
@@ -49,6 +72,81 @@ The base branch is whatever this work forked from — usually named in the
 plan, the conversation, or the branch's upstream. If it is not already
 known, ask: "This branch split from <your best guess> - is that correct?"
 Confirm before merging: merging into the wrong base is expensive to undo.
+
+## Step 3b: Persist the Chronicle
+
+The ledger (`.kdd/sdd/<WRK-PLAN-ID>/progress.md`) is git-ignored and will
+be deleted; its durable part moves into the plan. Append to the WRK-PLAN a
+section:
+
+```markdown
+## Execution Log
+
+### Rulings
+- <every `Ruling:` line, verbatim>
+
+### Knowledge gaps
+- <every `Knowledge gap:` line>
+
+### Attacks broken and adjudicated
+- <every `Attack: … — Ruling: …` line whose result was BROKEN>
+
+### Capture candidates (pending)
+- <every `Capture candidate:` line and every anchored candidate from review reports>
+
+### Parked / deferred
+- <parked findings and deferred minors>
+```
+
+Then `updated: <today>`, validate, commit (`chore(<WRK-PLAN-ID>): execution log`).
+`kdd:spec-consolidate` reads plan and task bodies for decision language —
+this is where it finds what the run learned. With no ledger (a plan
+executed without one), write the section from the commit history and say
+so.
+
+## Step 3c: Consolidate
+
+No work closes without returning knowledge. **REQUIRED SUB-SKILL:**
+`kdd:spec-consolidate <WRK-SPEC-ID>`. It reads the work tree, the
+activated specs and the Execution Log, and proposes ADRs, spec deltas with
+version bumps, new specs at `confidence: low`, confidence upgrades and
+fragment distillation; your human partner decides what to apply.
+
+Around it, this skill adds three things:
+
+1. **Pending capture candidates become FRAGs first.** For each candidate
+   in the Execution Log, write the fragment per
+   kdd-superpowers:kdd-conventions `references/capturing-from-code.md`
+   (anchors, Observed/Inferred, `frag-cite-check`, `confidence: low`) so
+   consolidation can cite and distill it. A candidate whose anchor no
+   longer verifies is dropped with a note.
+2. **Gate A6 before any promotion.** When consolidation proposes turning
+   a FRAG into a DOM/ARCH (or updating one from it), dispatch
+   [frag-adversary-prompt.md](frag-adversary-prompt.md) first. Only claims
+   that RESISTED are distilled; BROKEN rows are ledgered in the Execution
+   Log with their ruling and the FRAG stays `ingested`.
+3. **Knowledge travels with the code.** Everything your human partner
+   accepts (ADRs, spec bumps, `distilled` fragments, new specs) is
+   committed on this branch, before the integration menu, so the merge or
+   PR carries the knowledge change next to the code change
+   (`chore(<WRK-SPEC-ID>): consolidate`).
+
+If your human partner defers consolidation, say once: "After the merge
+this branch's context is gone and the knowledge does not come back." Then
+respect the decision: the WRK-SPEC is closed as `completed` without
+archiving, and the session bootstrap will list it as *pending consolidation*
+until `kdd:spec-consolidate` runs.
+
+## Step 3d: Close the Work Artifacts
+
+- WRK-SPEC: `status: active → completed`, `updated: <today>`; if your human
+  partner confirmed the close explicitly, append `verified: - by: human:<id>`
+  with `at:`.
+- After consolidation was applied: WRK-SPEC, WRK-PLAN and every WRK-TASK
+  → `status: archived`.
+- Validate; commit (`chore(<WRK-SPEC-ID>): close and consolidate`).
+
+Only now present the menu.
 
 ## Step 4: Present Options
 
@@ -223,3 +321,7 @@ place. If your platform provides a workspace-exit tool, use it.
 | "The merged-result failure is probably flaky" | A failing merged result stops everything. Branch and worktree stay put while you investigate. |
 | "The base branch is obviously main" | Confirm the fork point or ask. Merging into the wrong base is expensive to undo. |
 | "The push was rejected — force-push will fix it" | A rejected push means the remote moved. Investigate; force-push only on your human partner's explicit request. |
+| "Consolidation can wait until after the merge" | After the merge the branch context is gone and the knowledge never comes back. Now or never. |
+| "Nothing was learned in this plan" | The Execution Log says otherwise: every ruling is a candidate. Read it before claiming that. |
+| "The FRAG is obviously right, skip the adversary" | That DOM will constrain future work. It earns its adversary. |
+| "Validate fails on a warning about someone else's spec" | Read it. If it names this work's artifacts, fix it; if not, say so out loud and rule. A graph that does not validate does not export or activate cleanly. |

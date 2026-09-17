@@ -111,4 +111,14 @@ must_contain skills/requesting-code-review/code-reviewer.md "Gate A5" "A5 before
 must_contain skills/requesting-code-review/code-reviewer.md "test that guards it" "A3 contract"
 must_contain skills/receiving-code-review/SKILL.md "## When Feedback Conflicts With Knowledge" "receiving: knowledge rule"
 
+# --- finishing-a-development-branch (Task 016) ---
+must_contain skills/finishing-a-development-branch/SKILL.md "## Step 1b: Verify Knowledge Integrity" "knowledge integrity step"
+must_contain skills/finishing-a-development-branch/SKILL.md "export-okf" "OKF export as evidence"
+must_contain skills/finishing-a-development-branch/SKILL.md "## Execution Log" "execution log persisted"
+must_contain skills/finishing-a-development-branch/SKILL.md "kdd:spec-consolidate" "consolidation wired"
+must_contain skills/finishing-a-development-branch/SKILL.md "frag-adversary-prompt.md" "gate A6 wired"
+must_contain skills/finishing-a-development-branch/SKILL.md "pending consolidation" "deferred consolidation state"
+must_contain skills/finishing-a-development-branch/SKILL.md "archived" "archive transition"
+must_contain skills/finishing-a-development-branch/frag-adversary-prompt.md "| Attack | Scenario | Result | Evidence |" "A6 prompt uses the attack table"
+
 finish
