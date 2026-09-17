@@ -1,41 +1,48 @@
-#!/usr/bin/env bash
-# Extract one task's full text from an implementation plan into a file the
-# implementer reads in one call, so the task text never has to be pasted
-# through the controller's context.
-#
-# Usage: task-brief PLAN_FILE TASK_NUMBER [OUTFILE]
-# Default OUTFILE: <repo-root>/.kdd/sdd/<plan-basename>/task-<N>-brief.md
-# (per plan and per worktree; concurrent runs of the SAME plan in the same
-# working tree share it).
-set -euo pipefail
+#!/usr/bin/env node
+// task-brief — write one WRK-TASK's deterministic brief into its plan's SDD workspace.
+//
+// Usage: task-brief TASK_FILE [OUTFILE]
+// Default OUTFILE: <sdd-workspace of the parent WRK-PLAN>/<TASK-ID>-brief.md
+// Prints: wrote <path>: <N> lines
+// Exit 2 usage · 3 kdd toolkit not found · 4 parent plan not found in the graph
+import { execFileSync } from 'node:child_process';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname, resolve, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseFrontmatter, scalarField, loadNodes, findNode, buildTaskBrief } from '../../kdd-conventions/scripts/brief-lib.mjs';
 
-if [ $# -lt 2 ] || [ $# -gt 3 ]; then
-  echo "usage: task-brief PLAN_FILE TASK_NUMBER [OUTFILE]" >&2
-  exit 2
-fi
+const here = dirname(fileURLToPath(import.meta.url));
+const [taskArg, outArg] = process.argv.slice(2);
+if (!taskArg || process.argv.length > 4) { console.error('usage: task-brief TASK_FILE [OUTFILE]'); process.exit(2); }
 
-plan=$1
-n=$2
-[ -f "$plan" ] || { echo "no such plan file: $plan" >&2; exit 2; }
+let taskText;
+try { taskText = readFileSync(taskArg, 'utf8'); } catch { console.error(`no such task file: ${taskArg}`); process.exit(2); }
+const { fm } = parseFrontmatter(taskText);
+const taskId = scalarField(fm, 'id');
+const parentId = scalarField(fm, 'parent');
+if (!taskId) { console.error(`no frontmatter id in ${taskArg}`); process.exit(2); }
 
-if [ $# -eq 3 ]; then
-  out=$3
-else
-  dir=$("$(cd "$(dirname "$0")" && pwd)/sdd-workspace" "$plan")
-  out="$dir/task-${n}-brief.md"
-fi
+// specs dir = the nearest ancestor directory of the task file named `specs`, else its parent dir
+const abs = resolve(taskArg);
+let specsDir = dirname(abs);
+for (let d = dirname(abs); d !== dirname(d); d = dirname(d)) if (d.endsWith('/specs')) { specsDir = d; break; }
 
-awk -v n="$n" '
-  /^```/ { infence = !infence }
-  !infence && /^#+[ \t]+Task[ \t]+[0-9]+/ {
-    intask = ($0 ~ ("^#+[ \t]+Task[ \t]+" n "([^0-9]|$)"))
-  }
-  intask { print }
-' "$plan" > "$out"
+let cli;
+try { cli = execFileSync(join(here, '../../using-superpowers/scripts/kdd-cli'), ['--path'], { encoding: 'utf8' }).trim(); }
+catch { console.error('kdd toolkit not found: install the kdd plugin or set KDD_SPEC_GRAPH'); process.exit(3); }
 
-if [ ! -s "$out" ]; then
-  echo "task ${n} not found in ${plan} (no heading matching 'Task ${n}')" >&2
-  exit 3
-fi
+const nodes = loadNodes(cli, specsDir);
+const taskNode = findNode(nodes, taskId) || { id: taskId, file: taskArg, body: '' };
+const planNode = parentId ? findNode(nodes, parentId) : null;
+if (parentId && !planNode) { console.error(`parent plan ${parentId} not found under ${specsDir}`); process.exit(4); }
 
-echo "wrote ${out}: $(wc -l < "$out" | tr -d ' ') lines"
+let outPath;
+if (outArg) outPath = resolve(outArg);
+else {
+  const ws = execFileSync(join(here, 'sdd-workspace'), [planNode ? planNode.file : taskArg], { encoding: 'utf8' }).trim();
+  outPath = join(ws, `${taskId}-brief.md`);
+}
+mkdirSync(dirname(outPath), { recursive: true });
+const brief = buildTaskBrief({ nodes, taskNode, planNode, taskText });
+writeFileSync(outPath, brief);
+console.log(`wrote ${outPath}: ${brief.split('\n').length} lines`);

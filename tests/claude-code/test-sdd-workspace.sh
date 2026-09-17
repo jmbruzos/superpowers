@@ -134,15 +134,21 @@ PLAN
         echo "    staged: $staged"
     fi
 
-    # --- task-brief lands in its plan's directory ---
-    local brief_out brief_path
-    brief_out="$(cd "$repo" && "$SDD_SCRIPTS/task-brief" plan-a.md 1)"
-    brief_path="$(printf '%s\n' "$brief_out" | sed -n 's/^wrote \(.*\): [0-9][0-9]* lines$/\1/p')"
-    if [[ "$brief_path" == "$repo/.kdd/sdd/plan-a/task-1-brief.md" ]]; then
-        pass "task-brief writes its brief under the plan's workspace"
+    # --- task-brief lands in its plan's directory (needs the kdd CLI; skipped otherwise) ---
+    if KDD_SPEC_GRAPH_RESOLVED="$("$REPO_ROOT/skills/using-superpowers/scripts/kdd-cli" --path 2>/dev/null)"; then
+        cp "$REPO_ROOT"/tests/scripts/fixtures/specs/work/WRK-TASK-BILL-PRORATA-001-001-prorata-calculation.md "$repo/specs/work/"
+        mkdir -p "$repo/specs/domain" && cp "$REPO_ROOT"/tests/scripts/fixtures/specs/domain/*.md "$repo/specs/domain/"
+        local brief_out brief_path
+        brief_out="$(cd "$repo" && KDD_SPEC_GRAPH="$KDD_SPEC_GRAPH_RESOLVED" "$SDD_SCRIPTS/task-brief" specs/work/WRK-TASK-BILL-PRORATA-001-001-prorata-calculation.md)"
+        brief_path="$(printf '%s\n' "$brief_out" | sed -n 's/^wrote \(.*\): [0-9][0-9]* lines$/\1/p')"
+        if [[ "$brief_path" == "$repo/.kdd/sdd/WRK-PLAN-BILL-PRORATA-001/WRK-TASK-BILL-PRORATA-001-001-brief.md" ]]; then
+            pass "task-brief writes its brief under the parent plan's workspace"
+        else
+            fail "task-brief writes its brief under the parent plan's workspace"
+            echo "    got: $brief_path"
+        fi
     else
-        fail "task-brief writes its brief under the plan's workspace"
-        echo "    got: $brief_path"
+        echo "  [SKIP] task-brief placement (kdd toolkit not found)"
     fi
 
     # --- review-package takes the plan first and lands in its directory ---
