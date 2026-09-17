@@ -283,6 +283,28 @@ assert_command_output \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" KDD_SPEC_GRAPH="$fake_cli" \
     bash -c "cd '$proj' && exec bash '$HOOK_UNDER_TEST'"
 
+cat > "$proj/specs/work/WRK-LOG-X-001.md" <<'WORKLOG_EOF'
+---
+id: WRK-LOG-X-001
+type: spec
+layer: work-log
+status: active
+owner: t
+confidence: low
+version: 0.1.0
+---
+
+# WRK-LOG-X-001
+WORKLOG_EOF
+assert_command_output \
+    "does not count a work-log layer as one of the enumerated work-* layers" \
+    "nested" \
+    "specs_dir: ./specs (knowledge: 1 · work: 5)" \
+    "" \
+    "$(make_home kdd-proj3d)" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" KDD_SPEC_GRAPH="$fake_cli" \
+    bash -c "cd '$proj' && exec bash '$HOOK_UNDER_TEST'"
+
 assert_command_output \
     "lists OKF bundles outside specs/" \
     "nested" \

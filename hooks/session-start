@@ -62,7 +62,7 @@ kdd_environment() {
 
     local k w
     k=$(awk -F'\t' '$3 ~ /^(architecture|domain|product|feature|documentation)$/' "$idx_file" | wc -l | tr -d ' ')
-    w=$(awk -F'\t' '$3 ~ /^work-/' "$idx_file" | wc -l | tr -d ' ')
+    w=$(awk -F'\t' '$3 == "work-spec" || $3 == "work-plan" || $3 == "work-task"' "$idx_file" | wc -l | tr -d ' ')
     specs_line="./specs (knowledge: ${k} · work: ${w})"
 
     # open work: active/completed WRK-SPECs (layer work-spec, sorted by id)
