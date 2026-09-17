@@ -1,18 +1,69 @@
 #!/usr/bin/env bash
-# SessionStart hook for superpowers plugin
+# SessionStart hook for the kdd-superpowers plugin (Claude Code only).
+# Injects the using-superpowers skill plus a <KDD-ENVIRONMENT> probe of the
+# current project, computed with bash/find/grep only (no node at session start).
 
 set -euo pipefail
 
-# Determine plugin root directory
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-# Read using-superpowers content
 using_superpowers_content=$(cat "${PLUGIN_ROOT}/skills/using-superpowers/SKILL.md" 2>&1 || echo "Error reading using-superpowers skill")
 
-# Escape string for JSON embedding using bash parameter substitution.
-# Each ${s//old/new} is a single C-level pass - orders of magnitude
-# faster than the character-by-character loop this replaces.
+# --- KDD environment probe ---------------------------------------------------
+kdd_environment() {
+  local toolkit specs_line open_line okf_line
+  toolkit="$("${PLUGIN_ROOT}/skills/using-superpowers/scripts/kdd-cli" --path 2>/dev/null || true)"
+  [ -n "$toolkit" ] || toolkit="NOT FOUND"
+
+  if [ -d ./specs ]; then
+    local k w
+    k=$(grep -rlE '^layer:[[:space:]]*(architecture|domain|product|feature|documentation)[[:space:]]*$' ./specs --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
+    w=$(grep -rlE '^layer:[[:space:]]*work-(spec|plan|task)[[:space:]]*$' ./specs --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
+    specs_line="./specs (knowledge: ${k} · work: ${w})"
+
+    # open work: active/completed WRK-SPECs → their plans → task progress
+    local entries="" f id st plans p pid tasks done_
+    while IFS= read -r f; do
+      id=$(sed -n 's/^id:[[:space:]]*//p' "$f" | head -1 | tr -d ' \r')
+      st=$(sed -n 's/^status:[[:space:]]*//p' "$f" | head -1 | tr -d ' \r')
+      [ -n "$id" ] || continue
+      case "$st" in active|completed) ;; *) continue ;; esac
+      plans=$(grep -rlE "^parent:[[:space:]]*${id}[[:space:]]*$" ./specs --include='*.md' 2>/dev/null || true)
+      if [ -z "$plans" ]; then
+        entries="${entries}${entries:+; }${id} (${st})"
+        continue
+      fi
+      while IFS= read -r p; do
+        pid=$(sed -n 's/^id:[[:space:]]*//p' "$p" | head -1 | tr -d ' \r')
+        tasks=$(grep -rlE "^parent:[[:space:]]*${pid}[[:space:]]*$" ./specs --include='*.md' 2>/dev/null || true)
+        done_=0
+        [ -z "$tasks" ] || done_=$(printf '%s\n' "$tasks" | xargs -r grep -lE '^status:[[:space:]]*(completed|archived)[[:space:]]*$' 2>/dev/null | wc -l | tr -d ' ')
+        entries="${entries}${entries:+; }${id} (${st}) → ${pid} → ${done_}/$(printf '%s\n' "$tasks" | grep -c . ) tasks done"
+      done <<< "$plans"
+    done < <(grep -rlE '^layer:[[:space:]]*work-spec[[:space:]]*$' ./specs --include='*.md' 2>/dev/null | sort)
+    open_line="${entries:-none}"
+  else
+    specs_line="NONE"
+    open_line="none"
+  fi
+
+  # OKF bundles outside specs/: index.md files declaring okf_version
+  local bundles="" idx dir ver
+  while IFS= read -r idx; do
+    dir=$(dirname "$idx"); dir="${dir#./}"
+    ver=$(sed -n 's/^okf_version:[[:space:]]*//p' "$idx" | head -1 | tr -d '"'"'"' \r')
+    bundles="${bundles}${bundles:+; }${dir} (okf_version ${ver:-?}, not imported)"
+  done < <(find . -maxdepth 5 -name index.md -not -path './specs/*' -not -path '*/node_modules/*' -not -path './.git/*' -not -path './.kdd/*' 2>/dev/null \
+           | xargs -r grep -l '^okf_version:' 2>/dev/null | sort)
+  okf_line="${bundles:-none}"
+
+  printf '<KDD-ENVIRONMENT>\ntoolkit: %s\nspecs_dir: %s\nopen_work: %s\nokf_bundles: %s\n</KDD-ENVIRONMENT>' \
+    "$toolkit" "$specs_line" "$open_line" "$okf_line"
+}
+kdd_env_content="$(kdd_environment)"
+
+# --- JSON escaping (bash parameter substitution — one pass per character class) ---
 escape_for_json() {
     local s="$1"
     s="${s//\\/\\\\}"
@@ -24,26 +75,10 @@ escape_for_json() {
 }
 
 using_superpowers_escaped=$(escape_for_json "$using_superpowers_content")
-session_context="<EXTREMELY_IMPORTANT>\nYou have superpowers.\n\n**Below is the full content of your 'kdd-superpowers:using-superpowers' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${using_superpowers_escaped}\n</EXTREMELY_IMPORTANT>"
+kdd_env_escaped=$(escape_for_json "$kdd_env_content")
+session_context="<EXTREMELY_IMPORTANT>\nYou have kdd-superpowers.\n\n**Below is the full content of your 'kdd-superpowers:using-superpowers' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${using_superpowers_escaped}\n</EXTREMELY_IMPORTANT>\n\n${kdd_env_escaped}"
 
-# Output context injection as JSON.
-# Cursor hooks expect additional_context (snake_case).
-# Claude Code hooks expect hookSpecificOutput.additionalContext (nested).
-# Copilot CLI (v1.0.11+) and others expect additionalContext (top-level, SDK standard).
-# Claude Code reads BOTH additional_context and hookSpecificOutput without
-# deduplication, so we must emit only the field the current platform consumes.
-#
-# Uses printf instead of heredoc to work around bash 5.3+ heredoc hang.
-# See: https://github.com/obra/superpowers/issues/571
-if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
-  # Cursor sets CURSOR_PLUGIN_ROOT (may also set CLAUDE_PLUGIN_ROOT)
-  printf '{\n  "additional_context": "%s"\n}\n' "$session_context" | cat
-elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
-  # Claude Code sets CLAUDE_PLUGIN_ROOT without COPILOT_CLI
-  printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context" | cat
-else
-  # Copilot CLI (sets COPILOT_CLI=1) or unknown platform — SDK standard format
-  printf '{\n  "additionalContext": "%s"\n}\n' "$session_context" | cat
-fi
+# Claude Code hook output. Uses printf instead of a heredoc (bash 5.3+ heredoc hang, upstream #571).
+printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context" | cat
 
 exit 0

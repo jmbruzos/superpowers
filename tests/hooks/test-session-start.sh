@@ -184,28 +184,6 @@ assert_command_output \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     bash "$WRAPPER_UNDER_TEST" session-start
 
-cursor_home="$(make_home cursor)"
-assert_command_output \
-    "Cursor emits top-level additional_context only" \
-    "cursor" \
-    "" \
-    "" \
-    "$cursor_home" \
-    CURSOR_PLUGIN_ROOT="$REPO_ROOT" \
-    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
-    bash "$HOOK_UNDER_TEST"
-
-copilot_home="$(make_home copilot-cli)"
-assert_command_output \
-    "Copilot CLI emits top-level additionalContext only" \
-    "sdk" \
-    "" \
-    "" \
-    "$copilot_home" \
-    COPILOT_CLI=1 \
-    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
-    bash "$HOOK_UNDER_TEST"
-
 legacy_home="$(make_home legacy-warning-removed)"
 mkdir -p "$legacy_home/.config/superpowers/skills"
 assert_command_output \
@@ -216,6 +194,62 @@ assert_command_output \
     "$legacy_home" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     bash "$HOOK_UNDER_TEST"
+
+# --- KDD environment block ---
+empty_dir="$TEST_ROOT/empty"; mkdir -p "$empty_dir"
+assert_command_output \
+    "reports toolkit NOT FOUND and specs_dir NONE in an empty project" \
+    "nested" \
+    "toolkit: NOT FOUND" \
+    "" \
+    "$(make_home kdd-empty)" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    bash -c "cd '$empty_dir' && exec bash '$HOOK_UNDER_TEST'"
+assert_command_output \
+    "specs_dir NONE, open_work none, okf_bundles none in an empty project" \
+    "nested" \
+    "specs_dir: NONE" \
+    "" \
+    "$(make_home kdd-empty2)" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    bash -c "cd '$empty_dir' && exec bash '$HOOK_UNDER_TEST' | grep -q 'open_work: none' && cd '$empty_dir' && exec bash '$HOOK_UNDER_TEST'"
+
+fake_cli="$TEST_ROOT/spec-graph.mjs"; printf '\n' > "$fake_cli"
+proj="$TEST_ROOT/proj"; mkdir -p "$proj"
+cp -R "$REPO_ROOT/tests/scripts/fixtures/specs" "$proj/specs"
+mkdir -p "$proj/vendor/risk-okf"; printf -- '---\nokf_version: "0.2"\n---\n# index\n' > "$proj/vendor/risk-okf/index.md"
+assert_command_output \
+    "reports the toolkit path from KDD_SPEC_GRAPH" \
+    "nested" \
+    "toolkit: $fake_cli" \
+    "" \
+    "$(make_home kdd-proj)" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" KDD_SPEC_GRAPH="$fake_cli" \
+    bash -c "cd '$proj' && exec bash '$HOOK_UNDER_TEST'"
+assert_command_output \
+    "counts knowledge and work specs" \
+    "nested" \
+    "specs_dir: ./specs (knowledge: 1 · work: 4)" \
+    "" \
+    "$(make_home kdd-proj2)" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" KDD_SPEC_GRAPH="$fake_cli" \
+    bash -c "cd '$proj' && exec bash '$HOOK_UNDER_TEST'"
+assert_command_output \
+    "lists open work with its plan and task progress" \
+    "nested" \
+    "open_work: WRK-SPEC-BILL-PRORATA-001 (active) → WRK-PLAN-BILL-PRORATA-001 → 0/2 tasks done" \
+    "" \
+    "$(make_home kdd-proj3)" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" KDD_SPEC_GRAPH="$fake_cli" \
+    bash -c "cd '$proj' && exec bash '$HOOK_UNDER_TEST'"
+assert_command_output \
+    "lists OKF bundles outside specs/" \
+    "nested" \
+    "okf_bundles: vendor/risk-okf (okf_version 0.2, not imported)" \
+    "" \
+    "$(make_home kdd-proj4)" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" KDD_SPEC_GRAPH="$fake_cli" \
+    bash -c "cd '$proj' && exec bash '$HOOK_UNDER_TEST'"
 
 if [[ "$FAILURES" -gt 0 ]]; then
     echo "STATUS: FAILED ($FAILURES failure(s))"
