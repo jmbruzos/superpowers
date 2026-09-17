@@ -40,12 +40,18 @@ if (layer === 'work-plan') {
   planNode = nodes.find((n) => n.layer === 'work-plan' && n.parent === id) || null;
 }
 if (!specNode) { console.error(`WRK-SPEC not found in the graph for ${fileArg}`); process.exit(4); }
-const specText = readFileSync(specNode.file, 'utf8');
+const specText = readFileSync(resolve(specNode.file), 'utf8');
 
 let outPath;
 if (outArg) outPath = resolve(outArg);
 else {
-  const ws = execFileSync(join(here, '../../subagent-driven-development/scripts/sdd-workspace'), [planNode ? planNode.file : specNode.file], { encoding: 'utf8' }).trim();
+  let ws;
+  try {
+    ws = execFileSync(join(here, '../../subagent-driven-development/scripts/sdd-workspace'), [planNode ? resolve(planNode.file) : resolve(specNode.file)], { encoding: 'utf8' }).trim();
+  } catch (e) {
+    console.error(`cannot resolve the SDD workspace for ${fileArg}: ${(e.stderr || e.message || e).toString().trim()}`);
+    process.exit(2);
+  }
   outPath = join(ws, 'review-brief.md');
 }
 mkdirSync(dirname(outPath), { recursive: true });

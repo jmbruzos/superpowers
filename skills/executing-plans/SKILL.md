@@ -65,3 +65,4 @@ After all tasks complete and verified:
 - Review plan critically first
 - Follow plan steps exactly
 - The brief's knowledge sections are requirements, and the ledger is where knowledge gaps go — never `activates`
+- Never start implementation on main/master branch without explicit user consent

@@ -22,6 +22,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 [[ $# -eq 1 ]] || { echo "usage: next-id [--specs DIR] [--prefer NNN] TYPE-PATH" >&2; exit 2; }
+[[ -z "$prefer" || "$prefer" =~ ^[0-9]{1,3}$ ]] || { echo "usage: next-id [--specs DIR] [--prefer NNN] TYPE-PATH (--prefer must be 1-3 digits)" >&2; exit 2; }
 path="$1"
 
 [[ "$path" =~ ^[A-Z]+(-[A-Z0-9]+)+$ ]] || { echo "malformed path: $path (expected UPPER segments, e.g. WRK-SPEC-AREA-CONCEPT)" >&2; exit 2; }

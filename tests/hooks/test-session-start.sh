@@ -89,28 +89,6 @@ if (shape === "nested") {
     fail(`unexpected hookEventName: ${hookOutput.hookEventName}`);
   }
   context = hookOutput.additionalContext;
-} else if (shape === "cursor") {
-  if (hasOwn(payload, "hookSpecificOutput")) {
-    fail("cursor output included hookSpecificOutput");
-  }
-  if (!hasOwn(payload, "additional_context")) {
-    fail("cursor output missing additional_context");
-  }
-  if (hasOwn(payload, "additionalContext")) {
-    fail("cursor output included additionalContext");
-  }
-  context = payload.additional_context;
-} else if (shape === "sdk") {
-  if (hasOwn(payload, "hookSpecificOutput")) {
-    fail("sdk output included hookSpecificOutput");
-  }
-  if (!hasOwn(payload, "additionalContext")) {
-    fail("sdk output missing additionalContext");
-  }
-  if (hasOwn(payload, "additional_context")) {
-    fail("sdk output included additional_context");
-  }
-  context = payload.additionalContext;
 } else {
   fail(`unknown expected shape: ${shape}`);
 }
@@ -304,6 +282,20 @@ assert_command_output \
     "$(make_home kdd-proj3d)" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" KDD_SPEC_GRAPH="$fake_cli" \
     bash -c "cd '$proj' && exec bash '$HOOK_UNDER_TEST'"
+
+completed_proj="$TEST_ROOT/proj-completed"; mkdir -p "$completed_proj"
+cp -R "$REPO_ROOT/tests/scripts/fixtures/specs" "$completed_proj/specs"
+sed -i.bak 's/^status: active$/status: completed/' \
+    "$completed_proj/specs/work/WRK-SPEC-BILL-PRORATA-001-mid-cycle-activation.md"
+rm -f "$completed_proj/specs/work/WRK-SPEC-BILL-PRORATA-001-mid-cycle-activation.md.bak"
+assert_command_output \
+    "a completed WRK-SPEC is flagged pending consolidation" \
+    "nested" \
+    "WRK-SPEC-BILL-PRORATA-001 (completed, pending consolidation)" \
+    "" \
+    "$(make_home kdd-proj-completed)" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" KDD_SPEC_GRAPH="$fake_cli" \
+    bash -c "cd '$completed_proj' && exec bash '$HOOK_UNDER_TEST'"
 
 assert_command_output \
     "lists OKF bundles outside specs/" \

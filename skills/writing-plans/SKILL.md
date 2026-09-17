@@ -205,7 +205,7 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 ## Gate A2 — plan red-team (conditional)
 
-Dispatch [plan-adversary-prompt.md](plan-adversary-prompt.md) when **any** of these holds: more than 4 tasks; the spec activates a spec with `confidence: low` or no `verified`; the work touches security, money or regulatory logic. Otherwise skip it and say so. The adversary returns an attack table (kdd-superpowers:kdd-conventions `references/adversarial-gates.md`); adjudicate every `BROKEN` row, fix the plan or the tasks, re-validate.
+Dispatch [plan-adversary-prompt.md](plan-adversary-prompt.md) when **any** of these holds: more than 4 tasks; the spec activates a spec with `confidence: low` or no `verified`; the work touches security, money or regulatory logic. Otherwise skip it and say so. The adversary returns an attack table (kdd-superpowers:kdd-conventions `references/adversarial-gates.md`); adjudicate every `BROKEN` row, fix the plan or the tasks, re-validate, and record every `BROKEN` row and its ruling in the WRK-PLAN under `## Adversarial Review`.
 
 ## Execution Handoff
 

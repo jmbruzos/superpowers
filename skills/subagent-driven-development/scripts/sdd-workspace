@@ -36,7 +36,8 @@ slug=$(awk 'NR==1&&$0!="---"{exit} /^---$/{c++; if(c==2) exit; next} c==1&&/^id:
 [ -n "$slug" ] && [ "$slug" != "." ] && [ "$slug" != ".." ] && [[ "$slug" != */* ]] \
   || { echo "cannot derive a workspace name from: $plan" >&2; exit 2; }
 
-root=$(git rev-parse --show-toplevel)
+root=$(git -C "$(dirname "$plan")" rev-parse --show-toplevel 2>/dev/null) \
+  || { echo "not inside a git repository: $plan" >&2; exit 2; }
 base="$root/.kdd/sdd"
 dir="$base/$slug"
 mkdir -p "$dir"

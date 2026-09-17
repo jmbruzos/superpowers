@@ -39,7 +39,13 @@ if (parentId && !planNode) { console.error(`parent plan ${parentId} not found un
 let outPath;
 if (outArg) outPath = resolve(outArg);
 else {
-  const ws = execFileSync(join(here, 'sdd-workspace'), [planNode ? planNode.file : taskArg], { encoding: 'utf8' }).trim();
+  let ws;
+  try {
+    ws = execFileSync(join(here, 'sdd-workspace'), [planNode ? resolve(planNode.file) : taskArg], { encoding: 'utf8' }).trim();
+  } catch (e) {
+    console.error(`cannot resolve the SDD workspace for ${taskArg}: ${(e.stderr || e.message || e).toString().trim()}`);
+    process.exit(2);
+  }
   outPath = join(ws, `${taskId}-brief.md`);
 }
 mkdirSync(dirname(outPath), { recursive: true });

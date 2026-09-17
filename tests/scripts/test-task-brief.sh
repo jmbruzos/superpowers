@@ -44,4 +44,12 @@ out3="$(cd "$repo" && "$TASK_BRIEF" specs/work/WRK-TASK-BILL-PRORATA-001-001-pro
 
 rc=0; (cd "$repo" && "$TASK_BRIEF" >/dev/null 2>&1) || rc=$?
 [[ "$rc" -eq 2 ]] && pass "usage error exits 2" || fail "usage error exits 2 (rc=$rc)"
+
+# foreign cwd: absolute paths resolve against the fixture repo, not $PWD
+out5="$(cd /tmp && "$TASK_BRIEF" "$repo/specs/work/WRK-TASK-BILL-PRORATA-001-001-prorata-calculation.md")"; rc5=$?
+path5="$(printf '%s\n' "$out5" | sed -n 's/^wrote \(.*\): [0-9][0-9]* lines$/\1/p')"
+[[ "$rc5" -eq 0 && "$path5" == "$repo/.kdd/sdd/WRK-PLAN-BILL-PRORATA-001/WRK-TASK-BILL-PRORATA-001-001-brief.md" ]] \
+  && pass "from a foreign cwd, writes under the fixture repo's .kdd/sdd/..." || { fail "from a foreign cwd, writes under the fixture repo's .kdd/sdd/..."; echo "    rc=$rc5 out=$out5"; }
+b5="$(cat "$path5" 2>/dev/null)"
+[[ "$b5" == *"Math.round(amount * 100) / 100"* ]] && pass "from a foreign cwd, FRAG report.md is still inlined (node.file resolution)" || fail "from a foreign cwd, FRAG report.md is still inlined (node.file resolution)"
 finish

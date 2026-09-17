@@ -59,6 +59,8 @@ Body:
 ## Acceptance Criteria
 - [ ] (testable)
 ## Open Questions
+## Adversarial Review
+(only when a gate ran: one line per BROKEN attack — attack · ruling)
 ```
 
 Add `- id: <FEAT-ID>\n    relation: implements` under `dependencies` when the work materializes a FEAT.
@@ -133,6 +135,8 @@ Body:
 ## Dependencies
 ## Execution Log
 (appended at finishing: rulings, Knowledge gaps, broken attacks, pending capture candidates)
+## Adversarial Review
+(only when a gate ran: one line per BROKEN attack — attack · ruling)
 ```
 
 ## WRK-TASK

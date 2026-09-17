@@ -68,13 +68,15 @@ kdd_environment() {
     # open work: active/completed WRK-SPECs (layer work-spec, sorted by id)
     # → their plans (layer work-plan, parent == spec id) → task progress
     # (layer work-task, parent == plan id; done = status completed|archived)
-    local entries="" id st plans pid tasks total_ done_
+    local entries="" id st st_label plans pid tasks total_ done_
     while IFS=$'\t' read -r _ id _ st _; do
       [ -n "$id" ] || continue
       case "$st" in active|completed) ;; *) continue ;; esac
+      st_label="$st"
+      [ "$st" = "completed" ] && st_label="completed, pending consolidation"
       plans=$(awk -F'\t' -v p="$id" '$3 == "work-plan" && $5 == p { print $2 }' "$idx_file")
       if [ -z "$plans" ]; then
-        entries="${entries}${entries:+; }${id} (${st})"
+        entries="${entries}${entries:+; }${id} (${st_label})"
         continue
       fi
       while IFS= read -r pid; do
@@ -85,7 +87,7 @@ kdd_environment() {
           total_=$(printf '%s\n' "$tasks" | grep -c . || true)
           done_=$(printf '%s\n' "$tasks" | awk -F'\t' '$4 ~ /^(completed|archived)$/' | grep -c . || true)
         fi
-        entries="${entries}${entries:+; }${id} (${st}) → ${pid} → ${done_}/${total_} tasks done"
+        entries="${entries}${entries:+; }${id} (${st_label}) → ${pid} → ${done_}/${total_} tasks done"
       done <<< "$plans"
     done < <(awk -F'\t' '$3 == "work-spec"' "$idx_file" | sort -t $'\t' -k2,2)
     open_line="${entries:-none}"

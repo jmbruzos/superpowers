@@ -3,7 +3,7 @@
 // No npm dependencies: the frontmatter subset we need is parsed by hand.
 import { execFileSync } from 'node:child_process';
 import { readFileSync, existsSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 /** Split a spec file into its YAML frontmatter text and Markdown body. */
 export function parseFrontmatter(text) {
@@ -85,7 +85,7 @@ export function renderSpecBlock(node, pin) {
 /** One fragment: its body plus the raw files it lists (report.md, tests…). */
 export function renderFragBlock(node) {
   let out = `### ${node.id} (${node.source_type || 'fragment'}, captured ${node.captured_at || 'n/a'}) — ${node.file}\n\n${(node.body || '').trim()}\n`;
-  const dir = dirname(node.file);
+  const dir = dirname(resolve(node.file));
   for (const f of node.files || []) {
     const p = join(dir, f);
     if (existsSync(p)) out += `\n#### ${f}\n\n${readFileSync(p, 'utf8').trim()}\n`;

@@ -26,7 +26,7 @@ they would fight:
 
 ```
 /plugin uninstall superpowers
-/plugin marketplace add <owner>/superpowers
+/plugin marketplace add jmbruzos/superpowers
 /plugin install kdd-superpowers
 ```
 

@@ -27,7 +27,7 @@ Subagent (general-purpose):
     5. Actually try it: write the minimal cheating implementation for your best attack in a scratch file, run the tests against it, and paste the result. Do not commit or leave the file behind.
 
     ## Rules
-    - Do not modify tracked files. Scratch work under /tmp only, removed afterwards.
+    - You may modify implementation files in this worktree to try a cheating implementation, but restore them afterwards (`git stash` / `git checkout -- <files>`), never commit, and end with `git status --porcelain` empty except for files that were already dirty. Never modify the tests.
     - Every row: Attack · Scenario (concrete input or cheating implementation) · Result (BROKEN = the tests pass it / RESISTED) · Evidence (test names, command output).
     - Return only the table, then one line: `<N> attempted, <M> BROKEN`.
 

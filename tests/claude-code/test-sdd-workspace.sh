@@ -106,6 +106,17 @@ PLAN
         fail "a plan without frontmatter falls back to its basename"
     fi
 
+    # --- foreign cwd: an absolute plan path resolves the plan's own repo, not $PWD ---
+    local foreign_dir
+    foreign_dir="$(cd /tmp && "$SDD_SCRIPTS/sdd-workspace" "$repo/plan-a.md")"
+    if [[ "$foreign_dir" == "$dir_a" ]]; then
+        pass "sdd-workspace from a foreign cwd resolves the plan's own repo"
+    else
+        fail "sdd-workspace from a foreign cwd resolves the plan's own repo"
+        echo "    got: $foreign_dir"
+        echo "    want: $dir_a"
+    fi
+
     if [[ -f "$repo/.kdd/sdd/.gitignore" && "$(cat "$repo/.kdd/sdd/.gitignore")" == "*" ]]; then
         pass "self-ignoring .gitignore created at .kdd/sdd/ with '*'"
     else

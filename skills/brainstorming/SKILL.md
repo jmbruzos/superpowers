@@ -97,7 +97,7 @@ your path and complete them in order.
 3. **Ask clarifying questions** — one at a time, the ones that matter
 4. **Present short design in chat** — approach, files touched, testing, and the activation (which specs, which pins, which FRAGs)
 5. **Get approval** — STOP and wait for an explicit yes; presenting the design and starting in the same breath is skipping the gate
-6. **Write the compact WRK-SPEC** — allocate the ID, write, validate, commit, transition to `active` with the human's `verified` (see *Writing the WRK-SPEC*)
+6. **Write the compact WRK-SPEC** — allocate the ID, write, validate, commit, then ask your human partner to review it (see *User Review Gate*); only on an explicit yes transition to `active` with the human's `verified` (see *Writing the WRK-SPEC*)
 7. **Implement** — proceed with the normal development workflow (TDD applies); no plan document
 
 **Architectural:**
@@ -225,14 +225,16 @@ is the whole process.
 
 **Gate A1 — spec red-team (architectural path):**
 
-Before you write the WRK-SPEC file, dispatch the adversary in
-[spec-adversary-prompt.md](spec-adversary-prompt.md) with the approved
-design sections and the activated spec files. It returns an attack table
+Before you write the WRK-SPEC file, save the approved design sections to
+`.kdd/brainstorm/<WRK-SPEC-ID>-draft.md` and dispatch the adversary in
+[spec-adversary-prompt.md](spec-adversary-prompt.md) with that draft path
+and the activated spec files. It returns an attack table
 (kdd-superpowers:kdd-conventions `references/adversarial-gates.md`).
 Adjudicate every `BROKEN` row out loud with your human partner — a broken
 attack on an activated rule changes the design; a broken attack that
 reveals missing knowledge becomes a gap in *Knowledge activation*. Then
-write.
+write the WRK-SPEC, and record every `BROKEN` row and its ruling in the
+WRK-SPEC under `## Adversarial Review` (after Open Questions).
 
 ## Writing the WRK-SPEC
 
@@ -257,9 +259,12 @@ After writing the WRK-SPEC, look at it with fresh eyes:
 Fix any issues inline. No need to re-review — just fix and move on.
 
 **User Review Gate:**
-Ask your human partner to review the written spec before proceeding:
+Ask your human partner to review the written spec before proceeding. The
+prompt names what happens next, so it differs by path:
 
-> "WRK-SPEC written, validated and committed to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+> Architectural: "WRK-SPEC written, validated and committed to `<path>`. Please review it and let me know if you want to make any changes before we start writing out the implementation plan."
+>
+> Bounded: "Compact WRK-SPEC written and validated at `<path>` — approve it as the spec for this change?"
 
 Wait for the response. If they request changes, make them, re-validate and re-run the self-review. Once they approve: set `status: active`, `updated: <today>`, append `verified: [{by: human:<id>, at: <now>}]` (ask for the id once if unknown — never invent it), re-validate (the confidence warning should disappear or be lifted with the human's say-so), commit (`spec(<ID>): approved — active, human-verified`).
 

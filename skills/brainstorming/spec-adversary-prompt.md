@@ -14,7 +14,7 @@ Subagent (general-purpose):
     Rows without a concrete scenario and evidence do not count.
 
     ## Artifact under attack
-    Read: [DRAFT_PATH — the approved design sections saved to a scratch file]
+    Read: [DRAFT_PATH — the approved design sections saved to .kdd/brainstorm/<WRK-SPEC-ID>-draft.md]
 
     ## What it must hold against
     Read each activated spec: [ACTIVATED_SPEC_PATHS]

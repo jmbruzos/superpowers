@@ -123,6 +123,10 @@ Subagent (general-purpose):
     ### Strengths
     [What's well done? Be specific.]
 
+    ### Requirements Compliance
+
+    - ✅ Requirements met | ❌ Issues found: [missing/extra/misunderstood, with file:line]
+
     ### Knowledge Compliance
 
     - ✅ No activated rule violated | ❌ Violated: [rule ID + number, file:line] | n/a (no specs in this mode)
@@ -189,7 +193,9 @@ Subagent (general-purpose):
 - `[BASE_SHA]` — starting commit
 - `[HEAD_SHA]` — ending commit
 
-**Reviewer returns:** Strengths, Issues (Critical / Important / Minor), Recommendations, Assessment
+**Reviewer returns:** Requirements Compliance, Knowledge Compliance,
+Knowledge Findings, Capture Candidates, Acceptance Attacks (before merge),
+Strengths, Issues (Critical / Important / Minor), Recommendations, Assessment
 
 ## Example Output
 
@@ -198,6 +204,12 @@ Subagent (general-purpose):
 - Clean database schema with proper migrations (db.ts:15-42)
 - Comprehensive test coverage (18 tests, all edge cases)
 - Good error handling with fallbacks (summarizer.ts:85-92)
+
+### Requirements Compliance
+- ✅ Requirements met
+
+### Knowledge Compliance
+- ✅ No activated rule violated
 
 ### Issues
 

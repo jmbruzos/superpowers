@@ -19,4 +19,9 @@ for bad in "wrk-spec-x" "WRK-SPEC" "WRK-SPEC-BILL-001" "WRK-SPEC-BILL_X" "WRK-SP
   rc=0; "$NEXT_ID" --specs "$FIXTURE_SPECS" "$bad" >/dev/null 2>&1 || rc=$?
   [[ "$rc" -eq 2 ]] && pass "rejects '$bad' with exit 2" || fail "rejects '$bad' with exit 2 (rc=$rc)"
 done
+# --prefer must be 1-3 digits
+for bad_prefer in "abc" "0001" "-1" "1a"; do
+  rc=0; "$NEXT_ID" --specs "$FIXTURE_SPECS" --prefer "$bad_prefer" WRK-PLAN-BILL-PRORATA >/dev/null 2>&1 || rc=$?
+  [[ "$rc" -eq 2 ]] && pass "rejects --prefer '$bad_prefer' with exit 2" || fail "rejects --prefer '$bad_prefer' with exit 2 (rc=$rc)"
+done
 finish

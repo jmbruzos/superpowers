@@ -29,6 +29,14 @@ Tests failing (<N> failures). Must fix before completing:
 
 Same standing as the tests — a red result means no menu.
 
+**Which plan.** The WRK-PLAN being finished is the one this session
+executed (named in the conversation or the ledger's first line). If it is
+not already known, ask — as with the base branch. **Bounded work** (a
+compact WRK-SPEC with no WRK-PLAN): skip the task/plan checks, run
+validate and export-okf only, and in Step 3b write the `## Execution Log`
+into the WRK-SPEC itself (rulings and capture candidates from the
+session; omit the section if there are none).
+
 ```bash
 <kdd-cli> --specs specs validate                       # 0 errors; no warning naming this work's artifacts
 <kdd-cli> --specs specs filter --layer work-task --format json   # every task of this plan: status completed
@@ -76,8 +84,8 @@ Confirm before merging: merging into the wrong base is expensive to undo.
 ## Step 3b: Persist the Chronicle
 
 The ledger (`.kdd/sdd/<WRK-PLAN-ID>/progress.md`) is git-ignored and will
-be deleted; its durable part moves into the plan. Append to the WRK-PLAN a
-section:
+be deleted; its durable part moves into the plan. Append to the WRK-PLAN
+(or the WRK-SPEC for bounded work) a section:
 
 ```markdown
 ## Execution Log
@@ -89,7 +97,9 @@ section:
 - <every `Knowledge gap:` line>
 
 ### Attacks broken and adjudicated
-- <every `Attack: … — Ruling: …` line whose result was BROKEN>
+- <every `Attack: … — Ruling: …` line whose result was BROKEN, plus every
+  BROKEN row harvested from the `## Adversarial Review` sections of the
+  WRK-SPEC and the WRK-PLAN>
 
 ### Capture candidates (pending)
 - <every `Capture candidate:` line and every anchored candidate from review reports>
@@ -117,7 +127,7 @@ Around it, this skill adds three things:
 1. **Pending capture candidates become FRAGs first.** For each candidate
    in the Execution Log, write the fragment per
    kdd-superpowers:kdd-conventions `references/capturing-from-code.md`
-   (anchors, Observed/Inferred, `frag-cite-check`, `confidence: low`) so
+   (anchors, Observed/Inferred, `frag-cite-check --strict`, `confidence: low`) so
    consolidation can cite and distill it. A candidate whose anchor no
    longer verifies is dropped with a note.
 2. **Gate A6 before any promotion.** When consolidation proposes turning
@@ -142,9 +152,14 @@ until `kdd:spec-consolidate` runs.
 - WRK-SPEC: `status: active → completed`, `updated: <today>`; if your human
   partner confirmed the close explicitly, append `verified: - by: human:<id>`
   with `at:`.
-- After consolidation was applied: WRK-SPEC, WRK-PLAN and every WRK-TASK
-  → `status: archived`.
+- After consolidation was applied: WRK-SPEC, WRK-PLAN (or the WRK-SPEC for
+  bounded work — already covered by the row above) and every WRK-TASK →
+  `status: archived`.
 - Validate; commit (`chore(<WRK-SPEC-ID>): close and consolidate`).
+
+Then delete this plan's workspace (`rm -rf .kdd/sdd/<WRK-PLAN-ID>/`) — its
+durable content is now in the Execution Log. Bounded work has no
+WRK-PLAN and no SDD workspace: nothing to delete here.
 
 Only now present the menu.
 

@@ -132,4 +132,11 @@ must_contain CLAUDE.md "tests/scripts/run.sh" "CLAUDE.md says how to test"
 must_not_contain CLAUDE.md "94% PR rejection rate" "CLAUDE.md is no longer upstream's PR policy"
 must_contain LICENSE "obra/superpowers" "LICENSE carries the derivation note"
 
+# --- final review wave (chronicle lifecycle, bounded finishing, requirements verdict) ---
+must_not_contain skills/subagent-driven-development/SKILL.md "rm -rf <workspace>" "SDD does not delete the workspace"
+must_contain skills/finishing-a-development-branch/SKILL.md "rm -rf .kdd/sdd/<WRK-PLAN-ID>/" "finishing deletes the workspace after the execution log"
+must_contain skills/finishing-a-development-branch/SKILL.md "Bounded work" "finishing handles bounded work"
+must_contain skills/executing-plans/SKILL.md "main/master" "executing-plans keeps the main-branch guard"
+must_contain skills/requesting-code-review/code-reviewer.md "### Requirements Compliance" "code reviewer has a requirements verdict"
+
 finish

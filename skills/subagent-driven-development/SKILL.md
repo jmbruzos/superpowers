@@ -94,7 +94,7 @@ digraph process {
     "More tasks remain?" [shape=diamond];
     "Dispatch final code reviewer (../requesting-code-review/code-reviewer.md)" [shape=box];
     "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" [shape=box];
-    "Final review clean: delete this plan's workspace" [shape=box];
+    "Final review clean: hand over (workspace kept for finishing)" [shape=box];
     "Use kdd-superpowers:finishing-a-development-branch" [shape=box style=filled fillcolor=lightgreen];
 
     "Setup: worktree, ledger check, read plan, pre-flight review" -> "Dispatch implementer subagent (./implementer-prompt.md)";
@@ -123,8 +123,8 @@ digraph process {
     "More tasks remain?" -> "Dispatch implementer subagent (./implementer-prompt.md)" [label="yes"];
     "More tasks remain?" -> "Dispatch final code reviewer (../requesting-code-review/code-reviewer.md)" [label="no"];
     "Dispatch final code reviewer (../requesting-code-review/code-reviewer.md)" -> "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals";
-    "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" -> "Final review clean: delete this plan's workspace";
-    "Final review clean: delete this plan's workspace" -> "Use kdd-superpowers:finishing-a-development-branch";
+    "Final findings? ONE fix dispatch, one scoped re-review, adjudicate residuals" -> "Final review clean: hand over (workspace kept for finishing)";
+    "Final review clean: hand over (workspace kept for finishing)" -> "Use kdd-superpowers:finishing-a-development-branch";
 }
 ```
 
@@ -146,11 +146,10 @@ a ledger file, not only in todos.
   artifact for THIS plan: ledger, briefs, reports, review packages.
   Another plan's directory is never yours to read or write.
 - Check for this plan's ledger at `<workspace>/progress.md`. If its first
-  line names your plan file, tasks with a `Task <N>: complete` line are DONE
+  line names your plan file, tasks with a `Task <WRK-TASK-ID>: complete` line are DONE
   — do not re-dispatch them; resume at the first task without one. A task
   whose last line is a fix round is mid-loop: resume the loop at the next
-  round. A ledger whose first line names a different plan file — or a stray
-  ledger at the old flat path `.kdd/sdd/progress.md` — is another
+  round. A ledger whose first line names a different plan file is another
   plan's progress: leave it in place and start your own, fresh.
 - Create the ledger with its identity as the first line:
   `# SDD ledger — plan: <WRK-PLAN-ID> (<plan file path>)`.
@@ -395,7 +394,7 @@ confirmed as a real gap.
 Before the loop starts, two routes leave it immediately:
 
 - Record Minor findings in the progress ledger as you go
-  (`Task <N>: minor (deferred): <one-liner>`), and point the final
+  (`Task <WRK-TASK-ID>: minor (deferred): <one-liner>`), and point the final
   whole-branch review at that list so it can triage which must be fixed
   before merge. A roll-up nobody reads is a silent discard. Minor findings
   never enter the loop.
@@ -439,7 +438,7 @@ findings list. Out-of-scope observations go to the ledger as deferred
 minors — they never extend the loop.
 
 **After each round,** append to the ledger:
-`Task <N>: fix round <R>/5 (<X> addressed, <Y> open — <finding one-liners>; commits <a7>..<b7>)`
+`Task <WRK-TASK-ID>: fix round <R>/5 (<X> addressed, <Y> open — <finding one-liners>; commits <a7>..<b7>)`
 
 Never fix findings yourself in the controller session — your context stays
 clean for coordination, and controller fixes skip review.
@@ -449,13 +448,13 @@ dispatching. Adjudicate each open finding yourself — you hold the plan and
 the cross-task context the reviewer lacks:
 
 - **The reviewer is wrong, or the point is contestable:** park it —
-  `Task <N>: parked — <finding> — Ruling: <why the code stands>`. The final
+  `Task <WRK-TASK-ID>: parked — <finding> — Ruling: <why the code stands>`. The final
   review sees both sides.
 - **Real, but nothing downstream builds on it:** park it the same way, with
   a ruling that says it's real and deferred.
 - **Real and load-bearing** — a later task builds on it, or it reveals a
   plan defect: rule on the smallest change that unblocks the dependent work,
-  ledger it as `Task <N>: Ruling: <finding> — <what you decided and why>`,
+  ledger it as `Task <WRK-TASK-ID>: Ruling: <finding> — <what you decided and why>`,
   and carry it into the next task's dispatch. Parking a structural failure
   silently lets every dependent task build on it. Stop only when the defect
   leaves every path forward a guess.
@@ -470,8 +469,8 @@ When the review comes back clean — or every open finding is parked with a
 ruling at the cap — append the completion line to the ledger in the same
 message as your other bookkeeping:
 
-- `Task <N>: complete (commits <base7>..<head7>, review clean)`
-- `Task <N>: complete (commits <base7>..<head7>, <K> parked)` after a
+- `Task <WRK-TASK-ID>: complete (commits <base7>..<head7>, review clean)`
+- `Task <WRK-TASK-ID>: complete (commits <base7>..<head7>, <K> parked)` after a
   tripped breaker
 
 Then transition the WRK-TASK: set `status: completed` and `updated:
@@ -498,15 +497,17 @@ fixed before merge.
 
 The final review also gets the review brief: run
 `../requesting-code-review/scripts/review-brief PLAN_FILE` and pass the
-printed path. Its mandate includes **Gate A5 — acceptance attack**: for
-every acceptance criterion of the WRK-SPEC, a scenario that would fail it,
-executed where possible, reported as an attack table. Adjudicate BROKEN
-rows like task findings (one fix wave, one scoped re-review).
+printed path. Dispatch the final reviewer with `{MODE}: kdd-work`,
+`{KNOWLEDGE_BRIEF}: <review-brief path>` and `{BEFORE_MERGE}: yes` — this
+is what turns on **Gate A5 — acceptance attack**: for every acceptance
+criterion of the WRK-SPEC, a scenario that would fail it, executed where
+possible, reported as an attack table. Adjudicate BROKEN rows like task
+findings (one fix wave, one scoped re-review).
 
 When the final review is clean, transition the WRK-PLAN to
 `status: completed` (+ `updated`), validate, commit
 (`chore(<WRK-PLAN-ID>): complete`), then follow `## Finish` below —
-rulings collected first, workspace deleted after, then the hand-over to
+rulings collected first, workspace deleted by finishing, then the hand-over to
 kdd-superpowers:finishing-a-development-branch. The WRK-SPEC stays
 `active` — finishing closes it.
 
@@ -525,7 +526,7 @@ finishing-a-development-branch presents the options.
 
 ## Finish
 
-Before you delete anything, collect every ledger line containing `Ruling:` —
+Before you hand over, collect every ledger line containing `Ruling:` —
 preflight rulings, parked findings, breaker adjudications, all of them — into
 your final message under "Rulings I made", in the order you made them, each
 with what it costs if wrong. The list is exhaustive: if the ledger holds a
@@ -534,10 +535,9 @@ took on your human partner's behalf reach them — they read it and rework
 whatever you got wrong. A ruling that dies with the workspace was a decision
 made in secret.
 
-When the final whole-branch review is clean and its fixes are merged,
-delete this plan's workspace (`rm -rf <workspace>`) — the git history is
-the record now. Sibling directories belong to other plans; leave them
-alone.
+Leave this plan's workspace in place —
+kdd-superpowers:finishing-a-development-branch persists the ledger into
+the plan's Execution Log and deletes the workspace afterwards.
 
 Use kdd-superpowers:finishing-a-development-branch.
 
@@ -617,7 +617,7 @@ Re-reviewer: Missing progress reporting — ADDRESSED (src/recovery.js:41).
 [Run review-package PLAN_FILE MERGE_BASE HEAD; dispatch final code-reviewer, most capable model]
 Final reviewer: All requirements met. Deferred minors triaged: none block merge.
 
-[Delete this plan's workspace — the record now lives in git]
+[Workspace left in place for finishing-a-development-branch to persist and delete]
 
 Done! Using kdd-superpowers:finishing-a-development-branch.
 ```

@@ -57,7 +57,7 @@ What was explored and why (the work that needed it). Only what the work touches.
 3. Write *Inferred* last, each line pointing at its observations.
 4. Record every search that came back empty under *Absences*, with the command.
 5. Allocate the ID with `next-id FRAG-<AREA>-<CONCEPT>`; create the directory per `artifact-templates.md`; compute `integrity`.
-6. Run `frag-cite-check <dir>`; fix or delete anything it rejects; recompute `integrity` if the report changed.
+6. Run `frag-cite-check --strict <dir>`; fix or delete anything it rejects; recompute `integrity` if the report changed.
 7. Run `<kdd-cli> --specs specs validate`.
 8. Cite the FRAG from the artifact that needed it (`sources`, and in prose as "observed in FRAG-…").
 

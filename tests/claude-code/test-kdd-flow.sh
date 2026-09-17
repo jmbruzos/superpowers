@@ -103,9 +103,9 @@ out="$(run_scenario "$p5" "Use kdd-superpowers:subagent-driven-development to ex
 if [[ -f "$p5/.kdd/sdd/WRK-PLAN-DEMO-HELLO-001/progress.md" ]]; then
   pass "ledger under .kdd/sdd/<plan id>/"
 elif git -C "$p5" log --format=%s | grep -qi "WRK-PLAN-DEMO-HELLO-001.*execution log"; then
-  pass "ledger under .kdd/sdd/<plan id>/ (cleaned up after final review; git log shows the execution log commit)"
+  pass "ledger under .kdd/sdd/<plan id>/ (deleted by finishing after the execution log commit; git log shows the execution log commit)"
 else
-  fail "ledger under .kdd/sdd/<plan id>/ (deleted after final review and no execution-log commit found in git log)"
+  fail "ledger under .kdd/sdd/<plan id>/ (deleted by finishing after the execution log commit, and no execution-log commit found in git log)"
 fi
 grep -q "^status: completed" "$p5"/specs/work/WRK-TASK-DEMO-HELLO-001-001-*.md && pass "task 001 completed" || fail "task 001 completed"
 grep -q "^status: completed" "$p5"/specs/work/WRK-TASK-DEMO-HELLO-001-002-*.md && pass "task 002 completed" || fail "task 002 completed"

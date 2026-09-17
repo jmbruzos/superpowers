@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 # Verify the anchors of a code-derived FRAG (WRK-SPEC-FORK-CORE-001, P12 rules 1 and 4).
 #
-# Usage: frag-cite-check FRAG-DIR        (run from the repository root)
+# Usage: frag-cite-check [--strict] FRAG-DIR        (run from the repository root)
 # Reads every file listed under `files:` in the FRAG's frontmatter, finds anchor lines
 #   - `<path>:<start>-<end>@<sha>`: `<literal>`
 # and checks the literal occurs (fixed string) inside that line range of the file as it was
 # at <sha> (git show), falling back to the working tree when the object is unknown.
+# Without --strict, a fallback to the working tree prints a WARN to stderr and still
+# counts. With --strict, an unknown <sha>:<path> object FAILs the anchor instead.
 # Exit 0: "verified N anchors". Exit 1: one "FAIL <anchor>: <reason>" per broken anchor, or
 # "FAIL: no anchors found". Exit 2: usage.
 set -uo pipefail
 
-[[ $# -eq 1 && -d "$1" ]] || { echo "usage: frag-cite-check FRAG-DIR" >&2; exit 2; }
+strict=0
+if [[ "${1:-}" == "--strict" ]]; then strict=1; shift; fi
+[[ $# -eq 1 && -d "$1" ]] || { echo "usage: frag-cite-check [--strict] FRAG-DIR" >&2; exit 2; }
 dir="$1"
 fm="$(ls "$dir"/FRAG-*.md 2>/dev/null | head -1)"
 [[ -n "$fm" ]] || { echo "no FRAG-*.md in $dir" >&2; exit 2; }
@@ -29,7 +33,10 @@ for f in "${files[@]}"; do
     count=$((count + 1)); anchor="$path:$s-$e@$sha"
     if git cat-file -e "$sha:$path" 2>/dev/null; then
       content="$(git show "$sha:$path")"
+    elif [[ "$strict" -eq 1 ]]; then
+      echo "FAIL $anchor: $sha:$path not found in git"; fails=$((fails + 1)); continue
     elif [[ -f "$path" ]]; then
+      echo "WARN $anchor: $sha not found, checked the working tree" >&2
       content="$(cat "$path")"
     else
       echo "FAIL $anchor: no such file (neither at $sha nor in the working tree)"; fails=$((fails + 1)); continue

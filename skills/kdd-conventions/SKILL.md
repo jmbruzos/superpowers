@@ -35,21 +35,26 @@ the number disambiguates within a semantic path, it is not a global counter.
 | Knowledge/agentic specs the project owns | wherever the project keeps them under `specs/` | yes |
 | SDD ledger, briefs, reports, review packages | `.kdd/sdd/<WRK-PLAN-ID>/` | no (gitignored) |
 | Visual companion sessions | `.kdd/brainstorm/<session>/` | no |
+| Ad-hoc review briefs (modes 2–3) | `.kdd/review/` | no |
 
 No path written by this plugin contains `superpowers`. Runtime state goes
 under `.kdd/`; the plugin adds `.kdd/` to the project's `.gitignore` the
-first time it creates it (append the line if absent).
+first time it creates it (append the line if absent). `.kdd/` is ignored
+twice on purpose: the plugin appends `.kdd/` to the project `.gitignore`
+when it first creates the directory, and `.kdd/sdd/` carries its own
+self-ignoring `.gitignore` for worktrees that predate it.
 
 ## Status transitions — who moves what, when
 
 | Artifact | Born | → | By |
 |---|---|---|---|
-| WRK-SPEC | `draft` (brainstorming writes it) | `active` when your human partner approves the written spec | brainstorming |
+| WRK-SPEC | `draft` (brainstorming writes it) | `active` when your human partner approves the written spec (full or compact) | brainstorming |
 | WRK-SPEC | `active` | `completed` at finishing, before the integration menu | finishing-a-development-branch |
 | WRK-SPEC | `completed` | `archived` once consolidation is applied | finishing-a-development-branch |
 | WRK-PLAN / WRK-TASK | `draft` (writing-plans) | `active` when an execution mode is chosen | writing-plans |
 | WRK-TASK | `active` | `completed` when its task review is clean (in the task's closing commit) | SDD / executing-plans |
 | WRK-PLAN | `active` | `completed` when the final review is clean | SDD / executing-plans |
+| WRK-PLAN / WRK-TASK | `completed` | `archived` once consolidation is applied | finishing |
 | FRAG | `ingested` | `distilled` when a spec cites it in `sources` after consolidation | consolidation (`kdd:spec-consolidate`) |
 
 Every transition also updates `updated:`. Never skip a state.
