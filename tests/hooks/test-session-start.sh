@@ -242,6 +242,47 @@ assert_command_output \
     "$(make_home kdd-proj3)" \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" KDD_SPEC_GRAPH="$fake_cli" \
     bash -c "cd '$proj' && exec bash '$HOOK_UNDER_TEST'"
+phantom_file="$proj/specs/work/WRK-TASK-BILL-PRORATA-001-003-phantom.md"
+cat > "$phantom_file" <<'PHANTOM_EOF'
+---
+id: WRK-TASK-BILL-PRORATA-001-003
+type: spec
+layer: work-task
+status: active
+parent: WRK-PLAN-BILL-PRORATA-001
+owner: t
+confidence: low
+version: 0.1.0
+---
+
+# WRK-TASK-BILL-PRORATA-001-003 — phantom
+
+Embedded example, must not be read as real frontmatter:
+
+```
+id: WRK-SPEC-PHANTOM-001
+layer: work-spec
+status: active
+layer: domain
+```
+PHANTOM_EOF
+assert_command_output \
+    "does not treat a fenced-example layer/status/id/parent as real frontmatter (open_work)" \
+    "nested" \
+    "open_work: WRK-SPEC-BILL-PRORATA-001 (active) → WRK-PLAN-BILL-PRORATA-001 → 0/3 tasks done" \
+    "PHANTOM" \
+    "$(make_home kdd-proj3b)" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" KDD_SPEC_GRAPH="$fake_cli" \
+    bash -c "cd '$proj' && exec bash '$HOOK_UNDER_TEST'"
+assert_command_output \
+    "does not treat a fenced-example layer/status/id/parent as real frontmatter (specs_dir counts)" \
+    "nested" \
+    "specs_dir: ./specs (knowledge: 1 · work: 5)" \
+    "" \
+    "$(make_home kdd-proj3c)" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" KDD_SPEC_GRAPH="$fake_cli" \
+    bash -c "cd '$proj' && exec bash '$HOOK_UNDER_TEST'"
+
 assert_command_output \
     "lists OKF bundles outside specs/" \
     "nested" \

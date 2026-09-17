@@ -11,37 +11,83 @@ PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 using_superpowers_content=$(cat "${PLUGIN_ROOT}/skills/using-superpowers/SKILL.md" 2>&1 || echo "Error reading using-superpowers skill")
 
 # --- KDD environment probe ---------------------------------------------------
+# The whole probe below runs inside $(kdd_environment); bash does not enforce
+# errexit the same way inside a command substitution, so empty-match
+# grep/awk pipelines are safe here only because this function guards or
+# tolerates them explicitly — do not assume that elsewhere in the script.
 kdd_environment() {
   local toolkit specs_line open_line okf_line
   toolkit="$("${PLUGIN_ROOT}/skills/using-superpowers/scripts/kdd-cli" --path 2>/dev/null || true)"
   [ -n "$toolkit" ] || toolkit="NOT FOUND"
 
   if [ -d ./specs ]; then
+    # --- frontmatter index --------------------------------------------------
+    # One line per specs/*.md: file<TAB>id<TAB>layer<TAB>status<TAB>parent,
+    # extracted ONLY from the YAML block between the first and second '---'
+    # lines. This is the single source of truth for every count/lookup below
+    # so that fenced examples or embedded fixtures inside a file's body can
+    # never be mistaken for real spec metadata.
+    local idx_file
+    idx_file="$(mktemp)"
+    trap 'rm -f "$idx_file"' RETURN
+
+    local fm_awk='
+      NR==1 {
+        if ($0 != "---") { exit }
+        in_fm=1
+        next
+      }
+      in_fm {
+        if ($0 == "---") { exit }
+        line=$0
+        if (line ~ /^id:/)          { sub(/^id:[ \t]*/, "", line); id=line }
+        else if (line ~ /^layer:/)  { sub(/^layer:[ \t]*/, "", line); layer=line }
+        else if (line ~ /^status:/) { sub(/^status:[ \t]*/, "", line); status=line }
+        else if (line ~ /^parent:/) { sub(/^parent:[ \t]*/, "", line); parent=line }
+      }
+      END {
+        if (in_fm) {
+          sub(/[ \t\r]+$/, "", id)
+          sub(/[ \t\r]+$/, "", layer)
+          sub(/[ \t\r]+$/, "", status)
+          sub(/[ \t\r]+$/, "", parent)
+          printf "%s\t%s\t%s\t%s\t%s\n", FILENAME, id, layer, status, parent
+        }
+      }
+    '
+    local f
+    while IFS= read -r -d '' f; do
+      awk "$fm_awk" "$f" >> "$idx_file"
+    done < <(find ./specs -type f -name '*.md' -print0 2>/dev/null)
+
     local k w
-    k=$(grep -rlE '^layer:[[:space:]]*(architecture|domain|product|feature|documentation)[[:space:]]*$' ./specs --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
-    w=$(grep -rlE '^layer:[[:space:]]*work-(spec|plan|task)[[:space:]]*$' ./specs --include='*.md' 2>/dev/null | wc -l | tr -d ' ')
+    k=$(awk -F'\t' '$3 ~ /^(architecture|domain|product|feature|documentation)$/' "$idx_file" | wc -l | tr -d ' ')
+    w=$(awk -F'\t' '$3 ~ /^work-/' "$idx_file" | wc -l | tr -d ' ')
     specs_line="./specs (knowledge: ${k} · work: ${w})"
 
-    # open work: active/completed WRK-SPECs → their plans → task progress
-    local entries="" f id st plans p pid tasks done_
-    while IFS= read -r f; do
-      id=$(sed -n 's/^id:[[:space:]]*//p' "$f" | head -1 | tr -d ' \r')
-      st=$(sed -n 's/^status:[[:space:]]*//p' "$f" | head -1 | tr -d ' \r')
+    # open work: active/completed WRK-SPECs (layer work-spec, sorted by id)
+    # → their plans (layer work-plan, parent == spec id) → task progress
+    # (layer work-task, parent == plan id; done = status completed|archived)
+    local entries="" id st plans pid tasks total_ done_
+    while IFS=$'\t' read -r _ id _ st _; do
       [ -n "$id" ] || continue
       case "$st" in active|completed) ;; *) continue ;; esac
-      plans=$(grep -rlE "^parent:[[:space:]]*${id}[[:space:]]*$" ./specs --include='*.md' 2>/dev/null || true)
+      plans=$(awk -F'\t' -v p="$id" '$3 == "work-plan" && $5 == p { print $2 }' "$idx_file")
       if [ -z "$plans" ]; then
         entries="${entries}${entries:+; }${id} (${st})"
         continue
       fi
-      while IFS= read -r p; do
-        pid=$(sed -n 's/^id:[[:space:]]*//p' "$p" | head -1 | tr -d ' \r')
-        tasks=$(grep -rlE "^parent:[[:space:]]*${pid}[[:space:]]*$" ./specs --include='*.md' 2>/dev/null || true)
-        done_=0
-        [ -z "$tasks" ] || done_=$(printf '%s\n' "$tasks" | xargs -r grep -lE '^status:[[:space:]]*(completed|archived)[[:space:]]*$' 2>/dev/null | wc -l | tr -d ' ')
-        entries="${entries}${entries:+; }${id} (${st}) → ${pid} → ${done_}/$(printf '%s\n' "$tasks" | grep -c . ) tasks done"
+      while IFS= read -r pid; do
+        [ -n "$pid" ] || continue
+        tasks=$(awk -F'\t' -v pl="$pid" '$3 == "work-task" && $5 == pl' "$idx_file")
+        total_=0; done_=0
+        if [ -n "$tasks" ]; then
+          total_=$(printf '%s\n' "$tasks" | grep -c . || true)
+          done_=$(printf '%s\n' "$tasks" | awk -F'\t' '$4 ~ /^(completed|archived)$/' | grep -c . || true)
+        fi
+        entries="${entries}${entries:+; }${id} (${st}) → ${pid} → ${done_}/${total_} tasks done"
       done <<< "$plans"
-    done < <(grep -rlE '^layer:[[:space:]]*work-spec[[:space:]]*$' ./specs --include='*.md' 2>/dev/null | sort)
+    done < <(awk -F'\t' '$3 == "work-spec"' "$idx_file" | sort -t $'\t' -k2,2)
     open_line="${entries:-none}"
   else
     specs_line="NONE"
@@ -50,12 +96,12 @@ kdd_environment() {
 
   # OKF bundles outside specs/: index.md files declaring okf_version
   local bundles="" idx dir ver
-  while IFS= read -r idx; do
+  while IFS= read -r -d '' idx; do
+    grep -q '^okf_version:' "$idx" 2>/dev/null || continue
     dir=$(dirname "$idx"); dir="${dir#./}"
     ver=$(sed -n 's/^okf_version:[[:space:]]*//p' "$idx" | head -1 | tr -d '"'"'"' \r')
     bundles="${bundles}${bundles:+; }${dir} (okf_version ${ver:-?}, not imported)"
-  done < <(find . -maxdepth 5 -name index.md -not -path './specs/*' -not -path '*/node_modules/*' -not -path './.git/*' -not -path './.kdd/*' 2>/dev/null \
-           | xargs -r grep -l '^okf_version:' 2>/dev/null | sort)
+  done < <(find . -maxdepth 5 -name index.md -not -path './specs/*' -not -path '*/node_modules/*' -not -path './.git/*' -not -path './.kdd/*' -print0 2>/dev/null | sort -z)
   okf_line="${bundles:-none}"
 
   printf '<KDD-ENVIRONMENT>\ntoolkit: %s\nspecs_dir: %s\nopen_work: %s\nokf_bundles: %s\n</KDD-ENVIRONMENT>' \
