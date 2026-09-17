@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Locate the kdd toolkit's spec-graph CLI. The only place in kdd-superpowers
+# that knows where spec-graph.mjs lives (WRK-SPEC-FORK-CORE-001, Skill 1).
+#
+# Usage: kdd-cli --path              print the resolved spec-graph.mjs path
+#        kdd-cli <spec-graph args>   run: node <spec-graph.mjs> <args>
+# Exit 3 (and a message on stderr) when no CLI can be found.
+#
+# Search order:
+#   1. $KDD_SPEC_GRAPH                          explicit override (dev machines, CI)
+#   2. ./node_modules/.bin/spec-graph           npm-installed in the project
+#   3. ./.kdd-toolkit/cli/spec-graph.mjs        toolkit vendored as a submodule
+#   4. ~/.claude/plugins/**/kdd*/cli/spec-graph.mjs   plugin cache / manual clone
+set -euo pipefail
+
+resolve() {
+  if [[ -n "${KDD_SPEC_GRAPH:-}" && -f "$KDD_SPEC_GRAPH" ]]; then printf '%s\n' "$KDD_SPEC_GRAPH"; return 0; fi
+  if [[ -x ./node_modules/.bin/spec-graph ]]; then printf '%s\n' "$(cd ./node_modules/.bin && pwd)/spec-graph"; return 0; fi
+  if [[ -f ./.kdd-toolkit/cli/spec-graph.mjs ]]; then printf '%s\n' "$(cd ./.kdd-toolkit/cli && pwd)/spec-graph.mjs"; return 0; fi
+  local hit
+  hit="$(find "${HOME:-/nonexistent}/.claude/plugins" -maxdepth 7 -type f -path '*kdd*/cli/spec-graph.mjs' 2>/dev/null | sort | head -1)"
+  if [[ -n "$hit" ]]; then printf '%s\n' "$hit"; return 0; fi
+  return 1
+}
+
+cli="$(resolve)" || { echo "kdd toolkit not found: install the kdd plugin or set KDD_SPEC_GRAPH=/path/to/spec-graph.mjs" >&2; exit 3; }
+
+if [[ "${1:-}" == "--path" ]]; then printf '%s\n' "$cli"; exit 0; fi
+case "$cli" in
+  *.mjs) exec node "$cli" "$@" ;;
+  *)     exec "$cli" "$@" ;;
+esac
