@@ -288,7 +288,8 @@ and fix-round diffs need it.
   paste accumulated prior-task summaries ("state after Tasks 1-3") into
   later dispatches — a real session's dispatch hit 42k chars of which 99%
   was pasted history. A fresh subagent needs its task, the interfaces it
-  touches, and the global constraints. Nothing else.
+  touches, and the brief's Architecture Impact and activated specs
+  (already inside the brief). Nothing else.
 - The dispatch carries the no-subagents contract (it is in the
   implementer template): the implementer never dispatches subagents —
   not helpers, and never a reviewer. Review arrives from you, after the
@@ -334,9 +335,9 @@ rush it into implementation.
 
 Per-task reviews are task-scoped gates. The broad review happens once, at the
 final whole-branch review. Never skip the task review, and never accept a
-report missing either verdict — spec compliance AND task quality are both
-required. Implementer self-review never replaces the task review; both are
-needed.
+report missing any of the three verdicts — spec compliance, knowledge
+compliance AND task quality are all required. Implementer self-review
+never replaces the task review; both are needed.
 
 - Hand the reviewer its diff as a file: run this skill's
   `scripts/review-package PLAN_FILE BASE HEAD` and pass the reviewer the file path
@@ -504,8 +505,9 @@ rows like task findings (one fix wave, one scoped re-review).
 
 When the final review is clean, transition the WRK-PLAN to
 `status: completed` (+ `updated`), validate, commit
-(`chore(<WRK-PLAN-ID>): complete`), delete this plan's workspace, and hand
-over to kdd-superpowers:finishing-a-development-branch. The WRK-SPEC stays
+(`chore(<WRK-PLAN-ID>): complete`), then follow `## Finish` below —
+rulings collected first, workspace deleted after, then the hand-over to
+kdd-superpowers:finishing-a-development-branch. The WRK-SPEC stays
 `active` — finishing closes it.
 
 If the final whole-branch review returns findings, dispatch ONE fix subagent

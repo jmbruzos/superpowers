@@ -84,5 +84,8 @@ must_contain skills/subagent-driven-development/task-reviewer-prompt.md "### Cap
 must_contain skills/subagent-driven-development/task-reviewer-prompt.md "test that guards it" "gate A3 contract"
 must_not_contain skills/subagent-driven-development/task-reviewer-prompt.md "[GLOBAL_CONSTRAINTS]" "no global-constraints placeholder"
 must_contain skills/subagent-driven-development/test-adversary-prompt.md "| Attack | Scenario | Result | Evidence |" "A4 prompt uses the attack table"
+must_contain skills/subagent-driven-development/SKILL.md "any of the three verdicts" "review requires all three verdicts"
+must_contain skills/subagent-driven-development/task-reviewer-prompt.md "returns three verdicts" "reviewer summary names three verdicts"
+must_not_contain skills/subagent-driven-development/SKILL.md "the global constraints" "no lowercase global-constraints leftover"
 
 finish
