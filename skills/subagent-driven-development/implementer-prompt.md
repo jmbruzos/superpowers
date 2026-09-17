@@ -13,7 +13,12 @@ Subagent (general-purpose):
     ## Task Description
 
     Read your task brief first: [BRIEF_FILE]
-    It contains the full task text from the plan.
+    It contains the full WRK-TASK, the plan's Architecture Impact, the
+    knowledge specs this task activates (in full) and the fragments it
+    cites. The specs in sections 2–4 bind you: their rules are requirements,
+    not optional context. If a spec block says PIN DRIFT, you are reading a
+    newer text than the task was planned against — implement what the task
+    says, and note the drift in your report.
 
     ## Context
 
@@ -35,7 +40,7 @@ Subagent (general-purpose):
     1. Implement exactly what the task specifies
     2. Write tests (following TDD if task says to)
     3. Verify implementation works
-    4. Commit your work
+    4. Commit your work — every commit subject starts with the task ID: `<type>(<WRK-TASK-ID>): <summary>`
     5. Self-review (see below)
     6. Report back
 
@@ -136,6 +141,10 @@ Subagent (general-purpose):
     - Files changed
     - Self-review findings (if any)
     - Any issues or concerns
+    - **Knowledge notes:** activated rules the existing code contradicted
+      (rule ID + where), and behaviour you observed that no activated spec
+      documents (with `path:lines@sha` and the literal — you report capture
+      candidates, you do not write fragments)
 
     Then report back with ONLY (under 15 lines — the detail lives in the
     report file):

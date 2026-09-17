@@ -1,11 +1,11 @@
 ---
 name: subagent-driven-development
-description: Use when executing implementation plans with independent tasks in the current session
+description: Use when executing a WRK-PLAN whose WRK-TASKs are independent, in the current session
 ---
 
 # Subagent-Driven Development
 
-Execute plan by dispatching a fresh implementer subagent per task, a task review (spec compliance + code quality) after each, and a broad whole-branch review at the end.
+Execute a WRK-PLAN by dispatching a fresh implementer subagent per WRK-TASK, a task review (spec + knowledge + quality) after each, and a broad whole-branch review at the end.
 
 **Why subagents:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never inherit your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
 
@@ -23,6 +23,13 @@ judgment settles what neither answers. Record every decision in the ledger as
 `Ruling: <what you decided> — <why> — <what it costs if wrong>`, and keep
 going. A wrong ruling costs rework your human partner can see and undo; a
 session parked on a question costs their whole day and buys nothing.
+
+A ruling that touches knowledge — a task needs a spec outside the frozen
+set, an activated rule contradicts the code, a FRAG proved false, a brief
+reports PIN DRIFT, an adversary broke an attack that reveals missing
+knowledge — is additionally tagged `Knowledge gap: <what is missing or
+wrong>`. The activation stays frozen (P3); the gap is harvested at
+finishing by consolidation. Never widen `activates` mid-plan.
 
 Four things stop you, and only these: an irreversible or destructive
 operation; a security-sensitive action; a side effect outside this worktree
@@ -135,8 +142,8 @@ a ledger file, not only in todos.
 
 - Each plan owns a workspace: at skill start, run this skill's
   `scripts/sdd-workspace PLAN_FILE` — it prints the plan's git-ignored
-  directory (`<repo-root>/.kdd/sdd/<plan-basename>/`), home to
-  every artifact for THIS plan: ledger, briefs, reports, review packages.
+  directory (`<repo-root>/.kdd/sdd/<WRK-PLAN-ID>/`), home to every
+  artifact for THIS plan: ledger, briefs, reports, review packages.
   Another plan's directory is never yours to read or write.
 - Check for this plan's ledger at `<workspace>/progress.md`. If its first
   line names your plan file, tasks with a `Task <N>: complete` line are DONE
@@ -146,32 +153,42 @@ a ledger file, not only in todos.
   ledger at the old flat path `.kdd/sdd/progress.md` — is another
   plan's progress: leave it in place and start your own, fresh.
 - Create the ledger with its identity as the first line:
-  `# SDD ledger — plan: <plan file path>`.
+  `# SDD ledger — plan: <WRK-PLAN-ID> (<plan file path>)`.
 - The ledger is your recovery map: the commits it names exist in git even
   when your context no longer remembers creating them. After compaction,
   trust the ledger and `git log` over your own recollection.
 - `git clean -fdx` will destroy the workspace (it's git-ignored scratch); if
   that happens, recover from `git log`.
 
-Read the plan once, note its context and Global Constraints, and create a
-todo per task. If the plan names a Spec, read that too: the spec is the
-authority the plan argues from, and conflicts inside the plan resolve
-against it. A plan with no reachable spec gets a ledger note saying so —
-rulings made without one are provisional.
+Read the WRK-PLAN once — *Approach*, *Task Breakdown*, *Architecture
+Impact* — and create a todo per row of Task Breakdown, in table order,
+keyed by WRK-TASK ID. Read the WRK-SPEC it `implements` (its `parent`):
+the spec is the authority the plan argues from, and conflicts inside the
+plan resolve against it; the activated specs are the constraints both
+must respect. Do not read the task files yourself — `task-brief` hands
+each one to its implementer. A plan whose spec is not `active`, or whose
+tasks are not `active`, gets a ledger note and a ruling before you start.
 
 Before dispatching Task 1, scan the plan once for conflicts, writing down
 what you checked as you check it:
 
-- tasks that contradict each other or the plan's Global Constraints
+- tasks that contradict each other or the plan's Architecture Impact
 - anything the plan explicitly mandates that the review rubric treats as a
   defect (a test that asserts nothing, verbatim duplication of a logic block)
+- each task's `activates` against the WRK-SPEC's set — a task activating
+  outside it is a plan defect to rule on
+- each Architecture Impact row against the current text of its source
+  spec (open the file; compare version to the pin) — drift found here is a
+  `Knowledge gap:` before any implementer sees it
 
 The scan's output is a table, not a verdict. One row for every pair of tasks
 that share a file or an interface: the two tasks, what one produces against
 what the other consumes, and what you found. One row for every task: whether
 its own text agrees with itself — the tests it specifies against the code it
-specifies, the files it creates against the files it later touches. "The scan
-is clean" without those rows is not a scan you ran.
+specifies, the files it creates against the files it later touches. One row
+for every task: its activations against the spec's set, and its constraints
+against the current spec text. "The scan is clean" without those rows is not
+a scan you ran.
 
 Write the table to the ledger. Rule on everything you find before execution
 begins — each finding against the plan text that mandates it — and record
@@ -249,19 +266,22 @@ Record BASE (`git rev-parse HEAD`) before dispatching — the review package
 and fix-round diffs need it.
 
 - **Task brief:** before dispatching an implementer, run this skill's
-  `scripts/task-brief PLAN_FILE N` — it extracts the task's full text to a
-  uniquely named file and prints the path. Compose the dispatch so the
-  brief stays the single source of
-  requirements. Your dispatch should contain: (1) one line on where this
-  task fits in the project; (2) the brief path, introduced as "read this
-  first — it is your requirements, with the exact values to use verbatim";
-  (3) interfaces and decisions from earlier tasks that the brief cannot
-  know; (4) your resolution of any ambiguity you noticed in the brief;
-  (5) the report-file path and report contract. Exact values (numbers,
-  magic strings, signatures, test cases) appear only in the brief. Never
-  make a subagent read the whole plan file.
+  `scripts/task-brief TASK_FILE` (the WRK-TASK file from Task Breakdown) —
+  it writes `<workspace>/<WRK-TASK-ID>-brief.md` and prints the path. The
+  brief is deterministic: (1) the full task, (2) the plan's Architecture
+  Impact, (3) every activated/equipped spec in full with a **PIN DRIFT**
+  header when the pinned version differs from the file, (4) the FRAGs the
+  task cites. Compose the dispatch so the brief stays the single source of
+  requirements: (a) one line on where this task fits; (b) the brief path,
+  introduced as "read this first — it is your requirements, with the exact
+  values to use verbatim; sections 2–4 bind you"; (c) interfaces and
+  decisions from earlier tasks that the brief cannot know; (d) your
+  resolution of any ambiguity you noticed; (e) the report-file path and
+  report contract. Never make a subagent read the whole plan or the spec.
+  If the brief shows PIN DRIFT, ledger it now as `Knowledge gap:` and tell
+  the implementer which text it is actually reading.
 - **Report file:** name the implementer's report file after the brief
-  (brief `…/task-N-brief.md` → report `…/task-N-report.md`) and put it in
+  (brief `…/<WRK-TASK-ID>-brief.md` → report `…/<WRK-TASK-ID>-report.md`) and put it in
   the dispatch prompt. The implementer writes the full report there and
   returns only status, commits, a one-line test summary, and concerns.
 - A dispatch prompt describes one task, not the session's history. Do not
@@ -301,6 +321,11 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 
 **Never** ignore an escalation or force the same model to retry without changes. If the implementer said it's stuck, something needs to change.
 
+**Knowledge notes** in any report (rules the code contradicted, behaviour
+no spec documents) go to the ledger: contradictions as `Knowledge gap:`,
+undocumented behaviour as `Capture candidate: <anchor> — <one line>`.
+They never widen the activation and never block the review.
+
 If the implementer asks questions — before starting or mid-task — answer
 clearly and completely, provide additional context if needed, and don't
 rush it into implementation.
@@ -323,15 +348,24 @@ needed.
   never `HEAD~1`, which silently truncates multi-commit tasks. Never
   dispatch a task reviewer without a diff file.
 - **Reviewer inputs:** the task reviewer gets three paths — the same brief
-  file, the report file, and the review package — plus the global
-  constraints that bind the task.
-- The global-constraints block you hand the reviewer is its attention
-  lens. Copy the binding requirements verbatim from the plan's Global
-  Constraints section or the spec: exact values, exact formats, and the
-  stated relationships between components ("same layout as X", "matches
-  Y"). The reviewer's template already carries the process rules (YAGNI,
-  test hygiene, review method) — the constraints block is for what THIS
-  project's spec demands.
+  file (task + Architecture Impact + activated specs + FRAGs), the report
+  file, and the review package. The brief's sections 2–4 are the
+  reviewer's attention lens: exact values, exact rules, stated
+  relationships. Do not paste them again; do not summarize them.
+- The reviewer returns **three verdicts**: spec compliance, **knowledge
+  compliance** (the diff violates no rule of an activated spec and no
+  FRAG-observed behaviour the task cites — a violation is blocking), and
+  quality. Its knowledge section applies **gate A3**: for every activated
+  rule the diff touches, it names the test that guards it or gives a
+  concrete input that would violate it undetected. A named counterexample
+  without a test is a Critical finding (missing test), not an opinion.
+- **Gate A4 — break the tests (conditional):** when the task activates a
+  `CALC-*`, a numeric or business rule, or is security-sensitive, dispatch
+  [test-adversary-prompt.md](test-adversary-prompt.md) after a clean A3
+  and before completing the task. A `BROKEN` row means the tests admit an
+  implementation that violates the task or a rule: it enters the fix loop
+  as a Critical finding ("tests insufficient: <scenario>"). Ledger every
+  row's ruling (`Attack: … — Ruling: …`).
 - Do not add open-ended directives like "check all uses" or "run race tests
   if useful" without a concrete, task-specific reason
 - Do not ask a reviewer to re-run tests the implementer already ran on the
@@ -353,8 +387,9 @@ Template: [task-reviewer-prompt.md](task-reviewer-prompt.md)
 
 ### 4. The fix loop
 
-The loop triggers when the review reports spec ❌, any Critical or Important
-finding, or a ⚠️ item you confirmed as a real gap.
+The loop triggers when the review reports spec ❌ or knowledge ❌, any
+Critical or Important finding, a BROKEN A4 attack, or a ⚠️ item you
+confirmed as a real gap.
 
 Before the loop starts, two routes leave it immediately:
 
@@ -438,6 +473,11 @@ message as your other bookkeeping:
 - `Task <N>: complete (commits <base7>..<head7>, <K> parked)` after a
   tripped breaker
 
+Then transition the WRK-TASK: set `status: completed` and `updated:
+<today>` in its frontmatter, run `<kdd-cli> --specs specs validate`, and
+commit it (`chore(<WRK-TASK-ID>): complete`). A task whose file still says
+`active` is not complete, whatever the ledger says.
+
 Then mark the todo complete and move on. Never move to the next task while
 the review has open Critical/Important issues that are neither fixed nor
 parked-with-ruling at the cap.
@@ -454,6 +494,19 @@ kdd-superpowers:requesting-code-review's
 [code-reviewer.md](../requesting-code-review/code-reviewer.md). Point it at
 the ledger's deferred-minor and parked lines so it can triage which must be
 fixed before merge.
+
+The final review also gets the review brief: run
+`../requesting-code-review/scripts/review-brief PLAN_FILE` and pass the
+printed path. Its mandate includes **Gate A5 — acceptance attack**: for
+every acceptance criterion of the WRK-SPEC, a scenario that would fail it,
+executed where possible, reported as an attack table. Adjudicate BROKEN
+rows like task findings (one fix wave, one scoped re-review).
+
+When the final review is clean, transition the WRK-PLAN to
+`status: completed` (+ `updated`), validate, commit
+(`chore(<WRK-PLAN-ID>): complete`), delete this plan's workspace, and hand
+over to kdd-superpowers:finishing-a-development-branch. The WRK-SPEC stays
+`active` — finishing closes it.
 
 If the final whole-branch review returns findings, dispatch ONE fix subagent
 with the complete findings list — not one fixer per finding.
@@ -506,17 +559,17 @@ Use kdd-superpowers:finishing-a-development-branch.
 You: I'm using Subagent-Driven Development to execute this plan.
 
 [Setup: worktree verified]
-[Read plan file once: specs/work/feature-plan.md]
-[Resolve workspace: scripts/sdd-workspace specs/work/feature-plan.md — no ledger inside, fresh start]
+[Read plan file once: specs/work/WRK-PLAN-AUTH-HOOKS-001-hook-installation.md]
+[Resolve workspace: scripts/sdd-workspace specs/work/WRK-PLAN-AUTH-HOOKS-001-hook-installation.md — no ledger inside, fresh start]
 [Create todos for all tasks]
 
-Task 1: Hook installation script
+WRK-TASK-AUTH-HOOKS-001-001: Hook installation script
 
-[Run task-brief for Task 1; dispatch implementer with brief + report paths + context]
+[Run task-brief specs/work/WRK-TASK-AUTH-HOOKS-001-001-hook-installation-script.md; dispatch implementer with brief + report paths + context]
 
 Implementer: "Before I begin - should the hook be installed at user or system level?"
 
-You: "User level (~/.config/superpowers/hooks/)"
+You: "User level (~/.config/<app>/hooks/)"
 
 Implementer: [Later]
   - Implemented install-hook command

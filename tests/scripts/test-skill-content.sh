@@ -67,4 +67,22 @@ must_contain skills/writing-plans/SKILL.md ".kdd/sdd/" "workspace path named"
 must_not_contain skills/writing-plans/SKILL.md "Global Constraints" "no Global Constraints header left"
 must_contain skills/writing-plans/plan-adversary-prompt.md "| Attack | Scenario | Result | Evidence |" "A2 prompt uses the attack table"
 
+# --- subagent-driven-development (Task 013) ---
+must_contain skills/subagent-driven-development/SKILL.md "scripts/task-brief TASK_FILE" "task-brief takes a WRK-TASK file"
+must_contain skills/subagent-driven-development/SKILL.md ".kdd/sdd/<WRK-PLAN-ID>/" "workspace keyed by plan id"
+must_contain skills/subagent-driven-development/SKILL.md "Knowledge gap:" "knowledge-gap rulings"
+must_contain skills/subagent-driven-development/SKILL.md "PIN DRIFT" "pin drift handled"
+must_contain skills/subagent-driven-development/SKILL.md "status: completed" "task completion transition"
+must_contain skills/subagent-driven-development/SKILL.md "test-adversary-prompt.md" "gate A4 wired"
+must_contain skills/subagent-driven-development/SKILL.md "Gate A5" "gate A5 in final review"
+must_not_contain skills/subagent-driven-development/SKILL.md "Global Constraints" "no Global Constraints left"
+must_contain skills/subagent-driven-development/implementer-prompt.md "their rules are requirements" "implementer treats knowledge as requirements"
+must_contain skills/subagent-driven-development/implementer-prompt.md "Knowledge notes" "implementer reports knowledge notes"
+must_contain skills/subagent-driven-development/task-reviewer-prompt.md "## Part 2: Knowledge Compliance" "reviewer has knowledge compliance part"
+must_contain skills/subagent-driven-development/task-reviewer-prompt.md "### Knowledge Compliance" "reviewer outputs knowledge verdict"
+must_contain skills/subagent-driven-development/task-reviewer-prompt.md "### Capture Candidates" "reviewer outputs capture candidates"
+must_contain skills/subagent-driven-development/task-reviewer-prompt.md "test that guards it" "gate A3 contract"
+must_not_contain skills/subagent-driven-development/task-reviewer-prompt.md "[GLOBAL_CONSTRAINTS]" "no global-constraints placeholder"
+must_contain skills/subagent-driven-development/test-adversary-prompt.md "| Attack | Scenario | Result | Evidence |" "A4 prompt uses the attack table"
+
 finish

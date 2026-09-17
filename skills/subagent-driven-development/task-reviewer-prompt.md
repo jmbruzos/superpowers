@@ -13,17 +13,20 @@ Subagent (general-purpose):
   model: [MODEL — REQUIRED: choose per SKILL.md Model Selection; an omitted
          model silently inherits the session's most expensive one]
   prompt: |
-    You are reviewing one task's implementation: first whether it matches its
-    requirements, then whether it is well-built. This is a task-scoped gate,
-    not a merge review — a broad whole-branch review happens separately after
-    all tasks are complete.
+    You are reviewing one task's implementation: whether it matches its
+    requirements, whether it respects the knowledge that binds it, and
+    whether it is well-built. This is a task-scoped gate, not a merge review
+    — a broad whole-branch review happens separately after all tasks are
+    complete.
 
     ## What Was Requested
 
     Read the task brief: [BRIEF_FILE]
 
-    Global constraints from the spec/design that bind this task:
-    [GLOBAL_CONSTRAINTS]
+    The brief's section 2 (Architecture Impact), section 3 (activated
+    specs) and section 4 (cited fragments) are the constraints that bind
+    this task. They are your attention lens: exact values, exact rules,
+    stated relationships.
 
     ## What the Implementer Claims They Built
 
@@ -112,7 +115,29 @@ Subagent (general-purpose):
     unchanged code or spans tasks), report it as a ⚠️ item instead of
     broadening your search.
 
-    ## Part 2: Code Quality
+    ## Part 2: Knowledge Compliance
+
+    Compare the diff against the activated specs and cited fragments in the
+    brief:
+
+    - **Rule violated:** a change that contradicts a rule of an activated
+      spec (quote the rule with its ID and number) or a FRAG-observed
+      behaviour the task relies on (quote the anchor). Always Critical.
+    - **Rule → test or counterexample (gate A3):** for every activated rule
+      the diff touches, either name the test that guards it in the diff
+      (file, test name, the assertion), or give one concrete input for
+      which the code would violate the rule with no test noticing. A
+      counterexample without a guarding test is a Critical finding: "missing
+      test for <rule>: <input>".
+    - **Knowledge findings:** rules the surrounding code already
+      contradicted *before* this diff (not the implementer's fault; the
+      controller records a Knowledge gap).
+    - **Capture candidates:** behaviour you observed in the code that no
+      activated spec documents and this task touches. Each one anchored:
+      `path:start-end@sha` plus the literal line, so the controller can write
+      a fragment without re-exploring. You do not write fragments.
+
+    ## Part 3: Code Quality
 
     **Code quality:**
     - Clean separation of concerns?
@@ -168,6 +193,17 @@ Subagent (general-purpose):
       diff alone, and what the controller should check — report alongside the
       ✅/❌ verdict for everything you could verify]
 
+    ### Knowledge Compliance
+
+    - ✅ No activated rule violated | ❌ Violated: [rule ID + number, file:line]
+    - Rules touched → guard: [rule → test name, or → counterexample input]
+
+    ### Knowledge Findings
+    [pre-existing contradictions, or "none"]
+
+    ### Capture Candidates
+    [- `path:start-end@sha`: `literal` — what it embodies; or "none"]
+
     ### Strengths
     [What's well done? Be specific.]
 
@@ -189,12 +225,8 @@ Subagent (general-purpose):
 
 **Placeholders:**
 - `[MODEL]` — REQUIRED: reviewer model per SKILL.md Model Selection
-- `[BRIEF_FILE]` — REQUIRED: the task brief file (`scripts/task-brief PLAN N`
+- `[BRIEF_FILE]` — REQUIRED: the task brief file (`scripts/task-brief TASK_FILE`
   prints the path; same file the implementer worked from)
-- `[GLOBAL_CONSTRAINTS]` — the binding requirements copied verbatim from
-  the plan's Global Constraints section or the spec: exact values, formats,
-  and stated relationships between components (not process rules — those
-  are already in this template)
 - `[REPORT_FILE]` — REQUIRED: the file the implementer wrote its detailed
   report to
 - `[BASE_SHA]` — commit before this task
@@ -203,5 +235,7 @@ Subagent (general-purpose):
   package to (`scripts/review-package PLAN_FILE BASE HEAD` prints the unique
   path it wrote; the package never enters the controller's context)
 
-**Reviewer returns:** Spec Compliance verdict (✅/❌/⚠️), Strengths, Issues
-(Critical/Important/Minor), Task quality verdict
+**Reviewer returns:** Spec Compliance verdict (✅/❌/⚠️), Knowledge Compliance
+verdict (✅/❌) with rule→guard lines, Knowledge Findings, Capture
+Candidates, Strengths, Issues (Critical/Important/Minor), Task quality
+verdict
