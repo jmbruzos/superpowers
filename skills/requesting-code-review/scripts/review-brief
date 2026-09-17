@@ -1,0 +1,54 @@
+#!/usr/bin/env node
+// review-brief — write the spec/plan-level review brief for a piece of KDD work.
+//
+// Usage: review-brief SPEC_OR_PLAN_FILE [OUTFILE]
+// Default OUTFILE: <sdd-workspace of the plan (or of the spec when no plan exists)>/review-brief.md
+// Prints: wrote <path>: <N> lines
+// Exit 2 usage · 3 kdd toolkit not found · 4 spec not found in the graph
+import { execFileSync } from 'node:child_process';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { dirname, resolve, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseFrontmatter, scalarField, loadNodes, findNode, buildReviewBrief } from '../../kdd-conventions/scripts/brief-lib.mjs';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const [fileArg, outArg] = process.argv.slice(2);
+if (!fileArg || process.argv.length > 4) { console.error('usage: review-brief SPEC_OR_PLAN_FILE [OUTFILE]'); process.exit(2); }
+
+let text;
+try { text = readFileSync(fileArg, 'utf8'); } catch { console.error(`no such file: ${fileArg}`); process.exit(2); }
+const { fm } = parseFrontmatter(text);
+const id = scalarField(fm, 'id');
+const layer = scalarField(fm, 'layer');
+if (!id || !layer) { console.error(`no frontmatter id/layer in ${fileArg}`); process.exit(2); }
+
+const abs = resolve(fileArg);
+let specsDir = dirname(abs);
+for (let d = dirname(abs); d !== dirname(d); d = dirname(d)) if (d.endsWith('/specs')) { specsDir = d; break; }
+
+let cli;
+try { cli = execFileSync(join(here, '../../using-superpowers/scripts/kdd-cli'), ['--path'], { encoding: 'utf8' }).trim(); }
+catch { console.error('kdd toolkit not found: install the kdd plugin or set KDD_SPEC_GRAPH'); process.exit(3); }
+
+const nodes = loadNodes(cli, specsDir);
+let specNode, planNode;
+if (layer === 'work-plan') {
+  planNode = findNode(nodes, id);
+  specNode = findNode(nodes, scalarField(fm, 'parent') || '');
+} else {
+  specNode = findNode(nodes, id);
+  planNode = nodes.find((n) => n.layer === 'work-plan' && n.parent === id) || null;
+}
+if (!specNode) { console.error(`WRK-SPEC not found in the graph for ${fileArg}`); process.exit(4); }
+const specText = readFileSync(specNode.file, 'utf8');
+
+let outPath;
+if (outArg) outPath = resolve(outArg);
+else {
+  const ws = execFileSync(join(here, '../../subagent-driven-development/scripts/sdd-workspace'), [planNode ? planNode.file : specNode.file], { encoding: 'utf8' }).trim();
+  outPath = join(ws, 'review-brief.md');
+}
+mkdirSync(dirname(outPath), { recursive: true });
+const brief = buildReviewBrief({ nodes, specNode, specText, planNode });
+writeFileSync(outPath, brief);
+console.log(`wrote ${outPath}: ${brief.split('\n').length} lines`);
