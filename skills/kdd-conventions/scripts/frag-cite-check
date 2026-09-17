@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Verify the anchors of a code-derived FRAG (WRK-SPEC-FORK-CORE-001, P12 rules 1 and 4).
+#
+# Usage: frag-cite-check FRAG-DIR        (run from the repository root)
+# Reads every file listed under `files:` in the FRAG's frontmatter, finds anchor lines
+#   - `<path>:<start>-<end>@<sha>`: `<literal>`
+# and checks the literal occurs (fixed string) inside that line range of the file as it was
+# at <sha> (git show), falling back to the working tree when the object is unknown.
+# Exit 0: "verified N anchors". Exit 1: one "FAIL <anchor>: <reason>" per broken anchor, or
+# "FAIL: no anchors found". Exit 2: usage.
+set -uo pipefail
+
+[[ $# -eq 1 && -d "$1" ]] || { echo "usage: frag-cite-check FRAG-DIR" >&2; exit 2; }
+dir="$1"
+fm="$(ls "$dir"/FRAG-*.md 2>/dev/null | head -1)"
+[[ -n "$fm" ]] || { echo "no FRAG-*.md in $dir" >&2; exit 2; }
+
+# files[] from the frontmatter: lines "  - name" between "files:" and the next top-level key
+mapfile -t files < <(awk '/^files:/{f=1;next} f&&/^[^ ]/{f=0} f&&/^ *- /{sub(/^ *- */,"");print}' "$fm")
+[[ ${#files[@]} -gt 0 ]] || files=("$(basename "$fm")")
+
+fails=0; count=0
+re='^- `([^`:]+):([0-9]+)-([0-9]+)@([0-9a-fA-F]{7,40})`: `([^`]*)`'
+for f in "${files[@]}"; do
+  [[ -f "$dir/$f" ]] || continue
+  while IFS= read -r line; do
+    [[ "$line" =~ $re ]] || continue
+    path="${BASH_REMATCH[1]}"; s="${BASH_REMATCH[2]}"; e="${BASH_REMATCH[3]}"; sha="${BASH_REMATCH[4]}"; lit="${BASH_REMATCH[5]}"
+    count=$((count + 1)); anchor="$path:$s-$e@$sha"
+    if git cat-file -e "$sha:$path" 2>/dev/null; then
+      content="$(git show "$sha:$path")"
+    elif [[ -f "$path" ]]; then
+      content="$(cat "$path")"
+    else
+      echo "FAIL $anchor: no such file (neither at $sha nor in the working tree)"; fails=$((fails + 1)); continue
+    fi
+    if printf '%s\n' "$content" | sed -n "${s},${e}p" | grep -qF -- "$lit"; then :; else
+      echo "FAIL $anchor: literal not found in lines $s-$e"; fails=$((fails + 1))
+    fi
+  done < "$dir/$f"
+done
+
+if [[ "$count" -eq 0 ]]; then echo "FAIL: no anchors found (a FRAG without anchored claims is not evidence)"; exit 1; fi
+if [[ "$fails" -ne 0 ]]; then echo "$fails of $count anchors failed"; exit 1; fi
+echo "verified $count anchors"
