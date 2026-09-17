@@ -1,20 +1,12 @@
 {
-  "name": "superpowers",
-  "description": "Core skills library for Claude Code: TDD, debugging, collaboration patterns, and proven techniques",
-  "version": "6.3.0",
+  "name": "kdd-superpowers",
+  "description": "Knowledge-Driven Development workflow for Claude Code: superpowers' brainstorm → plan → subagent execution → review → finish discipline, producing KDD work artifacts with frozen knowledge activation, brownfield capture and consolidation. Requires the kdd toolkit plugin.",
+  "version": "0.1.0",
   "author": {
-    "name": "Jesse Vincent",
-    "email": "jesse@fsck.com"
+    "name": "NFQ Advisory"
   },
-  "homepage": "https://github.com/obra/superpowers",
-  "repository": "https://github.com/obra/superpowers",
+  "homepage": "https://github.com/jmbruzos/superpowers",
+  "repository": "https://github.com/jmbruzos/superpowers",
   "license": "MIT",
-  "keywords": [
-    "skills",
-    "tdd",
-    "debugging",
-    "collaboration",
-    "best-practices",
-    "workflows"
-  ]
+  "keywords": ["kdd", "knowledge-driven-development", "skills", "tdd", "workflows", "specs"]
 }

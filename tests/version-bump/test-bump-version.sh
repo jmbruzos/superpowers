@@ -52,11 +52,17 @@ make_fixture "$happy_repo" $'name: superpowers\nversion: 1.2.3'
 [[ "$(yq -r '.version' "$happy_repo/.hermes-plugin/plugin.yaml")" == "2.3.4" ]] \
   || fail "YAML manifest was not bumped"
 
-jq -e '
-  any(.files[];
-    .path == ".hermes-plugin/plugin.yaml" and .field == "version")
-' "$REPO_ROOT/.version-bump.json" >/dev/null \
-  || fail "Hermes manifest is not registered"
+for entry in \
+  'package.json|version' \
+  '.claude-plugin/plugin.json|version' \
+  '.claude-plugin/marketplace.json|plugins.0.version'; do
+  path="${entry%%|*}"
+  field="${entry##*|}"
+  jq -e --arg path "$path" --arg field "$field" '
+    any(.files[]; .path == $path and .field == $field)
+  ' "$REPO_ROOT/.version-bump.json" >/dev/null \
+    || fail "$path manifest is not registered"
+done
 
 invalid_repo="$TEST_ROOT/invalid"
 make_fixture "$invalid_repo" $'name: superpowers\nversion: 123'
