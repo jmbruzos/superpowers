@@ -31,7 +31,20 @@ export function listField(fm, key) {
 export function sourceIds(fm) {
   const block = /^sources:[ \t]*\r?\n((?:[ \t]+[^\n]*\r?\n?)+)/m.exec(fm);
   if (!block) return [];
-  return [...block[1].matchAll(/^[ \t]+-[ \t]+id:[ \t]*([^\s]+)/gm)].map((m) => m[1]);
+  const lines = block[1].split(/\r?\n/);
+  const items = [];
+  for (const line of lines) {
+    if (/^[ \t]+-[ \t]/.test(line)) items.push([line]);
+    else if (items.length) items[items.length - 1].push(line);
+  }
+  const ids = [];
+  for (const item of items) {
+    for (const line of item) {
+      const m = /^[ \t]*(?:-[ \t]+)?id:[ \t]*(\S+)/.exec(line);
+      if (m) { ids.push(m[1]); break; }
+    }
+  }
+  return ids;
 }
 
 /** `ID@version` → {id, version}; a bare ID has version null. */

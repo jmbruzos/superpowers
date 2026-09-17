@@ -27,6 +27,17 @@ path2="$(printf '%s\n' "$out2" | sed -n 's/^wrote \(.*\): [0-9][0-9]* lines$/\1/
 b2="$(cat "$path2" 2>/dev/null)"
 [[ "$b2" == *"**PIN DRIFT:** pinned 0.9.0, file is 1.0.0"* ]] && pass "PIN DRIFT header on version mismatch" || { fail "PIN DRIFT header on version mismatch"; }
 
+# sources entry with id as a later key, not the first
+task3="$repo/specs/work/WRK-TASK-BILL-PRORATA-001-003-prorata-calculation.md"
+sed -e 's/^id: WRK-TASK-BILL-PRORATA-001-001$/id: WRK-TASK-BILL-PRORATA-001-003/' \
+    -e 's/^  - id: FRAG-BILL-ROUNDING-001$/  - resource: specs\/_capture\/FRAG-BILL-ROUNDING-001-half-up-rounding\//' \
+    -e 's/^    resource: specs\/_capture\/FRAG-BILL-ROUNDING-001-half-up-rounding\/$/    id: FRAG-BILL-ROUNDING-001/' \
+    "$repo/specs/work/WRK-TASK-BILL-PRORATA-001-001-prorata-calculation.md" > "$task3"
+out4="$(cd "$repo" && "$TASK_BRIEF" specs/work/WRK-TASK-BILL-PRORATA-001-003-prorata-calculation.md)"
+path4="$(printf '%s\n' "$out4" | sed -n 's/^wrote \(.*\): [0-9][0-9]* lines$/\1/p')"
+b4="$(cat "$path4" 2>/dev/null)"
+[[ "$b4" == *"### FRAG-BILL-ROUNDING-001"* ]] && pass "sources id is found when it is not the first key" || fail "sources id is found when it is not the first key"
+
 # explicit OUTFILE
 out3="$(cd "$repo" && "$TASK_BRIEF" specs/work/WRK-TASK-BILL-PRORATA-001-001-prorata-calculation.md "$repo/explicit-brief.md")"
 [[ -s "$repo/explicit-brief.md" && "$out3" == *"$repo/explicit-brief.md"* ]] && pass "honours explicit OUTFILE" || fail "honours explicit OUTFILE"
