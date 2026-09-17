@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+# Allocate the next free KDD identifier for a semantic path.
+#
+# Usage: next-id [--specs DIR] [--prefer NNN] TYPE-PATH
+#   TYPE-PATH  e.g. WRK-SPEC-RISK-VAR-ENGINE, DOM-RISK-VAR, WRK-TASK-RISK-VAR-ENGINE-001
+#   --specs    directory to scan for `id:` lines (default ./specs)
+#   --prefer   use NNN if it is free (a plan prefers its spec's number), else the next free
+# Prints TYPE-PATH-NNN. Exit 2 on a malformed path.
+#
+# Grammar (WRK-SPEC-FORK-CORE-001, Identifiers): uppercase segments [A-Z0-9]+ joined by '-',
+# at least one semantic segment after the type prefix, number LAST — so the path must not
+# already end in -NNN, except for WRK-TASK paths, whose last segment is the parent plan number.
+set -euo pipefail
+
+specs="./specs"; prefer=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --specs) specs="$2"; shift 2 ;;
+    --prefer) prefer="$2"; shift 2 ;;
+    -*) echo "unknown option: $1" >&2; exit 2 ;;
+    *) break ;;
+  esac
+done
+[[ $# -eq 1 ]] || { echo "usage: next-id [--specs DIR] [--prefer NNN] TYPE-PATH" >&2; exit 2; }
+path="$1"
+
+[[ "$path" =~ ^[A-Z]+(-[A-Z0-9]+)+$ ]] || { echo "malformed path: $path (expected UPPER segments, e.g. WRK-SPEC-AREA-CONCEPT)" >&2; exit 2; }
+if [[ "$path" =~ -[0-9]{3}$ && ! "$path" =~ ^WRK-TASK- ]]; then
+  echo "path already ends in a number: $path (pass the semantic path, not an ID)" >&2; exit 2
+fi
+# WRK-SPEC-X: the prefix is two segments; require at least one semantic segment after it.
+case "$path" in
+  WRK-SPEC|WRK-PLAN|WRK-TASK) echo "missing semantic segment: $path" >&2; exit 2 ;;
+esac
+
+max=0
+if [[ -d "$specs" ]]; then
+  while IFS= read -r n; do
+    n=$((10#$n)); (( n > max )) && max=$n
+  done < <(grep -rhoE "^id:[[:space:]]*${path}-[0-9]{3}[[:space:]]*$" "$specs" --include='*.md' 2>/dev/null \
+           | sed -E 's/.*-([0-9]{3})[[:space:]]*$/\1/')
+fi
+
+taken() { grep -rqE "^id:[[:space:]]*${path}-$(printf '%03d' "$1")[[:space:]]*$" "$specs" --include='*.md' 2>/dev/null; }
+
+if [[ -n "$prefer" ]]; then
+  p=$((10#$prefer))
+  if ! taken "$p"; then printf '%s-%03d\n' "$path" "$p"; exit 0; fi
+fi
+printf '%s-%03d\n' "$path" "$((max + 1))"
