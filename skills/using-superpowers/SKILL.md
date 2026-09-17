@@ -29,6 +29,24 @@ When multiple skills apply, process skills come first — they set the approach,
 
 - "Let's build X" → kdd-superpowers:brainstorming first, then implementation skills.
 - "Fix this bug" → kdd-superpowers:systematic-debugging first, then domain skills.
+- "Write a domain / architecture / product spec for X" → the Knowledge axis belongs to the toolkit: `kdd:spec-create` or the `kdd-spec-assistant` agent. Never brainstorming.
+- "Build / change / add X" → the Work axis: kdd-superpowers:brainstorming, which produces the WRK-SPEC and freezes its knowledge activation.
+- `kdd:*` skills are not invoked directly for steps of the workflow (discovery, activation, consolidation) — the workflow skills invoke them where the flow says so. Two parallel paths to the same artifact is how activations stop being auditable.
+
+## Your KDD Environment
+
+The session bootstrap ends with a `<KDD-ENVIRONMENT>` block: four lines
+computed from the project at session start. Read it before your first
+workflow skill and act on it — once, not every turn.
+
+| Line | Value | What you do |
+|------|-------|-------------|
+| `toolkit:` | `NOT FOUND` | When `toolkit: NOT FOUND`: before brainstorming, writing-plans, subagent-driven-development, executing-plans or finishing-a-development-branch, tell your human partner the `kdd` toolkit plugin is required (`/plugin install kdd` from the KDD marketplace, or `KDD_SPEC_GRAPH=/path/to/spec-graph.mjs`) and stop there. Skills that do not touch the graph (test-driven-development, systematic-debugging, using-git-worktrees, requesting-code-review in brownfield mode) keep working. |
+| `specs_dir:` | `NONE` | Say once that `specs/work/` will be created with the first WRK-SPEC and that, with no knowledge base, activation will be `[]` and knowledge will be captured from the code (kdd-superpowers:kdd-conventions, *capturing-from-code*). Do not ask whether to "use KDD" — there is no other mode. |
+| `open_work:` | one or more entries | If the request fits an open WRK-SPEC, offer to resume it — read the WRK-SPEC, its WRK-PLAN and the ledger under `.kdd/sdd/<WRK-PLAN-ID>/` — before starting new work. A `completed` entry is work pending consolidation: mention it. |
+| `okf_bundles:` | one or more directories | Mention once that OKF bundles must be imported before their concepts can be activated, and offer `kdd:spec-graph import-okf --dry-run` against each directory (e.g. `kdd:spec-graph import-okf <dir> --dry-run`). Never activate a raw OKF concept. |
+
+When every line is the quiet value (`toolkit:` found, `specs_dir:` present, `open_work: none`, `okf_bundles: none`) say nothing about it.
 
 ## Red Flags
 
@@ -48,15 +66,7 @@ These thoughts mean STOP—you're rationalizing:
 | "I'll just do this one thing first" | Check BEFORE doing anything. |
 | "This feels productive" | Undisciplined action wastes time. Skills prevent this. |
 | "I know what that means" | Knowing the concept ≠ using the skill. Invoke it. |
-
-## Platform Adaptation
-
-If your harness appears here, read its reference file for special instructions:
-
-- Codex: `references/codex-tools.md`
-- Pi: `references/pi-tools.md`
-- Antigravity: `references/antigravity-tools.md`
-- Hermes Agent: `references/hermes-tools.md`
+| "I already know which specs apply, no need to activate" | Activation is an auditable record, not your memory. Consult it — and freeze it in the WRK-SPEC. |
 
 ## User Instructions
 

@@ -31,5 +31,13 @@ must_contain skills/kdd-conventions/references/adversarial-gates.md "| Attack | 
 must_contain skills/kdd-conventions/references/adversarial-gates.md "Attack: " "ledger line format"
 must_contain skills/kdd-conventions/references/adversarial-gates.md "A6" "gates A1–A6 listed"
 # --- later tasks append below this line ---
+# --- using-superpowers (Task 010) ---
+must_contain skills/using-superpowers/SKILL.md "## Your KDD Environment" "KDD environment section"
+must_contain skills/using-superpowers/SKILL.md "toolkit: NOT FOUND" "handles missing toolkit"
+must_contain skills/using-superpowers/SKILL.md "kdd:spec-graph import-okf --dry-run" "offers OKF import"
+must_contain skills/using-superpowers/SKILL.md "kdd:spec-create" "routes knowledge specs to the toolkit"
+must_contain skills/using-superpowers/SKILL.md "Activation is an auditable record" "activation red flag"
+must_not_contain skills/using-superpowers/SKILL.md "## Platform Adaptation" "platform adaptation removed"
+must_not_contain skills/using-superpowers/SKILL.md "references/codex-tools.md" "no dangling reference links"
 
 finish
