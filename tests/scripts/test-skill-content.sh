@@ -94,4 +94,10 @@ must_contain skills/executing-plans/SKILL.md "Knowledge gap:" "executing-plans l
 must_contain skills/executing-plans/SKILL.md "status: completed" "executing-plans completes tasks"
 must_contain skills/executing-plans/SKILL.md ".kdd/sdd/<WRK-PLAN-ID>/progress.md" "executing-plans ledger path"
 
+# --- verification-before-completion (Task 017) ---
+must_contain skills/verification-before-completion/SKILL.md "spec-graph validate" "validate as evidence"
+must_contain skills/verification-before-completion/SKILL.md "frag-cite-check" "cite-check as evidence"
+must_contain skills/verification-before-completion/SKILL.md "export-okf" "OKF export as evidence"
+must_contain skills/verification-before-completion/SKILL.md "the file with its version is what counts" "spec red flag"
+
 finish

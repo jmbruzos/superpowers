@@ -46,6 +46,12 @@ Skip any step = lying, not verifying
 | Regression test works | Red-green cycle verified | Test passes once |
 | Agent completed | VCS diff shows changes | Agent reports "success" |
 | Requirements met | Line-by-line checklist | Tests passing |
+| WRK-SPEC/PLAN/TASK written | `spec-graph validate` output: 0 errors, read | "It follows the template" |
+| Activated rules honoured | Brief without PIN DRIFT + reviewer's Knowledge Compliance ✅ with rule→test or counterexample (A3) | "I wrote it while reading the DOM" |
+| FRAG faithful to the code | `frag-cite-check <dir>`: `verified N anchors` | "I just looked at it" |
+| OKF-conformant | `export-okf` exit 0 on the current specs dir | "The frontmatter is valid" |
+| Work closed | `status: completed` in spec, plan and every task **and** validate green | Tests green |
+| Nothing to consolidate | Execution Log read: 0 `Knowledge gap:`, 0 capture candidates | "I don't remember anything relevant" |
 
 ## Red Flags - STOP
 
@@ -57,6 +63,7 @@ Skip any step = lying, not verifying
 - Thinking "just this once"
 - Tired and wanting work over
 - **ANY wording implying success without having run verification**
+- "I wrote the spec, I know what it says" — the file with its version is what counts; read it
 
 ## Rationalization Prevention
 
