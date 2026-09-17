@@ -88,4 +88,10 @@ must_contain skills/subagent-driven-development/SKILL.md "any of the three verdi
 must_contain skills/subagent-driven-development/task-reviewer-prompt.md "returns three verdicts" "reviewer summary names three verdicts"
 must_not_contain skills/subagent-driven-development/SKILL.md "the global constraints" "no lowercase global-constraints leftover"
 
+# --- executing-plans (Task 014) ---
+must_contain skills/executing-plans/SKILL.md "scripts/task-brief" "executing-plans uses task-brief"
+must_contain skills/executing-plans/SKILL.md "Knowledge gap:" "executing-plans ledgers knowledge gaps"
+must_contain skills/executing-plans/SKILL.md "status: completed" "executing-plans completes tasks"
+must_contain skills/executing-plans/SKILL.md ".kdd/sdd/<WRK-PLAN-ID>/progress.md" "executing-plans ledger path"
+
 finish
