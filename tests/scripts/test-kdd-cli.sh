@@ -23,6 +23,12 @@ printf 'console.log("local")\n' > "$TMP/proj/.kdd-toolkit/cli/spec-graph.mjs"
 out="$(cd "$TMP/proj" && env -u KDD_SPEC_GRAPH HOME="$TMP/home" "$KDD_CLI_SCRIPT" --path)"
 [[ "$out" == "$TMP/proj/.kdd-toolkit/cli/spec-graph.mjs" ]] && pass "./.kdd-toolkit/cli wins over the plugin cache" || { fail "./.kdd-toolkit/cli wins over the plugin cache"; echo "    got: $out"; }
 
+# 3a. the dist repo (jmbruzos/kdd-plugin) vendored as a submodule has the CLI one level deeper
+mkdir -p "$TMP/proj2/.kdd-toolkit/kdd-toolkit/cli"
+printf 'console.log("dist")\n' > "$TMP/proj2/.kdd-toolkit/kdd-toolkit/cli/spec-graph.mjs"
+out="$(cd "$TMP/proj2" && env -u KDD_SPEC_GRAPH HOME="$TMP/home" "$KDD_CLI_SCRIPT" --path)"
+[[ "$out" == "$TMP/proj2/.kdd-toolkit/kdd-toolkit/cli/spec-graph.mjs" ]] && pass "./.kdd-toolkit/kdd-toolkit/cli (dist submodule) wins over the plugin cache" || { fail "./.kdd-toolkit/kdd-toolkit/cli (dist submodule) wins over the plugin cache"; echo "    got: $out"; }
+
 # 3b. a marketplace clone never wins over the cache; without a cache it is ignored
 mkdir -p "$TMP/home/.claude/plugins/marketplaces/kdd/gemini/cli" "$TMP/home/.claude/plugins/marketplaces/kdd/kdd-toolkit/cli"
 printf 'console.log("gemini")\n' > "$TMP/home/.claude/plugins/marketplaces/kdd/gemini/cli/spec-graph.mjs"
