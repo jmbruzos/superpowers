@@ -135,6 +135,14 @@ six scenarios, up to 15 minutes each):
 6. requesting-code-review flags a violation of an activated rule as Critical
    with a Knowledge Compliance section naming the rule.
 
+**Token usage (opt-in):** `KDD_FLOW_USAGE=<dir> bash tests/claude-code/test-kdd-flow.sh`
+runs scenarios 2-6 with `--output-format json`, saves `<dir>/scenario-N.json`,
+`.result` and the session transcripts, and ends with `usage-summary.py`'s table
+(turns, cache write/read, output, cost, duration per scenario, per-model
+breakdown, per-subagent breakdown via `analyze-token-usage.py`). Use it as the
+before/after for any change to a skill. `usage-lib.sh` holds the helpers;
+`tests/scripts/test-usage-summary.sh` tests them without Claude.
+
 Isolation: each scenario runs with `CLAUDE_CONFIG_DIR` pointing at a fresh
 temp directory into which `~/.claude/.credentials.json` is copied when
 present (otherwise `ANTHROPIC_API_KEY` must be set in the environment), so

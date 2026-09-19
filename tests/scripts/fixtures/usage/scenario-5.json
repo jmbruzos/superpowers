@@ -1,0 +1,57 @@
+{
+ "num_turns": 26,
+ "duration_ms": 492139,
+ "total_cost_usd": 2.926668449999999,
+ "modelUsage": {
+  "claude-opus-5[1m]": {
+   "inputTokens": 58,
+   "outputTokens": 28308,
+   "cacheReadInputTokens": 1517605,
+   "cacheCreationInputTokens": 125202,
+   "webSearchRequests": 0,
+   "costUSD": 2.600739999999999,
+   "contextWindow": 1000000,
+   "maxOutputTokens": 64000,
+   "thinkingTokens": 2831,
+   "canonicalModel": "claude-opus-5",
+   "provider": "firstParty",
+   "costBasis": "list"
+  },
+  "claude-haiku-4-5-20251001": {
+   "inputTokens": 228,
+   "outputTokens": 8104,
+   "cacheReadInputTokens": 525164,
+   "cacheCreationInputTokens": 38051,
+   "webSearchRequests": 0,
+   "costUSD": 0.14082815,
+   "contextWindow": 200000,
+   "maxOutputTokens": 32000,
+   "thinkingTokens": 2723,
+   "canonicalModel": "claude-haiku-4-5",
+   "provider": "firstParty",
+   "costBasis": "list"
+  },
+  "claude-sonnet-5": {
+   "inputTokens": 10,
+   "outputTokens": 4563,
+   "cacheReadInputTokens": 90739,
+   "cacheCreationInputTokens": 48521,
+   "webSearchRequests": 0,
+   "costUSD": 0.1851003,
+   "contextWindow": 1000000,
+   "maxOutputTokens": 64000,
+   "thinkingTokens": 1756,
+   "canonicalModel": "claude-sonnet-5",
+   "provider": "firstParty",
+   "costBasis": "list"
+  }
+ },
+ "usage": {
+  "input_tokens": 46,
+  "cache_creation_input_tokens": 93716,
+  "cache_read_input_tokens": 1383598,
+  "output_tokens": 21010
+ },
+ "result": "npm test: 5/5 passing. Graph validates; WRK-TASKs, WRK-PLAN and WRK-SPEC all transitioned to `completed`.",
+ "is_error": false
+}

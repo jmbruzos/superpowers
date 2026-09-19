@@ -18,6 +18,7 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$SCRIPT_DIR/test-helpers.sh"
+source "$SCRIPT_DIR/usage-lib.sh"   # KDD_FLOW_USAGE=<dir> → per-scenario token usage (WRK-SPEC-FORK-TOKENS-001)
 KDD_TOOLKIT_DIR="${KDD_TOOLKIT_DIR:-$REPO_ROOT/../knowledge-driven-development/kdd-toolkit}"
 KDD_SPEC_GRAPH="${KDD_SPEC_GRAPH:-$KDD_TOOLKIT_DIR/cli/spec-graph.mjs}"
 TIMEOUT="${CLAUDE_PROMPT_TIMEOUT:-900}"
@@ -34,12 +35,15 @@ trap 'rm -rf "$CONFIG_DIR"' EXIT
 
 run_scenario() { # DIR PROMPT [extra env…] — runs claude headless in DIR with both plugins
   local dir="$1" prompt="$2"; shift 2
+  local raw; raw="$(mktemp)"
   ( cd "$dir" && env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT -u CLAUDE_CODE_CHILD_SESSION \
       -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CODE_MESSAGING_SOCKET -u CLAUDE_CODE_MESSAGING_TOKEN \
       -u CLAUDE_CODE_SESSION_ATTENDED -u CLAUDE_CODE_EXECPATH \
       CLAUDE_CONFIG_DIR="$CONFIG_DIR" KDD_SPEC_GRAPH="$KDD_SPEC_GRAPH" "$@" \
       timeout "$TIMEOUT" claude -p "$prompt" --plugin-dir "$REPO_ROOT" --plugin-dir "$KDD_TOOLKIT_DIR" \
-      --allowed-tools=all --permission-mode bypassPermissions 2>&1 )
+      --allowed-tools=all --permission-mode bypassPermissions $(usage_args) 2>&1 ) > "$raw"
+  usage_record "$raw" "$CONFIG_DIR"   # prints the result text; with KDD_FLOW_USAGE also saves the JSON
+  rm -f "$raw"
 }
 new_project() { local d; d="$(mktemp -d)"; git -C "$d" init -q -b main; printf 'node_modules/\n' > "$d/.gitignore"; git -C "$d" add -A; git -C "$d" -c user.email=t@e -c user.name=t commit -qm init; echo "$d"; }
 validate() { node "$KDD_SPEC_GRAPH" --specs "$1/specs" validate 2>&1; }
@@ -124,5 +128,6 @@ assert_contains "$out" "Critical" "violation is Critical" || FAILURES=$((FAILURE
 assert_contains "$out" "half-up\|Rule 3\|DOM-BILL-PRORATA-001" "names the violated rule" || FAILURES=$((FAILURES+1))
 
 echo ""
+usage_summary   # only with KDD_FLOW_USAGE
 if [[ "$FAILURES" -ne 0 ]]; then echo "FAILED: $FAILURES assertion(s)."; exit 1; fi
 echo "PASS"
