@@ -142,6 +142,9 @@ runs scenarios 2-6 with `--output-format json`, saves `<dir>/scenario-N.json`,
 breakdown, per-subagent breakdown via `analyze-token-usage.py`). Use it as the
 before/after for any change to a skill. `usage-lib.sh` holds the helpers;
 `tests/scripts/test-usage-summary.sh` tests them without Claude.
+`KDD_FLOW_SCENARIOS="5 6"` runs only those scenarios (after a partial failure, or
+when iterating on one skill). Credentials are re-copied into the isolated config
+dir before each scenario: a full run outlives one OAuth token.
 
 Isolation: each scenario runs with `CLAUDE_CONFIG_DIR` pointing at a fresh
 temp directory into which `~/.claude/.credentials.json` is copied when

@@ -36,6 +36,9 @@ trap 'rm -rf "$CONFIG_DIR"' EXIT
 run_scenario() { # DIR PROMPT [extra env…] — runs claude headless in DIR with both plugins
   local dir="$1" prompt="$2"; shift 2
   local raw; raw="$(mktemp)"
+  # re-copy the credentials: the isolated copy cannot refresh once the user's own session has
+  # rotated the token, and a full run outlives one token (observed: authentication_failed mid-run)
+  [[ -f "$HOME/.claude/.credentials.json" ]] && cp "$HOME/.claude/.credentials.json" "$CONFIG_DIR/"
   ( cd "$dir" && env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT -u CLAUDE_CODE_CHILD_SESSION \
       -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CODE_MESSAGING_SOCKET -u CLAUDE_CODE_MESSAGING_TOKEN \
       -u CLAUDE_CODE_SESSION_ATTENDED -u CLAUDE_CODE_EXECPATH \
@@ -47,7 +50,9 @@ run_scenario() { # DIR PROMPT [extra env…] — runs claude headless in DIR wit
 }
 new_project() { local d; d="$(mktemp -d)"; git -C "$d" init -q -b main; printf 'node_modules/\n' > "$d/.gitignore"; git -C "$d" add -A; git -C "$d" -c user.email=t@e -c user.name=t commit -qm init; echo "$d"; }
 validate() { node "$KDD_SPEC_GRAPH" --specs "$1/specs" validate 2>&1; }
+want() { [[ -z "${KDD_FLOW_SCENARIOS:-}" || " $KDD_FLOW_SCENARIOS " == *" $1 "* ]]; }   # KDD_FLOW_SCENARIOS="5 6" runs only those
 
+if want 1; then
 echo "=== Scenario 1: toolkit missing → brainstorming stops with install instruction ==="
 p1="$(new_project)"
 out="$(cd "$p1" && env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT -u CLAUDE_CODE_CHILD_SESSION \
@@ -59,6 +64,8 @@ assert_contains "$out" "kdd" "mentions the kdd toolkit" || FAILURES=$((FAILURES+
 assert_contains "$out" "install\|KDD_SPEC_GRAPH" "gives an install instruction" || FAILURES=$((FAILURES+1))
 [[ ! -d "$p1/specs/work" ]] && pass "no work artifact written" || fail "no work artifact written"
 
+fi
+if want 2; then
 echo "=== Scenario 2: brainstorming with a knowledge base → frozen WRK-SPEC ==="
 p2="$(new_project)"; cp -R "$REPO_ROOT/tests/scripts/fixtures/specs" "$p2/specs"; rm -rf "$p2/specs/work"; git -C "$p2" add -A; git -C "$p2" -c user.email=t@e -c user.name=t commit -qm specs
 USAGE_SCENARIO=2
@@ -74,6 +81,8 @@ if [[ -n "$spec" ]]; then
   grep -q "^## Problem Statement" "$spec" && ! grep -q "^## Open Questions" "$spec" && pass "compact body" || fail "compact body"
 fi
 
+fi
+if want 3; then
 echo "=== Scenario 3: brainstorming without specs/ → specs/work created, activates [], FRAG anchored ==="
 p3="$(new_project)"; mkdir -p "$p3/src"; printf 'export function round2(a) {\n  return Math.round(a * 100) / 100;\n}\n' > "$p3/src/money.js"; git -C "$p3" add -A; git -C "$p3" -c user.email=t@e -c user.name=t commit -qm code
 USAGE_SCENARIO=3
@@ -88,6 +97,8 @@ if [[ -n "$frag" ]]; then
   grep -q "^confidence: low" "$frag"/FRAG-*.md && pass "FRAG born low confidence" || fail "FRAG born low confidence"
 else fail "FRAG captured"; fi
 
+fi
+if want 4; then
 echo "=== Scenario 4: writing-plans from an active WRK-SPEC → plan + task files ==="
 p4="$(new_project)"; cp -R "$REPO_ROOT/tests/scripts/fixtures/specs" "$p4/specs"; rm -f "$p4"/specs/work/WRK-PLAN-* "$p4"/specs/work/WRK-TASK-*; git -C "$p4" add -A; git -C "$p4" -c user.email=t@e -c user.name=t commit -qm specs
 USAGE_SCENARIO=4
@@ -103,6 +114,8 @@ done
 [[ -n "$plan" ]] && grep -q "^## Architecture Impact" "$plan" && grep -q "DOM-BILL-PRORATA-001" "$plan" && pass "Architecture Impact cites the DOM" || fail "Architecture Impact cites the DOM"
 [[ "$(validate "$p4")" == *"0 error"* || "$(validate "$p4")" == *"passed"* ]] && pass "plan + tasks validate" || fail "plan + tasks validate: $(validate "$p4")"
 
+fi
+if want 5; then
 echo "=== Scenario 5: subagent-driven-development executes the hello plan ==="
 p5="$(new_project)"; cp -R "$SCRIPT_DIR/fixtures/hello-plan/specs" "$p5/specs"; git -C "$p5" add -A; git -C "$p5" -c user.email=t@e -c user.name=t commit -qm plan
 USAGE_SCENARIO=5
@@ -122,6 +135,8 @@ git -C "$p5" log --format=%s | grep -q "WRK-TASK-DEMO-HELLO-001-001" && pass "co
 grep -q "^## Execution Log" "$p5"/specs/work/WRK-PLAN-DEMO-HELLO-001-*.md && pass "execution log persisted by finishing" || fail "execution log persisted by finishing"
 grep -q "^status: completed\|^status: archived" "$p5"/specs/work/WRK-SPEC-DEMO-HELLO-001-*.md && pass "spec closed" || fail "spec closed"
 
+fi
+if want 6; then
 echo "=== Scenario 6: code review flags an activated-rule violation as Critical ==="
 p6="$(new_project)"; cp -R "$REPO_ROOT/tests/scripts/fixtures/specs" "$p6/specs"; mkdir -p "$p6/src"
 printf 'export function round2(a) { return Math.floor(a * 100) / 100; }\n' > "$p6/src/billing.js"
@@ -132,6 +147,7 @@ assert_contains "$out" "Knowledge Compliance" "report has a knowledge compliance
 assert_contains "$out" "Critical" "violation is Critical" || FAILURES=$((FAILURES+1))
 assert_contains "$out" "half-up\|Rule 3\|DOM-BILL-PRORATA-001" "names the violated rule" || FAILURES=$((FAILURES+1))
 
+fi
 echo ""
 usage_summary   # only with KDD_FLOW_USAGE
 if [[ "$FAILURES" -ne 0 ]]; then echo "FAILED: $FAILURES assertion(s)."; exit 1; fi
