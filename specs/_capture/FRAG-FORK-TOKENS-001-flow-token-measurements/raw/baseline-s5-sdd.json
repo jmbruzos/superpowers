@@ -1,0 +1,55 @@
+{
+ "duration_ms": 492139,
+ "modelUsage": {
+  "claude-haiku-4-5-20251001": {
+   "cacheCreationInputTokens": 38051,
+   "cacheReadInputTokens": 525164,
+   "canonicalModel": "claude-haiku-4-5",
+   "contextWindow": 200000,
+   "costBasis": "list",
+   "costUSD": 0.14082815,
+   "inputTokens": 228,
+   "maxOutputTokens": 32000,
+   "outputTokens": 8104,
+   "provider": "firstParty",
+   "thinkingTokens": 2723,
+   "webSearchRequests": 0
+  },
+  "claude-opus-5[1m]": {
+   "cacheCreationInputTokens": 125202,
+   "cacheReadInputTokens": 1517605,
+   "canonicalModel": "claude-opus-5",
+   "contextWindow": 1000000,
+   "costBasis": "list",
+   "costUSD": 2.600739999999999,
+   "inputTokens": 58,
+   "maxOutputTokens": 64000,
+   "outputTokens": 28308,
+   "provider": "firstParty",
+   "thinkingTokens": 2831,
+   "webSearchRequests": 0
+  },
+  "claude-sonnet-5": {
+   "cacheCreationInputTokens": 48521,
+   "cacheReadInputTokens": 90739,
+   "canonicalModel": "claude-sonnet-5",
+   "contextWindow": 1000000,
+   "costBasis": "list",
+   "costUSD": 0.1851003,
+   "inputTokens": 10,
+   "maxOutputTokens": 64000,
+   "outputTokens": 4563,
+   "provider": "firstParty",
+   "thinkingTokens": 1756,
+   "webSearchRequests": 0
+  }
+ },
+ "num_turns": 26,
+ "total_cost_usd": 2.926668449999999,
+ "usage": {
+  "cache_creation_input_tokens": 93716,
+  "cache_read_input_tokens": 1383598,
+  "input_tokens": 46,
+  "output_tokens": 21010
+ }
+}
