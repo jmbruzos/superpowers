@@ -1,6 +1,6 @@
 # Release notes
 
-## Unreleased
+## 0.2.0 — transition script and token-usage measurement
 
 Implements WRK-SPEC-FORK-TOKENS-001 (token footprint):
 - `kdd-conventions/scripts/transition FILE STATUS [--verified human:<id>] [--no-commit]` —

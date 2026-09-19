@@ -8,7 +8,7 @@
     {
       "name": "kdd-superpowers",
       "description": "Knowledge-Driven Development workflow for Claude Code. Requires the kdd toolkit plugin.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "source": "./",
       "author": {
         "name": "NFQ Advisory"

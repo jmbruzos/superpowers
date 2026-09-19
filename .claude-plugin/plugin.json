@@ -1,12 +1,19 @@
 {
   "name": "kdd-superpowers",
   "description": "Knowledge-Driven Development workflow for Claude Code: superpowers' brainstorm → plan → subagent execution → review → finish discipline, producing KDD work artifacts with frozen knowledge activation, brownfield capture and consolidation. Requires the kdd toolkit plugin.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "NFQ Advisory"
   },
   "homepage": "https://github.com/jmbruzos/superpowers",
   "repository": "https://github.com/jmbruzos/superpowers",
   "license": "MIT",
-  "keywords": ["kdd", "knowledge-driven-development", "skills", "tdd", "workflows", "specs"]
+  "keywords": [
+    "kdd",
+    "knowledge-driven-development",
+    "skills",
+    "tdd",
+    "workflows",
+    "specs"
+  ]
 }

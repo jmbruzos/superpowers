@@ -1,7 +1,12 @@
 {
   "name": "kdd-superpowers",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "kdd-superpowers skills and session bootstrap for Claude Code",
   "type": "module",
-  "keywords": ["kdd", "skills", "tdd", "workflow"]
+  "keywords": [
+    "kdd",
+    "skills",
+    "tdd",
+    "workflow"
+  ]
 }
