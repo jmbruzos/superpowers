@@ -3,7 +3,7 @@ id: WRK-SPEC-FORK-TOKENS-001
 type: spec
 layer: work-spec
 scope: ephemeral
-status: draft
+status: active
 confidence: low
 version: 0.1.0
 created: 2026-09-19
@@ -27,6 +27,9 @@ sources:
 generated:
   by: claude-code/claude-opus-5
   at: 2026-09-19T12:15:12+02:00
+verified:
+  - by: human:jmbruzos
+    at: 2026-09-19T12:17:05+02:00
 stale_after: 2026-12-18T00:00:00+01:00
 tags: [kdd, fork, tokens, skills, kdd-conventions, testing]
 ---
