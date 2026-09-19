@@ -148,3 +148,30 @@ survive `run_scenario`'s `$(...)` subshell (files now named after the test's
 scenario numbers); one credentials copy did not outlive a full run
 (`authentication_failed` mid-scenario 5 — now re-copied per scenario);
 `KDD_FLOW_SCENARIOS` reruns a subset.
+
+## Execution Log
+
+Bounded work: no WRK-PLAN, no SDD ledger. Written from the session and the
+commit history `2325fae..b8dd14f`.
+
+### Rulings
+- Ruling: the template split (`artifact-templates.md` → five files) is dropped — measured saving ~0.8k tokens per load; the +11k observed at the first `Skill` call is ~8k of harness `prompt_snapshot`, not skill prose. Recorded in Problem Statement so it is not re-proposed.
+- Ruling: `scripts/transition` commits with the verb form the skills already use (`chore(<ID>): activate|complete|archive`), not `<status>` as first drafted — one convention, not two.
+- Ruling: sections inherited verbatim from upstream (`Example Workflow`, `Process Flow`, `Visual Companion`) stay in place — human partner chose upstream mergeability over ~2.7k tokens per load.
+- Ruling: `transition` is a reliability change with a marginal token effect, not "the biggest lever" as first framed; the after-run confirms behaviour (every move via the script) and cannot confirm tokens from one sample per side.
+
+### Knowledge gaps
+- Knowledge gap: no spec in this graph describes the flow's token footprint; the numbers in Problem Statement and *After* are the only record. A reference/governance spec ("where the tokens go") is a candidate for consolidation.
+- Knowledge gap: the harness rewrites the system prompt (~52 KB `prompt_snapshot`, ~8k tokens) once per session on the first `Skill` call — a fixed cost no skill edit can remove; undocumented anywhere in this plugin.
+- Knowledge gap: output tokens dominate writing-plans (53k of the run: plan + tasks + rewrites after gate A2, full code inside WRK-TASKs); implementer turn count dominates SDD (Haiku 30-45 messages for one-function tasks). Neither is addressed by this spec; both are the real levers for a future one.
+
+### Attacks broken and adjudicated
+- None — bounded path, no adversarial gate ran.
+
+### Capture candidates (pending)
+- Capture candidate: `tests/claude-code/usage-lib.sh` + `usage-summary.py` — the measurement method (JSON `usage`, `modelUsage`, transcripts per scenario) as the reference procedure for any "tokens before/after" claim in this repo.
+- Capture candidate: the two after-run tables (spike 2026-09-19 and after-run 2026-09-19) as the first data points of a token baseline per scenario.
+
+### Parked / deferred
+- Deferred: `analyze-token-usage.py`'s `$` column applies fixed list prices to all tokens (documented as indicative only in tests/claude-code/README.md); replacing it with `total_cost_usd` per agent is out of scope.
+- Deferred: a `KDD_FLOW_REPS=N` loop to run each scenario N times and report mean/variance — needed before any token claim; not built.
