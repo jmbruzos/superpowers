@@ -27,9 +27,15 @@ out="$(KDD_FLOW_USAGE="$tmp/out" bash -c ". '$LIB'; usage_record '$FIX/scenario-
 [[ "$out" == *"5/5 passing"* ]] && pass "usage_record prints the result text" || fail "usage_record prints the result text"
 [[ -f "$tmp/out/scenario-1.json" && -f "$tmp/out/scenario-1.result" ]] && pass "usage_record saves scenario-1.json and .result" || fail "usage_record saves scenario-1.json and .result"
 [[ -f "$tmp/out/scenario-1.transcripts/main.jsonl" ]] && pass "usage_record copies the transcripts" || fail "usage_record copies the transcripts"
+# each run_scenario call happens inside $(...) — the counter must survive subshells
+out="$(KDD_FLOW_USAGE="$tmp/out" bash -c ". '$LIB'; usage_record '$FIX/scenario-5.json' '$cfg'")"
+[[ -f "$tmp/out/scenario-2.json" && -f "$tmp/out/scenario-1.json" ]] && pass "second call in a fresh subshell becomes scenario-2" || fail "second call in a fresh subshell becomes scenario-2 ($(ls "$tmp/out"))"
+out="$(KDD_FLOW_USAGE="$tmp/out" USAGE_SCENARIO=6 bash -c ". '$LIB'; usage_record '$FIX/scenario-5.json' '$cfg'")"
+[[ -f "$tmp/out/scenario-6.json" ]] && pass "USAGE_SCENARIO names the file" || fail "USAGE_SCENARIO names the file ($(ls "$tmp/out"))"
+rm -f "$tmp/out/scenario-6".*
 printf 'plain text, not json\n' > "$tmp/raw.txt"
 out="$(KDD_FLOW_USAGE="$tmp/out" bash -c ". '$LIB'; usage_record '$tmp/raw.txt' '$cfg'")"
-[[ "$out" == "plain text, not json" && ! -f "$tmp/out/scenario-1.json.2" ]] && pass "non-JSON output is passed through as the result" || fail "non-JSON output is passed through ($out)"
+[[ "$out" == "plain text, not json" && -f "$tmp/out/scenario-3.result" && ! -f "$tmp/out/scenario-3.json" ]] && pass "non-JSON output is passed through as the result (no usage row)" || fail "non-JSON output is passed through ($out; $(ls "$tmp/out"))"
 out="$(env -u KDD_FLOW_USAGE bash -c ". '$LIB'; usage_record '$tmp/raw.txt' '$cfg'")"
 [[ "$out" == "plain text, not json" ]] && pass "without KDD_FLOW_USAGE usage_record is cat" || fail "without KDD_FLOW_USAGE usage_record is cat"
 rm -rf "$tmp"

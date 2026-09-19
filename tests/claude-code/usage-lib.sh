@@ -5,7 +5,6 @@
 # usage-summary.py's table. Without the variable every function is a no-op and
 # test-kdd-flow.sh behaves exactly as before.
 USAGE_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-USAGE_N=0
 
 usage_args() { [[ -n "${KDD_FLOW_USAGE:-}" ]] && printf -- '--output-format json'; return 0; }
 
@@ -18,11 +17,15 @@ usage_result_of() {
 # usage_record RAW CONFIG_DIR — RAW holds the JSON stdout of one scenario; names it
 # scenario-N.json under $KDD_FLOW_USAGE, copies transcripts newer than the previous
 # scenario, and prints the `result` text so callers can keep asserting on prose.
+# The name is scenario-$USAGE_SCENARIO when the caller sets it (test-kdd-flow.sh does,
+# at top level, so it reaches the `$(...)` subshell); otherwise N counts the .result
+# files already there — a counter in a shell variable would not survive the subshell.
 usage_record() {
   local raw="$1" cfg="$2"
   [[ -n "${KDD_FLOW_USAGE:-}" ]] || { cat "$raw"; return 0; }
-  USAGE_N=$((USAGE_N + 1))
-  local name="scenario-${USAGE_N}"
+  mkdir -p "$KDD_FLOW_USAGE"
+  local n; n="$(find "$KDD_FLOW_USAGE" -maxdepth 1 -name 'scenario-*.result' | wc -l)"
+  local name="scenario-${USAGE_SCENARIO:-$((n + 1))}"
   mkdir -p "$KDD_FLOW_USAGE/$name.transcripts"
   if usage_result_of "$raw" > "$KDD_FLOW_USAGE/$name.result" 2>/dev/null; then
     cp "$raw" "$KDD_FLOW_USAGE/$name.json"
