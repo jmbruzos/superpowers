@@ -59,6 +59,14 @@ self-ignoring `.gitignore` for worktrees that predate it.
 
 Every transition also updates `updated:`. Never skip a state.
 
+`scripts/transition [--specs DIR] [--verified human:<id>] [--no-commit] FILE STATUS`
+performs one row of this table in one step — `status:`, `updated:`, the human
+`verified` entry when given, `validate`, and the conventional commit
+(`chore(<ID>): activate|complete|archive`, or `spec(<ID>): approved — active,
+human-verified` with `--verified`). It refuses any move the table does not list
+and restores the file when validate is red. Run it instead of editing the
+frontmatter by hand.
+
 ## Trust family — on everything you write
 
 ```yaml

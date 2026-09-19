@@ -10,7 +10,7 @@
 #
 # Does exactly what the kdd-conventions *Status transitions* table says, in one step:
 # rewrites `status:` and `updated:` in the frontmatter, validates the graph, and commits
-# the file alone as `chore(<ID>): <status>` — or `spec(<ID>): approved — active, human-verified`
+# the file alone as `chore(<ID>): activate|complete|archive` — or `spec(<ID>): approved — active, human-verified`
 # when --verified is given. Only draft→active, active→completed, completed→archived are
 # accepted; a file not in the expected origin state is left untouched (exit 1). FRAG
 # transitions belong to the toolkit (`kdd:spec-consolidate`) and are refused. A red
@@ -89,7 +89,7 @@ fi
 # --- commit the file alone -------------------------------------------------------------
 if [[ "$commit" -eq 1 ]]; then
   if [[ -n "$verified" && "$target" == "active" ]]; then msg="spec(${id}): approved — active, human-verified"
-  else msg="chore(${id}): ${target}"; fi
+  else case "$target" in active) verb=activate ;; completed) verb=complete ;; archived) verb=archive ;; esac; msg="chore(${id}): ${verb}"; fi
   git add -- "$file"
   git commit -q -m "$msg" -- "$file"
   echo "$id: $current → $target (${msg%%:*} $(git rev-parse --short HEAD))"

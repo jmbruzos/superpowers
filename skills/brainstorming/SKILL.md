@@ -266,7 +266,7 @@ prompt names what happens next, so it differs by path:
 >
 > Bounded: "Compact WRK-SPEC written and validated at `<path>` — approve it as the spec for this change?"
 
-Wait for the response. If they request changes, make them, re-validate and re-run the self-review. Once they approve: set `status: active`, `updated: <today>`, append `verified: [{by: human:<id>, at: <now>}]` (ask for the id once if unknown — never invent it), re-validate (the confidence warning should disappear or be lifted with the human's say-so), commit (`spec(<ID>): approved — active, human-verified`).
+Wait for the response. If they request changes, make them, re-validate and re-run the self-review. Once they approve: set `status: active`, `updated: <today>`, append `verified: [{by: human:<id>, at: <now>}]` (ask for the id once if unknown — never invent it), re-validate (the confidence warning should disappear or be lifted with the human's say-so), commit (`spec(<ID>): approved — active, human-verified`). `kdd-conventions/scripts/transition --verified human:<id> <spec-file> active` does exactly this in one step.
 
 **Implementation:**
 

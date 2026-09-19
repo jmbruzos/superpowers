@@ -156,6 +156,8 @@ until `kdd:spec-consolidate` runs.
   bounded work — already covered by the row above) and every WRK-TASK →
   `status: archived`.
 - Validate; commit (`chore(<WRK-SPEC-ID>): close and consolidate`).
+  `kdd-conventions/scripts/transition [--verified human:<id>] --no-commit <file> completed|archived`
+  moves each artifact above; validate and commit once.
 
 Then delete this plan's workspace (`rm -rf .kdd/sdd/<WRK-PLAN-ID>/`) — its
 durable content is now in the Execution Log. Bounded work has no

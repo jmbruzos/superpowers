@@ -219,7 +219,7 @@ After saving the plan, offer execution choice:
 
 **Which approach?"**
 
-When your human partner chooses, set `status: active` and `updated` on the plan and every task, re-validate, commit (`plan(<WRK-PLAN-ID>): activate`). The SDD workspace for this plan will be `.kdd/sdd/<WRK-PLAN-ID>/`.
+When your human partner chooses, set `status: active` and `updated` on the plan and every task, re-validate, commit (`plan(<WRK-PLAN-ID>): activate`) — `kdd-conventions/scripts/transition --no-commit <file> active` on the plan and on each task, then that one commit. The SDD workspace for this plan will be `.kdd/sdd/<WRK-PLAN-ID>/`.
 
 **If Subagent-Driven chosen:**
 - **REQUIRED SUB-SKILL:** Use kdd-superpowers:subagent-driven-development

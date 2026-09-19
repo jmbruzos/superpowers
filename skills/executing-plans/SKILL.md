@@ -31,13 +31,13 @@ For each WRK-TASK:
 3. Follow each step exactly (the task has bite-sized steps); commit subjects start with the task ID
 4. Run verifications as specified
 5. When a step contradicts an activated rule, or the code you touch contradicts one, do not improvise: ledger `Knowledge gap: …` with the rule ID and continue with the task as written unless it is blocked (see below)
-6. Set `status: completed` and `updated` in the WRK-TASK frontmatter, validate (`<kdd-cli> --specs specs validate`), commit (`chore(<WRK-TASK-ID>): complete`), append `Task <ID>: complete (commits <a7>..<b7>)` to the ledger
+6. Set `status: completed` and `updated` in the WRK-TASK frontmatter, validate (`<kdd-cli> --specs specs validate`), commit (`chore(<WRK-TASK-ID>): complete`) — `kdd-conventions/scripts/transition <task-file> completed` does exactly this — then append `Task <ID>: complete (commits <a7>..<b7>)` to the ledger
 7. Mark as completed
 
 ### Step 3: Complete Development
 
 After all tasks complete and verified:
-- Set the WRK-PLAN to `status: completed`, validate, commit (`chore(<WRK-PLAN-ID>): complete`)
+- Set the WRK-PLAN to `status: completed`, validate, commit (`chore(<WRK-PLAN-ID>): complete`) — `kdd-conventions/scripts/transition <plan-file> completed`
 - Announce: "I'm using the finishing-a-development-branch skill to complete this work."
 - **REQUIRED SUB-SKILL:** Use kdd-superpowers:finishing-a-development-branch
 - Follow that skill to verify tests and knowledge integrity, consolidate, present options, execute choice

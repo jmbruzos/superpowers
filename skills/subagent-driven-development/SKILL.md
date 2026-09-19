@@ -477,6 +477,8 @@ Then transition the WRK-TASK: set `status: completed` and `updated:
 <today>` in its frontmatter, run `<kdd-cli> --specs specs validate`, and
 commit it (`chore(<WRK-TASK-ID>): complete`). A task whose file still says
 `active` is not complete, whatever the ledger says.
+`kdd-conventions/scripts/transition <task-file> completed` does exactly this in
+one step.
 
 Then mark the todo complete and move on. Never move to the next task while
 the review has open Critical/Important issues that are neither fixed nor
@@ -506,7 +508,8 @@ findings (one fix wave, one scoped re-review).
 
 When the final review is clean, transition the WRK-PLAN to
 `status: completed` (+ `updated`), validate, commit
-(`chore(<WRK-PLAN-ID>): complete`), then follow `## Finish` below —
+(`chore(<WRK-PLAN-ID>): complete`; `kdd-conventions/scripts/transition <plan-file> completed`
+does exactly this), then follow `## Finish` below —
 rulings collected first, workspace deleted by finishing, then the hand-over to
 kdd-superpowers:finishing-a-development-branch. The WRK-SPEC stays
 `active` — finishing closes it.

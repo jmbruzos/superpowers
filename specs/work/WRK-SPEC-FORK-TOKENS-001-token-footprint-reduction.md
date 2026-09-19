@@ -87,7 +87,7 @@ bash, next to `next-id`:
 - Runs `<kdd-cli> --specs DIR validate` (kdd-cli resolved from
   `using-superpowers/scripts/kdd-cli`, never hard-coded). On a red validate
   it restores the file and exits non-zero.
-- Commits the file alone with `chore(<ID>): <status>` — or
+- Commits the file alone with `chore(<ID>): activate|complete|archive` (the verb form the skills already use) — or
   `spec(<ID>): approved — active, human-verified` when `--verified` is
   given — unless `--no-commit`. Prints the resulting status line.
 
