@@ -3,7 +3,7 @@ id: WRK-SPEC-FORK-TRANSITION-001
 type: spec
 layer: work-spec
 scope: ephemeral
-status: active
+status: archived
 confidence: low
 version: 0.1.0
 created: 2026-09-19
@@ -75,3 +75,11 @@ than 1.4.0 lack the command, and the plugin must not break them.
 2. With the command available, the transcript of a run shows `spec-graph … transition` being called and no `awk`/`sed` rewrite of the frontmatter; with it unavailable, the fallback notice appears on stderr exactly once.
 3. `tests/scripts/test-transition.sh` gains a case per mode asserting AC2 (a `TRANSITION_TRACE=1` env var makes the script print `mode: cli|builtin` on stderr).
 4. `tests/scripts/run.sh`, `test-invariants.sh` and `test-skill-content.sh` stay green; RELEASE-NOTES gets a 0.2.1 entry.
+
+## Execution Log
+
+Bounded work, no ledger. Rulings: the probe is `<kdd-cli> --help | grep '^  transition'`
+because commander exits 0 for `<unknown> --help` on the old CLI; FRAG moves stay refused
+in the plugin even though the CLI accepts them (kdd:spec-consolidate owns them). No
+knowledge gaps, no capture candidates: the behaviour is specified by the toolkit's
+WRK-SPEC-TOOLKIT-TRANSITION-001 and exercised by the plugin's 35 assertions.
