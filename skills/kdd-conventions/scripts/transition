@@ -11,7 +11,9 @@
 # Does exactly what the kdd-conventions *Status transitions* table says, in one step:
 # rewrites `status:` and `updated:` in the frontmatter, validates the graph, and commits
 # the file alone as `chore(<ID>): activate|complete|archive` — or `spec(<ID>): approved — active, human-verified`
-# when --verified is given. Only draft→active, active→completed, completed→archived are
+# when --verified is given. The move itself is delegated to `spec-graph transition` when the
+# resolved toolkit has it (kdd >= 1.4.0, WRK-SPEC-FORK-TRANSITION-001); older toolkits get the
+# built-in rewrite below and a one-line notice. TRANSITION_TRACE=1 prints `mode: cli|builtin`. Only draft→active, active→completed, completed→archived are
 # accepted; a file not in the expected origin state is left untouched (exit 1). FRAG
 # transitions belong to the toolkit (`kdd:spec-consolidate`) and are refused. A red
 # validate restores the file and commits nothing (exit 1). Exit 2 on usage errors.
@@ -53,6 +55,18 @@ case "$target" in
 esac
 [[ "$current" == "$origin" ]] || { echo "$id: is '$current', not '$origin' — cannot move to '$target' (never skip a state)" >&2; exit 1; }
 
+# --- the move: toolkit command when available, built-in rewrite otherwise --------------
+mode=builtin
+if "$KDD_CLI" --help 2>/dev/null | grep -q '^  transition'; then mode=cli; fi
+[[ -n "${TRANSITION_TRACE:-}" ]] && echo "mode: $mode" >&2
+
+if [[ "$mode" == cli ]]; then
+  args=(--specs "$specs" transition "$file" "$target")
+  [[ -n "$verified" ]] && args+=(--verified "$verified")
+  # exit 1 = refused move or red validate (the CLI restored the file); exit 2 = usage — both pass through
+  "$KDD_CLI" "${args[@]}" >/dev/null || { rc=$?; echo "$id: spec-graph transition failed (exit $rc)" >&2; exit "$rc"; }
+else
+  echo "transition: kdd toolkit < 1.4.0 — using the built-in move (update with /plugin update kdd)" >&2
 # --- rewrite the frontmatter only ------------------------------------------------------
 today="$(date +%F)"; now="$(date -Iseconds)"
 backup="$(mktemp)"; cp "$file" "$backup"
@@ -85,6 +99,7 @@ if ! out="$("$KDD_CLI" --specs "$specs" validate 2>&1)"; then
   echo "$id: validate failed — $file restored, nothing committed" >&2
   exit 1
 fi
+fi  # mode
 
 # --- commit the file alone -------------------------------------------------------------
 if [[ "$commit" -eq 1 ]]; then

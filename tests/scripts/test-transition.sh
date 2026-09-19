@@ -95,4 +95,17 @@ rm -rf "$r"
 # 9. usage errors exit 2
 ( "$TRANSITION" >/dev/null 2>&1 ); [[ $? -eq 2 ]] && pass "no args → exit 2" || fail "no args → exit 2"
 ( "$TRANSITION" /nonexistent.md completed >/dev/null 2>&1 ); [[ $? -eq 2 ]] && pass "missing file → exit 2" || fail "missing file → exit 2"
+# 10. mode: delegates to `spec-graph transition` when the resolved CLI has it, built-in otherwise (WRK-SPEC-FORK-TRANSITION-001)
+r="$(repo)"
+has_cmd=0; node "$KDD_CLI" --help 2>/dev/null | grep -q "^  transition" && has_cmd=1
+err="$(cd "$r" && TRANSITION_TRACE=1 "$TRANSITION" "$TASK" completed 2>&1 >/dev/null)"
+if [[ $has_cmd -eq 1 ]]; then
+  [[ "$err" == *"mode: cli"* ]] && pass "CLI has transition → mode: cli" || fail "CLI has transition → mode: cli (stderr: $err)"
+  [[ "$err" != *"using the built-in move"* ]] && pass "no fallback notice in cli mode" || fail "no fallback notice in cli mode"
+else
+  [[ "$err" == *"mode: builtin"* ]] && pass "CLI lacks transition → mode: builtin" || fail "CLI lacks transition → mode: builtin (stderr: $err)"
+  [[ "$(grep -c 'using the built-in move' <<<"$err")" -eq 1 ]] && pass "fallback notice exactly once" || fail "fallback notice exactly once"
+fi
+[[ "$(status_of "$r/$TASK")" == "completed" ]] && pass "move applied in either mode" || fail "move applied in either mode"
+rm -rf "$r"
 finish

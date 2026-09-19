@@ -1,5 +1,12 @@
 # Release notes
 
+## 0.2.1 — transition delegates to the toolkit
+
+Implements WRK-SPEC-FORK-TRANSITION-001: `kdd-conventions/scripts/transition` calls
+`spec-graph transition` when the resolved toolkit has it (kdd >= 1.4.0) and keeps the
+built-in frontmatter rewrite as fallback for older toolkits (one-line notice on stderr).
+Same interface, outputs and exit codes; `TRANSITION_TRACE=1` prints the mode.
+
 ## 0.2.0 — transition script and token-usage measurement
 
 Implements WRK-SPEC-FORK-TOKENS-001 (token footprint):
