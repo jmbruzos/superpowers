@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Move a work artifact (WRK-SPEC / WRK-PLAN / WRK-TASK) to its next status.
+#
+# Usage: transition [--specs DIR] [--verified human:<id>] [--no-commit] FILE STATUS
+#   FILE        the artifact's .md file
+#   STATUS      target status: active | completed | archived
+#   --specs     specs directory for `validate` (default ./specs)
+#   --verified  append a human `verified` entry (writer ≠ confirmer: only on explicit approval)
+#   --no-commit rewrite and validate, but leave the commit to the caller
+#
+# Does exactly what the kdd-conventions *Status transitions* table says, in one step:
+# rewrites `status:` and `updated:` in the frontmatter, validates the graph, and commits
+# the file alone as `chore(<ID>): <status>` — or `spec(<ID>): approved — active, human-verified`
+# when --verified is given. Only draft→active, active→completed, completed→archived are
+# accepted; a file not in the expected origin state is left untouched (exit 1). FRAG
+# transitions belong to the toolkit (`kdd:spec-consolidate`) and are refused. A red
+# validate restores the file and commits nothing (exit 1). Exit 2 on usage errors.
+set -euo pipefail
+
+specs="./specs"; verified=""; commit=1
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --specs) specs="${2:?}"; shift 2 ;;
+    --verified) verified="${2:?}"; shift 2 ;;
+    --no-commit) commit=0; shift ;;
+    -*) echo "unknown option: $1" >&2; exit 2 ;;
+    *) break ;;
+  esac
+done
+usage="usage: transition [--specs DIR] [--verified human:<id>] [--no-commit] FILE STATUS"
+[[ $# -eq 2 ]] || { echo "$usage" >&2; exit 2; }
+file="$1"; target="$2"
+[[ -f "$file" ]] || { echo "no such file: $file" >&2; exit 2; }
+[[ -z "$verified" || "$verified" =~ ^human:[^[:space:]]+$ ]] || { echo "$usage (--verified takes human:<id>)" >&2; exit 2; }
+
+KDD_CLI="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../using-superpowers/scripts" && pwd)/kdd-cli"
+
+# --- read the frontmatter -------------------------------------------------------------
+fm="$(awk 'NR==1 && $0!="---"{exit 1} NR>1 && $0=="---"{exit} NR>1{print}' "$file")" \
+  || { echo "no frontmatter in $file" >&2; exit 1; }
+field() { printf '%s\n' "$fm" | awk -v k="$1" '$1==k":"{sub(/^[^:]*:[[:space:]]*/,""); print; exit}'; }
+id="$(field id)"; layer="$(field layer)"; current="$(field status)"
+[[ -n "$id" ]] || { echo "no id: in $file" >&2; exit 1; }
+case "$id" in FRAG-*) echo "$id: FRAG transitions belong to the toolkit (kdd:spec-consolidate)" >&2; exit 1 ;; esac
+case "$layer" in work-spec|work-plan|work-task) ;; *) echo "$id: not a work artifact (layer: ${layer:-none})" >&2; exit 1 ;; esac
+
+# --- the transition table (kdd-conventions, Status transitions) ------------------------
+case "$target" in
+  active)    origin=draft ;;
+  completed) origin=active ;;
+  archived)  origin=completed ;;
+  *) echo "$id: unknown target status '$target' (active | completed | archived)" >&2; exit 1 ;;
+esac
+[[ "$current" == "$origin" ]] || { echo "$id: is '$current', not '$origin' — cannot move to '$target' (never skip a state)" >&2; exit 1; }
+
+# --- rewrite the frontmatter only ------------------------------------------------------
+today="$(date +%F)"; now="$(date -Iseconds)"
+backup="$(mktemp)"; cp "$file" "$backup"
+trap 'rm -f "$backup"' EXIT
+awk -v target="$target" -v today="$today" -v now="$now" -v who="$verified" '
+  function emit_entry() { print "  - by: " who; print "    at: " now }
+  BEGIN { infm = 0; done = 0; have_updated = 0; inver = 0; wrote_ver = 0 }
+  NR == 1 && $0 == "---" { infm = 1; print; next }
+  infm && $0 == "---" {
+    if (inver && who != "" && !wrote_ver) { emit_entry(); wrote_ver = 1 }
+    if (who != "" && !wrote_ver) { print "verified:"; emit_entry(); wrote_ver = 1 }
+    infm = 0; print; next
+  }
+  infm && inver && $0 !~ /^[[:space:]]+/ { if (who != "" && !wrote_ver) { emit_entry(); wrote_ver = 1 } inver = 0 }
+  infm && $1 == "status:"  { print "status: " target; next }
+  infm && $1 == "updated:" { print "updated: " today; have_updated = 1; next }
+  infm && $1 == "verified:" { inver = 1; print; next }
+  infm && $1 == "stale_after:" && who != "" && !wrote_ver { print "verified:"; emit_entry(); wrote_ver = 1 }
+  { print }
+' "$backup" > "$file"
+# an artifact without `updated:` gets one right after `status:`
+if ! printf '%s\n' "$fm" | grep -q '^updated:'; then
+  sed -i "0,/^status: ${target}\$/s//status: ${target}\nupdated: ${today}/" "$file"
+fi
+
+# --- validate; a red graph restores the file -------------------------------------------
+if ! out="$("$KDD_CLI" --specs "$specs" validate 2>&1)"; then
+  cp "$backup" "$file"
+  printf '%s\n' "$out" >&2
+  echo "$id: validate failed — $file restored, nothing committed" >&2
+  exit 1
+fi
+
+# --- commit the file alone -------------------------------------------------------------
+if [[ "$commit" -eq 1 ]]; then
+  if [[ -n "$verified" && "$target" == "active" ]]; then msg="spec(${id}): approved — active, human-verified"
+  else msg="chore(${id}): ${target}"; fi
+  git add -- "$file"
+  git commit -q -m "$msg" -- "$file"
+  echo "$id: $current → $target (${msg%%:*} $(git rev-parse --short HEAD))"
+else
+  echo "$id: $current → $target (not committed)"
+fi
