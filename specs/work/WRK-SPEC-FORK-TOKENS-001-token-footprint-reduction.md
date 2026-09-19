@@ -126,3 +126,25 @@ consolidation may distil the numbers into a governance or reference spec.
 1. `tests/scripts/test-transition.sh` (new) passes against the `tests/scripts/fixtures/specs` fixture: valid transition rewrites `status`/`updated` and commits with the conventional message; invalid origin exits non-zero and leaves the file byte-identical; `--verified human:test` appends the entry and uses the `spec(...)` message; `--no-commit` leaves the tree dirty; a red validate restores the file and commits nothing; a FRAG path is refused.
 2. Each of the five skills names `scripts/transition` next to its transition text; `tests/scripts/test-invariants.sh` and the full `tests/scripts/run.sh` stay green.
 3. `KDD_FLOW_USAGE=<dir> bash tests/claude-code/test-kdd-flow.sh` writes one JSON per scenario and prints the summary table; without the variable the script's output is unchanged. One run after the change records the "after" numbers against the table above.
+
+## After (2026-09-19, one run per scenario)
+
+| Scenario | Turns | Cache read | Output | Cost | Transitions |
+|---|---|---|---|---|---|
+| brainstorming bounded (test scenario 2) | 13 (was 19) | 382k (683k) | 7k (12k) | $0.80 ($1.23) | `transition --verified … active` |
+| writing-plans (4) | 22 (20) | 1.15M (976k) | 42k (53k) | $3.24 ($3.06) | `transition --no-commit … active` on plan + tasks, one commit |
+| subagent-driven-development (5) | 38 (26) | 2.57M (1.38M) | 31k (28k) | $4.03 ($2.93) | all four via `transition … completed` |
+
+Behaviour: every status move in every scenario went through `scripts/transition`;
+no hand edit of a frontmatter anywhere in the transcripts (controller or
+subagents). Tokens: one sample per side is inside the flow's own variance —
+the SDD run drew a final-review finding (fix wave + scoped re-review) and a
+consolidation that wrote a FRAG, neither present in the baseline run. The
+measurement switch exists so that a claim about tokens can be made from
+N runs; this spec makes none.
+
+Harness defects found and fixed by the run: the usage counter did not
+survive `run_scenario`'s `$(...)` subshell (files now named after the test's
+scenario numbers); one credentials copy did not outlive a full run
+(`authentication_failed` mid-scenario 5 — now re-copied per scenario);
+`KDD_FLOW_SCENARIOS` reruns a subset.
