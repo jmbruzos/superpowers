@@ -5,11 +5,11 @@ layer: work-spec
 scope: ephemeral
 status: active
 confidence: low
-version: 0.1.0
+version: 0.2.0
 created: 2026-09-19
 updated: 2026-09-19
 owner: jmbruzos
-title: "kdd-superpowers — token footprint reduction: split artifact templates, deterministic transition script, repeatable usage measurement"
+title: "kdd-superpowers — token footprint reduction: deterministic transition script, repeatable usage measurement"
 activates: []
 equips: []
 activation_frozen: true
@@ -49,12 +49,15 @@ task:
 | writing-plans — plan + 2 tasks + gate A2 | 20 | 976k | 53k | $3.06 |
 | subagent-driven-development — 2 tasks, 5 subagents | 26 | 1.38M | 28k | $2.93 |
 
-Three findings are actionable inside this plugin without touching the
+Two findings are actionable inside this plugin without touching the
 prose superpowers tuned (P10):
 
-1. `writing-plans` reads `kdd-conventions/references/artifact-templates.md`
-   whole (19.6 KB, ~11k tokens on load) to use two of its five templates.
-   `brainstorming` and `capturing-from-code.md` read it for one each.
+1. ~~Template file size~~ — dropped after measurement. The +11k jump on the
+   first `Skill` call is ~3.5k of skill prose plus ~8k of harness
+   `prompt_snapshot` (system prompt and deferred tools rewritten once per
+   session); `artifact-templates.md` is 5.3 KB (~1.6k tokens). Splitting it
+   would save ~0.8k tokens per load — not worth five files and repointed
+   citations. Recorded here so it is not re-proposed.
 2. Status transitions (`status:` + `updated:` + `validate` + commit) are
    described as prose in five skills and executed ad hoc — a hand `sed`
    against the frontmatter each time — costing a turn per transition and
@@ -67,17 +70,6 @@ Sections inherited verbatim from upstream superpowers (`Example Workflow`,
 chose upstream mergeability over the ~2.7k tokens they would save.
 
 ## Proposed Change
-
-### Split the artifact templates (kdd-conventions)
-
-`references/artifact-templates.md` is replaced by five files under
-`references/templates/`: `wrk-spec.md`, `wrk-spec-compact.md`, `wrk-plan.md`,
-`wrk-task.md`, `frag.md`. Content moves unchanged; the compact file repeats
-the shared frontmatter so it is self-contained. Every citation is
-repointed to the file it needs: `brainstorming/SKILL.md` (full or compact by
-path), `writing-plans/SKILL.md` (plan, task), `references/capturing-from-code.md`
-(frag), `kdd-conventions/SKILL.md` (index). Only the path changes in those
-lines; no prose is added or rewritten.
 
 ### `scripts/transition` (kdd-conventions)
 
@@ -122,7 +114,7 @@ behaviour is unchanged.
 | Ref | Role |
 |---|---|
 | (none activated) | The graph holds no Knowledge or Agentic specs; activation is `[]`. |
-| WRK-SPEC-FORK-CORE-001 (constrained-by, not activated) | P4: deterministic → script, never reimplementing `spec-graph`; P10: add lines, do not rewrite tuned prose; P13: no `superpowers` in any path. Its *Shared skill — kdd-conventions* section names `references/artifact-templates.md`; this spec supersedes that filename. |
+| WRK-SPEC-FORK-CORE-001 (constrained-by, not activated) | P4: deterministic → script, never reimplementing `spec-graph`; P10: add lines, do not rewrite tuned prose; P13: no `superpowers` in any path. |
 | kdd-conventions *Status transitions* table | The only transitions `transition` accepts; `updated:` on every move; never skip a state. |
 
 Gaps: no formalized knowledge about the flow's token footprint exists. The
@@ -131,8 +123,6 @@ consolidation may distil the numbers into a governance or reference spec.
 
 ## Acceptance Criteria
 
-1. `skills/kdd-conventions/references/templates/{wrk-spec,wrk-spec-compact,wrk-plan,wrk-task,frag}.md` exist; `artifact-templates.md` does not; `grep -r artifact-templates skills tests` returns nothing.
-2. `tests/scripts/test-skill-content.sh` anchors the four template strings in their new files and asserts each citing skill names the template file it needs; green.
-3. `tests/scripts/test-transition.sh` (new) passes against the `tests/scripts/fixtures/specs` fixture: valid transition rewrites `status`/`updated` and commits with the conventional message; invalid origin exits non-zero and leaves the file byte-identical; `--verified human:test` appends the entry and uses the `spec(...)` message; `--no-commit` leaves the tree dirty; a red validate restores the file and commits nothing; a FRAG path is refused.
-4. Each of the five skills names `scripts/transition` next to its transition text; `tests/scripts/test-invariants.sh` and the full `tests/scripts/run.sh` stay green.
-5. `KDD_FLOW_USAGE=<dir> bash tests/claude-code/test-kdd-flow.sh` writes one JSON per scenario and prints the summary table; without the variable the script's output is unchanged. One run after the change records the "after" numbers against the table above.
+1. `tests/scripts/test-transition.sh` (new) passes against the `tests/scripts/fixtures/specs` fixture: valid transition rewrites `status`/`updated` and commits with the conventional message; invalid origin exits non-zero and leaves the file byte-identical; `--verified human:test` appends the entry and uses the `spec(...)` message; `--no-commit` leaves the tree dirty; a red validate restores the file and commits nothing; a FRAG path is refused.
+2. Each of the five skills names `scripts/transition` next to its transition text; `tests/scripts/test-invariants.sh` and the full `tests/scripts/run.sh` stay green.
+3. `KDD_FLOW_USAGE=<dir> bash tests/claude-code/test-kdd-flow.sh` writes one JSON per scenario and prints the summary table; without the variable the script's output is unchanged. One run after the change records the "after" numbers against the table above.
