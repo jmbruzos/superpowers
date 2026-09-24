@@ -18,6 +18,8 @@ v6.3.0 by Jesse Vincent (MIT). Claude Code is the only supported harness.
   calls it. Without it, the session bootstrap reports `toolkit: NOT FOUND` and the
   workflow skills stop before doing anything.
 - Node ≥ 18 (for the toolkit CLI and two brief scripts). No npm dependencies of its own.
+- bash ≥ 4 (the helper scripts use `mapfile`). macOS ships bash 3.2: install a current one
+  (`brew install bash`) and make sure it comes before `/bin` in `PATH`.
 
 ## Installation
 
@@ -99,7 +101,7 @@ The full design is the work spec that produced this plugin:
 
 ## Testing
 
-- `bash tests/scripts/run.sh` — deterministic suite (no Claude): scripts, fixture, invariants, skill content. Set `KDD_SPEC_GRAPH` to a `spec-graph.mjs` to run the CLI-backed tests.
+- `bash tests/scripts/run.sh` — deterministic suite (no Claude): scripts, fixture, invariants, skill content. Set `KDD_SPEC_GRAPH` to a `spec-graph.mjs` to run the CLI-backed tests. On macOS, `test-transition.sh` also needs GNU `sed`, because it prepares its fixtures with `sed -i` and no backup suffix: `brew install gnu-sed` and put its `gnubin` directory first in `PATH`.
 - `bash tests/hooks/test-session-start.sh`, `bash tests/claude-code/test-sdd-workspace.sh`, `cd tests/brainstorm-server && npm test`.
 - `bash tests/claude-code/test-kdd-flow.sh` — headless Claude scenarios (slow; needs Claude Code and the toolkit).
 
