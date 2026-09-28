@@ -175,7 +175,7 @@ if [[ -n "$spec7wt" ]]; then
   m="$(sed -E 's/^[0-9]+ attempted, ([0-9]+) BROKEN.*/\1/' <<<"$closing")"
   rows="$(awk '/^## Adversarial Review/{s=1; next} s && /^## /{exit} s && /^\| Attack \| Cause \| Evidence \| Ruling \|/{t=1; next} t && /^\|[-| ]+\|$/{next} t && /^\|/{n++; next} t && !/^\|/{t=0} END{print n+0}' "$spec7")"
   [[ -n "$m" && "$rows" == "$m" ]] && pass "BROKEN table has M=$m rows" || fail "BROKEN table has M rows (closing M=$m, table rows=$rows)"
-  [[ "$(validate "$p7")" == *"0 error"* || "$(validate "$p7")" == *"passed"* ]] && pass "validates" || fail "validates: $(validate "$p7")"
+  out7v="$(validate "$p7")"; [[ "$out7v" == *"Validation passed"* ]] && pass "validates" || fail "validates: $out7v"
 fi
 tx="$(grep -rlE '"description": ?"Adversary: A1' "$CONFIG_DIR/projects" --include='*.jsonl' 2>/dev/null | head -1)"
 [[ -n "$tx" ]] && pass "gate A1 dispatched" || fail "gate A1 dispatched"
