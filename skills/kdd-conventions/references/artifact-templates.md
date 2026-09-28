@@ -187,6 +187,7 @@ Body:
 ## Implementation Notes
 **Files:** Create / Modify / Test with exact paths
 **Interfaces:** Consumes / Produces with exact signatures
+**Premises:** existing behaviour relied on beyond the WRK-SPEC's Code Premises, each with how it was verified
 - [ ] **Step 1: Write the failing test** (code block)
 - [ ] **Step 2: Run it to verify it fails** (command + expected)
 - [ ] **Step 3: Minimal implementation** (code block)

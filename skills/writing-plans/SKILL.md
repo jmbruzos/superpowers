@@ -24,6 +24,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 1. The WRK-SPEC — the authority. Its *Constraints* and *Acceptance Criteria* are what the plan must cover.
 2. **Every activated spec, in full** (`activates` in the WRK-SPEC frontmatter; find the files with `<kdd-cli> --specs specs filter --format json`). Constraints are copied from these files verbatim, never paraphrased from memory.
 3. Every FRAG the spec cites in `sources` — the observed behaviour the plan must preserve.
+4. The spec's *Code Premises* — what today's code was verified to do. A task that relies on existing behaviour not in that table states it in its *Implementation Notes* as a `**Premises:**` line with how it was verified (`path:lines` + literal, or command + output) — no sha, no cite-check.
 
 ## Scope Check
 
@@ -131,6 +132,10 @@ One file per task. Frontmatter per the template: `layer: work-task`, `parent: <W
   and return types. A task's implementer sees only their own task; this
   block is how they learn the names and types neighboring tasks use.]
 
+**Premises:** [existing behaviour this task relies on that the WRK-SPEC's
+Code Premises do not list — each with how it was verified (`path:lines` +
+literal, or command + output); "none beyond the spec's" otherwise]
+
 - [ ] **Step 1: Write the failing test**
 
 ```python
@@ -205,7 +210,7 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 ## Gate A2 — plan red-team (conditional)
 
-Dispatch [plan-adversary-prompt.md](plan-adversary-prompt.md) when **any** of these holds: more than 4 tasks; the spec activates a spec with `confidence: low` or no `verified`; the work touches security, money or regulatory logic. Otherwise skip it and say so. The adversary returns an attack table (kdd-superpowers:kdd-conventions `references/adversarial-gates.md`); adjudicate every `BROKEN` row, fix the plan or the tasks, re-validate, and record every `BROKEN` row and its ruling in the WRK-PLAN under `## Adversarial Review`.
+Dispatch [plan-adversary-prompt.md](plan-adversary-prompt.md) when **any** of these holds: more than 4 tasks; the spec activates a spec with `confidence: low` or no `verified`; the work touches security, money or regulatory logic. Otherwise skip it and say so. The adversary returns an attack table (kdd-superpowers:kdd-conventions `references/adversarial-gates.md`, *Design gates*); adjudicate every `BROKEN` finding — full rows and one-liners — fix the plan or the tasks, re-validate, and record the adversary's closing line and every `BROKEN` finding with its ruling in the WRK-PLAN under `## Adversarial Review` as `| Attack | Cause | Evidence | Ruling |`.
 
 ## Execution Handoff
 
