@@ -171,4 +171,15 @@ must_contain skills/brainstorming/spec-adversary-prompt.md "At most 3 full rows 
 must_contain skills/brainstorming/spec-adversary-prompt.md "+ <attack #> · <scenario in one sentence> · <Cause> · <evidence path:lines>" "A1 lists every further BROKEN finding"
 must_contain skills/brainstorming/spec-adversary-prompt.md "(code-reality a · spec-rule b · ambiguity c · knowledge-gap d · internal e)" "A1 closing line breakdown"
 
+# --- brainstorming order (WRK-TASK-FORK-GATES-001-003) ---
+if grep -rqF -- "-draft.md" "$REPO_ROOT/skills/brainstorming"; then fail "brainstorming has no A1 draft file"; else pass "brainstorming has no A1 draft file"; fi
+sr_line=$(grep -nF '**Spec self-review**' "$REPO_ROOT/skills/brainstorming/SKILL.md" | head -1 | cut -d: -f1)
+a1_line=$(grep -nF '**Gate A1 — spec red-team**' "$REPO_ROOT/skills/brainstorming/SKILL.md" | head -1 | cut -d: -f1)
+if [[ -n "$sr_line" && -n "$a1_line" && "$sr_line" -lt "$a1_line" ]]; then pass "self-review precedes gate A1"; else fail "self-review precedes gate A1 (self-review:$sr_line A1:$a1_line)"; fi
+must_contain skills/brainstorming/SKILL.md "gate A1 on the written spec" "path bullet states the new order"
+must_contain skills/brainstorming/SKILL.md "run gate A1 again" "A1 re-run rule"
+must_contain skills/brainstorming/SKILL.md "only after gate A1 is adjudicated" "architectural commit waits for A1"
+must_contain skills/brainstorming/SKILL.md "Adjudicate every \`BROKEN\` finding — full rows and one-liners" "A1 one-liners are adjudicated too"
+must_contain skills/brainstorming/SKILL.md "\"Gate A1 on the written spec; adjudicate; commit\"" "dot flow has the new A1 node"
+
 finish

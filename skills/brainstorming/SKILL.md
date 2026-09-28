@@ -51,8 +51,8 @@ override it:
   restructure how components fit together or alter interfaces others
   depend on.
   Follow the full process: knowledge discovery, questions, approaches,
-  sectioned design ending in *Knowledge activation*, gate A1, the WRK-SPEC,
-  then the writing-plans skill.
+  sectioned design ending in *Knowledge activation*, the WRK-SPEC and its
+  self-review, gate A1 on the written spec, then the writing-plans skill.
 
 When in doubt between two paths, take the heavier one. The ratchet is
 one-way: hidden complexity discovered mid-task upgrades the path —
@@ -108,9 +108,9 @@ your path and complete them in order.
 5. **Ask clarifying questions** — one at a time; let the rules in candidate specs drive them ("DOM-RISK-VAR-001 requires a 250-day window — does this change touch it?")
 6. **Propose 2-3 approaches** — with trade-offs, your recommendation, and which specs constrain each approach
 7. **Present design** — in sections scaled to their complexity, approval after each; the last section is always **Knowledge activation**
-8. **Gate A1 — spec red-team** — dispatch `spec-adversary-prompt.md` against the draft; adjudicate every BROKEN row, fix the draft
-9. **Write the WRK-SPEC** — `specs/work/<ID>-<slug>.md` per kdd-superpowers:kdd-conventions; `spec-graph validate` with 0 errors; commit
-10. **Spec self-review** — placeholders, contradictions, ambiguity, scope, *and* every Constraint cites an activated spec or a FRAG
+8. **Write the WRK-SPEC** — `specs/work/<ID>-<slug>.md` per kdd-superpowers:kdd-conventions; `spec-graph validate` with 0 errors; do not commit yet
+9. **Spec self-review** — placeholders, contradictions, ambiguity, scope, *and* every Constraint cites an activated spec or a FRAG
+10. **Gate A1 — spec red-team** — dispatch `spec-adversary-prompt.md` against the written WRK-SPEC; adjudicate every BROKEN finding, fix the spec, record `## Adversarial Review`, re-validate, commit
 11. **User reviews written spec** — on approval: `status: draft → active`, append the human's `verified`, commit
 12. **Transition to implementation** — invoke kdd-superpowers:writing-plans
 
@@ -131,8 +131,8 @@ digraph brainstorming {
     "Propose 2-3 approaches" [shape=box];
     "Present design sections (last: Knowledge activation)" [shape=box];
     "User approves design + activation?" [shape=diamond];
-    "Gate A1: spec red-team; adjudicate" [shape=box];
-    "Write WRK-SPEC; validate; commit" [shape=box];
+    "Gate A1 on the written spec; adjudicate; commit" [shape=box];
+    "Write WRK-SPEC; validate" [shape=box];
     "Spec self-review\n(fix inline)" [shape=box];
     "User reviews spec?" [shape=diamond];
     "draft → active + verified; invoke writing-plans" [shape=doublecircle];
@@ -154,11 +154,13 @@ digraph brainstorming {
     "Propose 2-3 approaches" -> "Present design sections (last: Knowledge activation)";
     "Present design sections (last: Knowledge activation)" -> "User approves design + activation?";
     "User approves design + activation?" -> "Present design sections (last: Knowledge activation)" [label="no, revise"];
-    "User approves design + activation?" -> "Gate A1: spec red-team; adjudicate" [label="yes — activation frozen"];
-    "Gate A1: spec red-team; adjudicate" -> "Write WRK-SPEC; validate; commit";
-    "Write WRK-SPEC; validate; commit" -> "Spec self-review\n(fix inline)";
-    "Spec self-review\n(fix inline)" -> "User reviews spec?";
-    "User reviews spec?" -> "Write WRK-SPEC; validate; commit" [label="changes requested"];
+    "User approves design + activation?" -> "Write WRK-SPEC; validate" [label="yes — activation frozen"];
+    "Write WRK-SPEC; validate" -> "Spec self-review\n(fix inline)";
+    "Spec self-review\n(fix inline)" -> "Gate A1 on the written spec; adjudicate; commit";
+    "Gate A1 on the written spec; adjudicate; commit" -> "User reviews spec?";
+    "User reviews spec?" -> "Write WRK-SPEC; validate" [label="substantive changes (A1 again)"];
+    "User reviews spec?" -> "Spec self-review\n(fix inline)" [label="wording changes"];
+    "Spec self-review\n(fix inline)" -> "User reviews spec?" [label="wording-only revision"];
     "User reviews spec?" -> "draft → active + verified; invoke writing-plans" [label="approved"];
 }
 ```
@@ -225,16 +227,21 @@ is the whole process.
 
 **Gate A1 — spec red-team (architectural path):**
 
-Before you write the WRK-SPEC file, save the approved design sections to
-`.kdd/brainstorm/<WRK-SPEC-ID>-draft.md` and dispatch the adversary in
-[spec-adversary-prompt.md](spec-adversary-prompt.md) with that draft path
+Once the WRK-SPEC file is written, validated and self-reviewed — and
+before you commit it — dispatch the adversary in
+[spec-adversary-prompt.md](spec-adversary-prompt.md) with the WRK-SPEC path
 and the activated spec files. It returns an attack table
 (kdd-superpowers:kdd-conventions `references/adversarial-gates.md`).
-Adjudicate every `BROKEN` row out loud with your human partner — a broken
+Adjudicate every `BROKEN` finding — full rows and one-liners — out loud with your human partner — a broken
 attack on an activated rule changes the design; a broken attack that
 reveals missing knowledge becomes a gap in *Knowledge activation*. Then
-write the WRK-SPEC, and record every `BROKEN` row and its ruling in the
-WRK-SPEC under `## Adversarial Review` (after Open Questions).
+fix the WRK-SPEC, record the adversary's closing line and every `BROKEN`
+finding with its ruling under `## Adversarial Review` (after Open
+Questions), re-validate and commit.
+
+If your human partner's review changes *Proposed Change*, *Constraints*,
+*Acceptance Criteria* or *Code Premises* beyond wording, run gate A1 again
+on the revised spec before asking for approval; otherwise do not.
 
 ## Writing the WRK-SPEC
 
@@ -245,7 +252,7 @@ Both paths write one; the bounded path writes the compact form.
 - Frontmatter: `status: draft`, `confidence: low`, `version: 0.1.0`, pinned `activates`/`equips` exactly as approved, `activation_frozen: true`, `activation_resolved_at`, `dependencies` (`constrained-by` each activated spec, `implements` a target FEAT if any), `sources` (each FRAG with its directory), `generated`, `stale_after` (+90 days), `tags`.
 - Body per the template: Problem Statement → Proposed Change (the approved sections as sub-headings) → Knowledge Context (the activation table; FRAGs marked "evidence, not activated") → Constraints (**verbatim** rules from activated specs with source ID and rule number; FRAG-observed behaviour with its anchor) → Acceptance Criteria (testable) → Open Questions.
 - Validate: `<kdd-cli> --specs specs validate` — 0 errors, and no warning naming your artifact.
-- Commit the WRK-SPEC (`spec(<ID>): <title>`).
+- Commit the WRK-SPEC (`spec(<ID>): <title>`) — on the architectural path, only after gate A1 is adjudicated.
 
 **Spec Self-Review:**
 After writing the WRK-SPEC, look at it with fresh eyes:
