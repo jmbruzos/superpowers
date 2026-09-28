@@ -35,6 +35,7 @@ bash tests/claude-code/test-sdd-workspace.sh
 (cd tests/brainstorm-server && npm test)
 bash tests/claude-code/test-kdd-flow.sh          # headless Claude; slow
 KDD_FLOW_USAGE=/tmp/usage bash tests/claude-code/test-kdd-flow.sh   # same, plus a token-usage table
+# headless runs need credentials: ~/.claude/.credentials.json, CLAUDE_CODE_OAUTH_TOKEN (claude setup-token) or ANTHROPIC_API_KEY
 ```
 
 `tests/scripts/test-skill-content.sh` asserts the anchors prompts and scripts

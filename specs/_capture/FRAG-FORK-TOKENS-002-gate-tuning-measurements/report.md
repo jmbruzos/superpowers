@@ -79,7 +79,7 @@ plan. A1 closing line, same grep against `scenario-7.transcripts/*.jsonl`:
   run-to-run spread; three runs per side do not separate a skill-level
   effect from ordinary variance here. This measurement does not show a
   saving or a cost from the gate tuning on scenario 4 — it neither confirms
-  nor refutes DOC-FORK-TOKENS-001's Method item 4 (output tokens as the
+  nor refutes DOC-FORK-TOKENS-001's §Content item 4 (output tokens as the
   expensive line) at this task size (rests on: Observed, Observed — spread).
 - The A2 closing line now carries a Cause breakdown in every after run,
   which the before format lacked; this is a qualitative gain in what the
@@ -88,7 +88,8 @@ plan. A1 closing line, same grep against `scenario-7.transcripts/*.jsonl`:
   a written WRK-SPEC did not exist before this plan), so its numbers are a
   first sample, not a before/after comparison (rests on: Observed, after-s7
   row).
-- Detail-cap and Cause-breakdown additions to the A1/A2 prompts did not
-  visibly change scenario 4's turn count (44-47 before, 50-52 after is a
-  4-8 turn shift, itself inside the noise these gates already show run to
-  run) (rests on: Observed, Turns column).
+- Detail-cap and Cause-breakdown additions to the A1/A2 prompts: turns rose
+  3-8 per paired run (before 44/44/47, after 50/50/52 — the two ranges do
+  not overlap), a possible turn cost of the added prompt text; n=3 runs per
+  side, not enough to separate this from a scenario-4-specific effect
+  (rests on: Observed, Turns column).

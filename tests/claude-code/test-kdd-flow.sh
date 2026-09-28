@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Headless Claude Code scenarios for the kdd-superpowers flow.
 # Assumptions: `claude` on PATH; the kdd toolkit at $KDD_TOOLKIT_DIR (default
-# ../knowledge-driven-development/kdd-toolkit relative to the repo); credentials in
+# ../knowledge-driven-development/kdd-toolkit relative to the repo); credentials via
 # ~/.claude/.credentials.json (copied into an isolated CLAUDE_CONFIG_DIR so user-scope
-# plugins — e.g. upstream superpowers — do not load) or ANTHROPIC_API_KEY set.
+# plugins — e.g. upstream superpowers — do not load), or CLAUDE_CODE_OAUTH_TOKEN
+# (a long-lived token from `claude setup-token`, useful when login lives only in the
+# macOS Keychain and the credentials file does not exist), or ANTHROPIC_API_KEY set.
 #
 # Nested-session note: when this test itself runs inside a Claude Code session
 # (e.g. a Claude agent executing this file), the child `claude -p` inherits
@@ -81,7 +83,7 @@ if [[ -n "$spec" ]]; then
   grep -q "DOM-BILL-PRORATA-001@" "$spec" && pass "activates the pinned DOM" || fail "activates the pinned DOM"
   grep -q "^status: active" "$spec" && pass "status active" || fail "status active"
   grep -q "human:test" "$spec" && pass "human verified entry" || fail "human verified entry"
-  [[ "$(validate "$p2")" == *"0 error"* || "$(validate "$p2")" == *"passed"* ]] && pass "validates" || fail "validates: $(validate "$p2")"
+  out2v="$(validate "$p2")"; [[ "$out2v" == *"Validation passed"* ]] && pass "validates" || fail "validates: $out2v"
   grep -q "^## Problem Statement" "$spec" && ! grep -q "^## Open Questions" "$spec" && pass "compact body" || fail "compact body"
 fi
 
@@ -116,7 +118,7 @@ for t in "$p4"/specs/work/WRK-TASK-*.md; do
   awk '/^activates:/{f=1; next} f && /^[[:space:]]+- /{print; next} f{exit}' "$t" | grep -vq "DOM-BILL-PRORATA-001@1.0.0" && fail "task activations ⊆ spec ($(basename "$t"))" || pass "task activations ⊆ spec ($(basename "$t"))"
 done
 [[ -n "$plan" ]] && grep -q "^## Architecture Impact" "$plan" && grep -q "DOM-BILL-PRORATA-001" "$plan" && pass "Architecture Impact cites the DOM" || fail "Architecture Impact cites the DOM"
-[[ "$(validate "$p4")" == *"0 error"* || "$(validate "$p4")" == *"passed"* ]] && pass "plan + tasks validate" || fail "plan + tasks validate: $(validate "$p4")"
+out4v="$(validate "$p4")"; [[ "$out4v" == *"Validation passed"* ]] && pass "plan + tasks validate" || fail "plan + tasks validate: $out4v"
 
 fi
 if want 5; then

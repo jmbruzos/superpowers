@@ -21,7 +21,7 @@ files:
   - raw/before-s4-2.json
   - raw/before-s4-3.json
   - report.md
-integrity: "sha256:7d3190fefc326112d75ecfdda44112c35054f3fec6a63d6d21090d3db580dc12"
+integrity: "sha256:5b3f498ab3a4e6c96803b7f75104b0551df887714b9f5b1476797aa70532b4f4"
 origin: kdd-superpowers
 routed_to: []
 dependencies:

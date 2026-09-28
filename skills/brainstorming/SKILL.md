@@ -160,7 +160,7 @@ digraph brainstorming {
     "Spec self-review\n(fix inline)" -> "Gate A1 on the written spec; adjudicate; commit";
     "Gate A1 on the written spec; adjudicate; commit" -> "User reviews spec?";
     "User reviews spec?" -> "Write WRK-SPEC; validate" [label="substantive changes (A1 again)"];
-    "User reviews spec?" -> "Spec self-review\n(fix inline)" [label="wording changes"];
+    "User reviews spec?" -> "Spec self-review\n(fix inline)" [label="wording changes: fix, re-validate"];
     "Spec self-review\n(fix inline)" -> "User reviews spec?" [label="wording-only revision"];
     "User reviews spec?" -> "draft → active + verified; invoke writing-plans" [label="approved"];
 }
