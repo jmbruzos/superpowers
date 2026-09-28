@@ -52,7 +52,7 @@ must_contain skills/brainstorming/SKILL.md "verified:" "records human verificati
 must_contain skills/brainstorming/SKILL.md "draft → active" "status transition on approval"
 must_contain skills/brainstorming/SKILL.md "scripts/transition" "brainstorming transitions via the script"
 must_not_contain skills/brainstorming/SKILL.md "docs/" "no docs/ paths left"
-must_contain skills/brainstorming/spec-adversary-prompt.md "| Attack | Scenario | Result | Evidence |" "A1 prompt uses the attack table"
+must_contain skills/brainstorming/spec-adversary-prompt.md "| Attack | Scenario | Result | Cause | Evidence |" "A1 prompt uses the design-gate table"
 must_not_contain skills/brainstorming/scripts/server.cjs "primeradiant" "companion has no upstream brand URL"
 must_not_contain skills/brainstorming/scripts/server.cjs "TELEMETRY" "companion has no telemetry switch"
 must_contain skills/brainstorming/scripts/frame-template.html "<title>kdd-superpowers Brainstorming</title>" "companion title renamed"
@@ -68,7 +68,7 @@ must_contain skills/writing-plans/SKILL.md "Activation coverage" "self-review ch
 must_contain skills/writing-plans/SKILL.md ".kdd/sdd/" "workspace path named"
 must_contain skills/writing-plans/SKILL.md "scripts/transition" "writing-plans transitions via the script"
 must_not_contain skills/writing-plans/SKILL.md "Global Constraints" "no Global Constraints header left"
-must_contain skills/writing-plans/plan-adversary-prompt.md "| Attack | Scenario | Result | Evidence |" "A2 prompt uses the attack table"
+must_contain skills/writing-plans/plan-adversary-prompt.md "| Attack | Scenario | Result | Cause | Evidence |" "A2 prompt uses the design-gate table"
 
 # --- subagent-driven-development (Task 013) ---
 must_contain skills/subagent-driven-development/SKILL.md "scripts/task-brief TASK_FILE" "task-brief takes a WRK-TASK file"
@@ -144,5 +144,65 @@ must_contain skills/finishing-a-development-branch/SKILL.md "Bounded work" "fini
 must_contain skills/finishing-a-development-branch/SKILL.md "scripts/transition" "finishing transitions via the script"
 must_contain skills/executing-plans/SKILL.md "main/master" "executing-plans keeps the main-branch guard"
 must_contain skills/requesting-code-review/code-reviewer.md "### Requirements Compliance" "code reviewer has a requirements verdict"
+
+# --- adversarial gate tuning (WRK-TASK-FORK-GATES-001-001) ---
+must_contain skills/kdd-conventions/references/adversarial-gates.md "## Design gates (A1, A2): cause, detail cap, persisted table" "design-gate addendum"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "| Attack | Scenario | Result | Cause | Evidence |" "design gates add a Cause column"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "\`code-reality\`" "cause: code-reality defined"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "\`spec-rule\`" "cause: spec-rule defined"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "\`ambiguity\`" "cause: ambiguity defined"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "\`knowledge-gap\`" "cause: knowledge-gap defined"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "\`internal\`" "cause: internal defined"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "At most 3 full rows per attack" "detail cap"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "+ <attack #> · <scenario in one sentence> · <Cause> · <evidence path:lines>" "one-line overflow keeps every BROKEN finding"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "| Attack | Cause | Evidence | Ruling |" "persisted BROKEN table"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "the written WRK-SPEC, after its self-review" "A1 attacks the written spec"
+must_contain skills/kdd-conventions/references/artifact-templates.md "## Code Premises" "WRK-SPEC template has Code Premises"
+must_contain skills/kdd-conventions/references/artifact-templates.md "| Premise | Verified by | Result |" "Code Premises table"
+must_contain skills/kdd-conventions/references/artifact-templates.md "| Attack | Cause | Evidence | Ruling |" "templates persist the BROKEN table"
+must_not_contain skills/kdd-conventions/references/artifact-templates.md "one line per BROKEN attack — attack · ruling" "one-liner persistence replaced"
+
+# --- A1 prompt (WRK-TASK-FORK-GATES-001-002) ---
+must_contain skills/brainstorming/spec-adversary-prompt.md "[WRK_SPEC_PATH]" "A1 attacks the written WRK-SPEC"
+must_not_contain skills/brainstorming/spec-adversary-prompt.md "DRAFT_PATH" "A1 has no draft input"
+must_contain skills/brainstorming/spec-adversary-prompt.md "## Code Premises" "A1 re-verifies Code Premises"
+must_contain skills/brainstorming/spec-adversary-prompt.md "premises re-verified: <N> hold" "A1 summarizes premises that hold"
+must_contain skills/brainstorming/spec-adversary-prompt.md "At most 3 full rows per attack" "A1 detail cap"
+must_contain skills/brainstorming/spec-adversary-prompt.md "+ <attack #> · <scenario in one sentence> · <Cause> · <evidence path:lines>" "A1 lists every further BROKEN finding"
+must_contain skills/brainstorming/spec-adversary-prompt.md "(code-reality a · spec-rule b · ambiguity c · knowledge-gap d · internal e)" "A1 closing line breakdown"
+
+# --- brainstorming order (WRK-TASK-FORK-GATES-001-003) ---
+if grep -rqF -- "-draft.md" "$REPO_ROOT/skills/brainstorming"; then fail "brainstorming has no A1 draft file"; else pass "brainstorming has no A1 draft file"; fi
+sr_line=$(grep -nF '**Spec self-review**' "$REPO_ROOT/skills/brainstorming/SKILL.md" | head -1 | cut -d: -f1)
+a1_line=$(grep -nF '**Gate A1 — spec red-team**' "$REPO_ROOT/skills/brainstorming/SKILL.md" | head -1 | cut -d: -f1)
+if [[ -n "$sr_line" && -n "$a1_line" && "$sr_line" -lt "$a1_line" ]]; then pass "self-review precedes gate A1"; else fail "self-review precedes gate A1 (self-review:$sr_line A1:$a1_line)"; fi
+must_contain skills/brainstorming/SKILL.md "gate A1 on the written spec" "path bullet states the new order"
+must_contain skills/brainstorming/SKILL.md "run gate A1 again" "A1 re-run rule"
+must_contain skills/brainstorming/SKILL.md "only after gate A1 is adjudicated" "architectural commit waits for A1"
+must_contain skills/brainstorming/SKILL.md "Adjudicate every \`BROKEN\` finding — full rows and one-liners" "A1 one-liners are adjudicated too"
+must_contain skills/brainstorming/SKILL.md "\"Gate A1 on the written spec; adjudicate; commit\"" "dot flow has the new A1 node"
+
+# --- code premises (WRK-TASK-FORK-GATES-001-004) ---
+must_contain skills/brainstorming/premise-verifier-prompt.md "Premise verifier: " "verifier dispatch description"
+must_contain skills/brainstorming/premise-verifier-prompt.md "model: [mid tier — REQUIRED]" "verifier is mid tier"
+must_contain skills/brainstorming/premise-verifier-prompt.md "Work read-only. Do not modify files, do not commit, do not dispatch subagents." "verifier is read-only"
+must_contain skills/brainstorming/premise-verifier-prompt.md "| Premise | Verified by | Result |" "verifier returns the premises table"
+must_contain skills/brainstorming/premise-verifier-prompt.md "\`unverifiable\`" "verifier can say unverifiable"
+must_contain skills/brainstorming/SKILL.md "premise-verifier-prompt.md" "brainstorming dispatches the verifier"
+must_contain skills/brainstorming/SKILL.md "**Code premises**" "design has a Code premises section"
+must_contain skills/brainstorming/SKILL.md "none — no existing code" "greenfield wording"
+must_contain skills/brainstorming/SKILL.md "\"The specs cover it, I don't need to read the code\"" "premises red flag"
+must_contain skills/brainstorming/SKILL.md "→ Code Premises" "WRK-SPEC body order includes Code Premises"
+
+# --- writing-plans and A2 (WRK-TASK-FORK-GATES-001-005) ---
+must_contain skills/writing-plans/SKILL.md "*Code Premises*" "writing-plans reads the spec's Code Premises"
+must_contain skills/writing-plans/SKILL.md "**Premises:**" "WRK-TASK states its own premises"
+must_contain skills/writing-plans/SKILL.md "| Attack | Cause | Evidence | Ruling |" "A2 persists the BROKEN table"
+must_contain skills/kdd-conventions/references/artifact-templates.md "**Premises:**" "WRK-TASK template has Premises"
+must_contain skills/writing-plans/plan-adversary-prompt.md "7. Code premise:" "A2 attack 7"
+must_contain skills/writing-plans/plan-adversary-prompt.md "At most 3 full rows per attack" "A2 detail cap"
+must_contain skills/writing-plans/plan-adversary-prompt.md "+ <attack #> · <scenario in one sentence> · <Cause> · <evidence path:lines>" "A2 lists every further BROKEN finding"
+must_contain skills/writing-plans/plan-adversary-prompt.md "(code-reality a · spec-rule b · ambiguity c · knowledge-gap d · internal e)" "A2 closing line breakdown"
+must_contain skills/writing-plans/SKILL.md "more than 4 tasks; the spec activates a spec with \`confidence: low\` or no \`verified\`; the work touches security, money or regulatory logic" "A2 trigger unchanged"
 
 finish

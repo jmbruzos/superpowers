@@ -150,8 +150,11 @@ dir before each scenario: a full run outlives one OAuth token.
 
 Isolation: each scenario runs with `CLAUDE_CONFIG_DIR` pointing at a fresh
 temp directory into which `~/.claude/.credentials.json` is copied when
-present (otherwise `ANTHROPIC_API_KEY` must be set in the environment), so
-no user-scope plugins (e.g. upstream `superpowers`) load — only the two
+present (otherwise `CLAUDE_CODE_OAUTH_TOKEN` — a long-lived token from
+`claude setup-token`, useful on macOS where login lives only in the Keychain
+and the credentials file may not exist — or `ANTHROPIC_API_KEY` must be set
+in the environment; `run_scenario`'s `env -u …` passes either through
+unchanged), so no user-scope plugins (e.g. upstream `superpowers`) load — only the two
 `--plugin-dir`s under test. Requires `KDD_TOOLKIT_DIR` (default
 `../knowledge-driven-development/kdd-toolkit`) and `KDD_SPEC_GRAPH` (default
 `$KDD_TOOLKIT_DIR/cli/spec-graph.mjs`); the test skips itself if either

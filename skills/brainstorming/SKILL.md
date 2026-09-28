@@ -51,8 +51,8 @@ override it:
   restructure how components fit together or alter interfaces others
   depend on.
   Follow the full process: knowledge discovery, questions, approaches,
-  sectioned design ending in *Knowledge activation*, gate A1, the WRK-SPEC,
-  then the writing-plans skill.
+  sectioned design ending in *Knowledge activation*, the WRK-SPEC and its
+  self-review, gate A1 on the written spec, then the writing-plans skill.
 
 When in doubt between two paths, take the heavier one. The ratchet is
 one-way: hidden complexity discovered mid-task upgrades the path —
@@ -78,6 +78,7 @@ artifact, never the approval.
 | "The spike works, so I'll keep the code" | A spike's output is an answer. Keeping the code is a new request — classify it. |
 | "It grew, but I'm almost done — no need to re-classify" | Hidden complexity upgrades the path mid-task. Stop and say so. |
 | "They approved the spike, so the follow-up change is approved too" | Each task gets its own classification and its own approval. |
+| "The specs cover it, I don't need to read the code" | Specs say what should be; code says what is. Every premise the design leans on is checked, not assumed. |
 
 ## Checklist
 
@@ -107,10 +108,10 @@ your path and complete them in order.
 4. **Offer the visual companion just-in-time** — NOT upfront (see the Visual Companion section)
 5. **Ask clarifying questions** — one at a time; let the rules in candidate specs drive them ("DOM-RISK-VAR-001 requires a 250-day window — does this change touch it?")
 6. **Propose 2-3 approaches** — with trade-offs, your recommendation, and which specs constrain each approach
-7. **Present design** — in sections scaled to their complexity, approval after each; the last section is always **Knowledge activation**
-8. **Gate A1 — spec red-team** — dispatch `spec-adversary-prompt.md` against the draft; adjudicate every BROKEN row, fix the draft
-9. **Write the WRK-SPEC** — `specs/work/<ID>-<slug>.md` per kdd-superpowers:kdd-conventions; `spec-graph validate` with 0 errors; commit
-10. **Spec self-review** — placeholders, contradictions, ambiguity, scope, *and* every Constraint cites an activated spec or a FRAG
+7. **Present design** — in sections scaled to their complexity, approval after each; the last section is always **Knowledge activation**, and the one before it is **Code premises**, checked by `premise-verifier-prompt.md`
+8. **Write the WRK-SPEC** — `specs/work/<ID>-<slug>.md` per kdd-superpowers:kdd-conventions; `spec-graph validate` with 0 errors; do not commit yet
+9. **Spec self-review** — placeholders, contradictions, ambiguity, scope, *and* every Constraint cites an activated spec or a FRAG
+10. **Gate A1 — spec red-team** — dispatch `spec-adversary-prompt.md` against the written WRK-SPEC; adjudicate every BROKEN finding, fix the spec, record `## Adversarial Review`, re-validate, commit
 11. **User reviews written spec** — on approval: `status: draft → active`, append the human's `verified`, commit
 12. **Transition to implementation** — invoke kdd-superpowers:writing-plans
 
@@ -131,8 +132,8 @@ digraph brainstorming {
     "Propose 2-3 approaches" [shape=box];
     "Present design sections (last: Knowledge activation)" [shape=box];
     "User approves design + activation?" [shape=diamond];
-    "Gate A1: spec red-team; adjudicate" [shape=box];
-    "Write WRK-SPEC; validate; commit" [shape=box];
+    "Gate A1 on the written spec; adjudicate; commit" [shape=box];
+    "Write WRK-SPEC; validate" [shape=box];
     "Spec self-review\n(fix inline)" [shape=box];
     "User reviews spec?" [shape=diamond];
     "draft → active + verified; invoke writing-plans" [shape=doublecircle];
@@ -154,11 +155,13 @@ digraph brainstorming {
     "Propose 2-3 approaches" -> "Present design sections (last: Knowledge activation)";
     "Present design sections (last: Knowledge activation)" -> "User approves design + activation?";
     "User approves design + activation?" -> "Present design sections (last: Knowledge activation)" [label="no, revise"];
-    "User approves design + activation?" -> "Gate A1: spec red-team; adjudicate" [label="yes — activation frozen"];
-    "Gate A1: spec red-team; adjudicate" -> "Write WRK-SPEC; validate; commit";
-    "Write WRK-SPEC; validate; commit" -> "Spec self-review\n(fix inline)";
-    "Spec self-review\n(fix inline)" -> "User reviews spec?";
-    "User reviews spec?" -> "Write WRK-SPEC; validate; commit" [label="changes requested"];
+    "User approves design + activation?" -> "Write WRK-SPEC; validate" [label="yes — activation frozen"];
+    "Write WRK-SPEC; validate" -> "Spec self-review\n(fix inline)";
+    "Spec self-review\n(fix inline)" -> "Gate A1 on the written spec; adjudicate; commit";
+    "Gate A1 on the written spec; adjudicate; commit" -> "User reviews spec?";
+    "User reviews spec?" -> "Write WRK-SPEC; validate" [label="substantive changes (A1 again)"];
+    "User reviews spec?" -> "Spec self-review\n(fix inline)" [label="wording changes: fix, re-validate"];
+    "Spec self-review\n(fix inline)" -> "User reviews spec?" [label="wording-only revision"];
     "User reviews spec?" -> "draft → active + verified; invoke writing-plans" [label="approved"];
 }
 ```
@@ -208,6 +211,7 @@ is the whole process.
 - Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
 - Ask after each section whether it looks right so far
 - Cover: architecture, components, data flow, error handling, testing — and, **always last, Knowledge activation**: a table of `activates` / `equips` with `ID@version` pins and the role of each, the FRAGs cited as evidence, the gaps (knowledge that should exist and does not — future capture candidates), and the proposed semantic ID path (`WRK-SPEC-<AREA>-<CONCEPT>`, reusing areas the graph already has). **Approving this section freezes the activation**: nothing downstream reopens it; a task that needs more knowledge records a `Knowledge gap:` ruling instead.
+- **Code premises** comes right before *Knowledge activation*: every statement about how existing code behaves today that the design leans on ("X already locks", "test T is green on main", "manual merge does not recompute"). Dispatch [premise-verifier-prompt.md](premise-verifier-prompt.md) with the list and present its table (`| Premise | Verified by | Result |`). A `false` or `unverifiable` premise changes the design before gate A1 — resolve it or stop relying on it; one that contradicts an activated spec is also a `Knowledge gap:`. Greenfield: the section reads "none — no existing code" and nothing is dispatched. A premise is not a FRAG: it is a checked fact for this work and does not enter the graph.
 - Be ready to go back and clarify if something doesn't make sense
 
 **Design for isolation and clarity:**
@@ -225,16 +229,21 @@ is the whole process.
 
 **Gate A1 — spec red-team (architectural path):**
 
-Before you write the WRK-SPEC file, save the approved design sections to
-`.kdd/brainstorm/<WRK-SPEC-ID>-draft.md` and dispatch the adversary in
-[spec-adversary-prompt.md](spec-adversary-prompt.md) with that draft path
+Once the WRK-SPEC file is written, validated and self-reviewed — and
+before you commit it — dispatch the adversary in
+[spec-adversary-prompt.md](spec-adversary-prompt.md) with the WRK-SPEC path
 and the activated spec files. It returns an attack table
 (kdd-superpowers:kdd-conventions `references/adversarial-gates.md`).
-Adjudicate every `BROKEN` row out loud with your human partner — a broken
+Adjudicate every `BROKEN` finding — full rows and one-liners — out loud with your human partner — a broken
 attack on an activated rule changes the design; a broken attack that
 reveals missing knowledge becomes a gap in *Knowledge activation*. Then
-write the WRK-SPEC, and record every `BROKEN` row and its ruling in the
-WRK-SPEC under `## Adversarial Review` (after Open Questions).
+fix the WRK-SPEC, record the adversary's closing line and every `BROKEN`
+finding with its ruling under `## Adversarial Review` (after Open
+Questions), re-validate and commit.
+
+If your human partner's review changes *Proposed Change*, *Constraints*,
+*Acceptance Criteria* or *Code Premises* beyond wording, run gate A1 again
+on the revised spec before asking for approval; otherwise do not.
 
 ## Writing the WRK-SPEC
 
@@ -243,9 +252,9 @@ Both paths write one; the bounded path writes the compact form.
 - REQUIRED SUB-SKILL: kdd-superpowers:kdd-conventions — IDs, template, trust family, validation.
 - ID: `skills/kdd-conventions/scripts/next-id WRK-SPEC-<AREA>-<CONCEPT>` with the path your human partner confirmed. File: `specs/work/<ID>-<slug>.md` (create `specs/work/` if absent, and add `.kdd/` to `.gitignore` if absent).
 - Frontmatter: `status: draft`, `confidence: low`, `version: 0.1.0`, pinned `activates`/`equips` exactly as approved, `activation_frozen: true`, `activation_resolved_at`, `dependencies` (`constrained-by` each activated spec, `implements` a target FEAT if any), `sources` (each FRAG with its directory), `generated`, `stale_after` (+90 days), `tags`.
-- Body per the template: Problem Statement → Proposed Change (the approved sections as sub-headings) → Knowledge Context (the activation table; FRAGs marked "evidence, not activated") → Constraints (**verbatim** rules from activated specs with source ID and rule number; FRAG-observed behaviour with its anchor) → Acceptance Criteria (testable) → Open Questions.
+- Body per the template: Problem Statement → Proposed Change (the approved sections as sub-headings) → Knowledge Context (the activation table; FRAGs marked "evidence, not activated") → Constraints (**verbatim** rules from activated specs with source ID and rule number; FRAG-observed behaviour with its anchor) → Code Premises (the verifier's table, architectural path) → Acceptance Criteria (testable) → Open Questions.
 - Validate: `<kdd-cli> --specs specs validate` — 0 errors, and no warning naming your artifact.
-- Commit the WRK-SPEC (`spec(<ID>): <title>`).
+- Commit the WRK-SPEC (`spec(<ID>): <title>`) — on the architectural path, only after gate A1 is adjudicated.
 
 **Spec Self-Review:**
 After writing the WRK-SPEC, look at it with fresh eyes:
