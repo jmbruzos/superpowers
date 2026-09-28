@@ -52,7 +52,7 @@ must_contain skills/brainstorming/SKILL.md "verified:" "records human verificati
 must_contain skills/brainstorming/SKILL.md "draft → active" "status transition on approval"
 must_contain skills/brainstorming/SKILL.md "scripts/transition" "brainstorming transitions via the script"
 must_not_contain skills/brainstorming/SKILL.md "docs/" "no docs/ paths left"
-must_contain skills/brainstorming/spec-adversary-prompt.md "| Attack | Scenario | Result | Evidence |" "A1 prompt uses the attack table"
+must_contain skills/brainstorming/spec-adversary-prompt.md "| Attack | Scenario | Result | Cause | Evidence |" "A1 prompt uses the design-gate table"
 must_not_contain skills/brainstorming/scripts/server.cjs "primeradiant" "companion has no upstream brand URL"
 must_not_contain skills/brainstorming/scripts/server.cjs "TELEMETRY" "companion has no telemetry switch"
 must_contain skills/brainstorming/scripts/frame-template.html "<title>kdd-superpowers Brainstorming</title>" "companion title renamed"
@@ -161,5 +161,14 @@ must_contain skills/kdd-conventions/references/artifact-templates.md "## Code Pr
 must_contain skills/kdd-conventions/references/artifact-templates.md "| Premise | Verified by | Result |" "Code Premises table"
 must_contain skills/kdd-conventions/references/artifact-templates.md "| Attack | Cause | Evidence | Ruling |" "templates persist the BROKEN table"
 must_not_contain skills/kdd-conventions/references/artifact-templates.md "one line per BROKEN attack — attack · ruling" "one-liner persistence replaced"
+
+# --- A1 prompt (WRK-TASK-FORK-GATES-001-002) ---
+must_contain skills/brainstorming/spec-adversary-prompt.md "[WRK_SPEC_PATH]" "A1 attacks the written WRK-SPEC"
+must_not_contain skills/brainstorming/spec-adversary-prompt.md "DRAFT_PATH" "A1 has no draft input"
+must_contain skills/brainstorming/spec-adversary-prompt.md "## Code Premises" "A1 re-verifies Code Premises"
+must_contain skills/brainstorming/spec-adversary-prompt.md "premises re-verified: <N> hold" "A1 summarizes premises that hold"
+must_contain skills/brainstorming/spec-adversary-prompt.md "At most 3 full rows per attack" "A1 detail cap"
+must_contain skills/brainstorming/spec-adversary-prompt.md "+ <attack #> · <scenario in one sentence> · <Cause> · <evidence path:lines>" "A1 lists every further BROKEN finding"
+must_contain skills/brainstorming/spec-adversary-prompt.md "(code-reality a · spec-rule b · ambiguity c · knowledge-gap d · internal e)" "A1 closing line breakdown"
 
 finish
