@@ -1,0 +1,438 @@
+---
+id: WRK-SPEC-MDM-MEMBER-DEPARTURE-001
+type: spec
+layer: work-spec
+scope: ephemeral
+status: draft
+confidence: low
+version: 0.1.0
+created: 2026-09-28
+updated: 2026-09-28
+owner: bruzos
+title: "La ficha que pierde un miembro se recalcula sobre sus miembros vigentes y su linaje de campo deja de apuntar al registro que salió (RFC-PIPE-039)"
+activates:
+  - DOM-MDM-SURVIVORSHIP-001@1.10.1
+  - DOM-MDM-PIPELINE-001@1.23.0
+  - DOM-MDM-LINEAGE-001@1.7.0
+  - ARCH-MDM-PERFORMANCE-001@1.8.1
+  - PROD-MDM-STEWARDSHIP-001@1.8.0
+equips: []
+activation_frozen: true
+activation_resolved_at: 2026-09-28T10:30:00+02:00
+dependencies:
+  - id: DOM-MDM-SURVIVORSHIP-001
+    relation: constrained-by
+  - id: DOM-MDM-PIPELINE-001
+    relation: constrained-by
+  - id: DOM-MDM-LINEAGE-001
+    relation: constrained-by
+  - id: ARCH-MDM-PERFORMANCE-001
+    relation: constrained-by
+  - id: PROD-MDM-STEWARDSHIP-001
+    relation: constrained-by
+  - id: ADR-020
+    relation: constrained-by
+  - id: ADR-022
+    relation: constrained-by
+  - id: RFC-PIPE-039
+    relation: depends-on
+sources:
+  - id: FRAG-MDM-MEMBER-DEPARTURE-001
+    resource: specs/_capture/FRAG-MDM-MEMBER-DEPARTURE-001-la-ficha-que-pierde-un-miembro/
+  - id: FRAG-MDM-MATCH-001
+    resource: specs/_capture/FRAG-MDM-MATCH-001-el-match-compara-contra-golden-data/
+  - id: FRAG-MDM-OVERRIDE-PREVIEW-001
+    resource: specs/_capture/FRAG-MDM-OVERRIDE-PREVIEW-001-override-via-motor-preview-fiel-y-score-en-stewardship/
+  - id: RFC-PIPE-039
+    resource: specs/governance/RFC-PIPE-039-la-ficha-que-pierde-un-miembro-conserva-sus-datos.md
+generated:
+  by: claude-code/claude-opus-5-5
+  at: 2026-09-28T10:30:00+02:00
+stale_after: 2026-12-27
+tags: [mdm, pipeline, survivorship, lineage, stewardship, work:manual-unification]
+---
+
+# WRK-SPEC-MDM-MEMBER-DEPARTURE-001 — La ficha que pierde un miembro se recalcula
+
+Resuelve RFC-PIPE-039 (cluster `work:manual-unification`, ADR-011). Hereda de WRK-SPEC-MDM-SOURCE-IDENTITY-001 la
+xref temporal como única fuente de verdad de la pertenencia (ADR-022).
+
+## Problem Statement
+
+RFC-PIPE-039: cuando un registro de origen sale de una ficha (se cierra su tramo en `mdm_gold.source_record_xref`),
+la ficha que lo pierde conserva en `golden_data` y `field_lineage` los valores que aportaba ese registro.
+
+Lo observado en el código (FRAG-MDM-MEMBER-DEPARTURE-001, `aacdae5`) acota el problema:
+
+| Operación que cierra un tramo | Ficha que pierde el miembro | Hoy |
+|---|---|---|
+| `ForceRule` aplicada en el pipeline (`PersistenceStepHandler.persistMembership`, `kind = FORCE_RULE`) | `previous` (= `conflictFromGoldenRecordId` de la resolución `FORCED`), sigue `active` | Claves, caché y `source_count`; **ni `golden_data`, ni `field_lineage`, ni `quality_score`, ni evento**. Si se queda sin miembros sigue `active` con `source_count = 0` |
+| Unmerge (`StewardshipService.unmerge`) | la original, `active`, ≥ 1 miembro | **Ya se recalcula** sobre los miembros que quedan y desactiva los pins de los separados |
+| Consolidación automática / merge manual | las absorbidas → `merged`/`absorbed` | Pierden **todos** sus miembros; lectura redirigida; `golden_data` congelado |
+| Resolución de revisión | — | **No cierra tramos**: `REVIEW_RESOLUTION` no tiene usos |
+| Tramo hacia ficha inexistente/borrada/huérfana (`membership_orphan`) | ya no `active` | Nada que recalcular |
+
+Hoy ninguna API crea reglas `SOURCE_TO_GOLDEN` (`grep -rn "SOURCE_TO_GOLDEN" --include='*.java'
+src/mdm-api-gateway/src/main src/mdm-ingest-service/src/main` → 0 resultados; el único `setRuleType` de producción es
+`GOLDEN_TO_GOLDEN`, `StewardshipService.java:965`; los IT las siembran directamente, p. ej.
+`SourceIdentityPipelineIT`). El movimiento por ForceRule lo disparan reglas sembradas o heredadas, y lo disparará el
+merge manual `source_to_golden` cuando exista (cluster `manual-unification`). La regla de esta WRK-SPEC cubre ese
+camino.
+
+El RFC dice que "el efecto se limita a la lectura". No es así: el match compara el registro entrante con el
+`golden_data` de la candidata (FRAG-MDM-MATCH-001), así que un valor del registro que se fue sigue decidiendo matches
+contra la ficha que lo perdió.
+
+## Proposed Change
+
+### Enfoques considerados
+
+- **A — Recálculo en el mismo intento de pipeline que mueve el registro (elegido).** El paso Merge calcula también
+  la ficha que pierde el miembro; Persistence lo escribe en la misma transacción que cierra el tramo, bajo la guarda
+  de versión esperada. La base de datos queda coherente al commit; sin migración; reutiliza el algoritmo del
+  unmerge. Las cachés de otros pods siguen dependiendo del evento de invalidación y del TTL, como cualquier
+  actualización (ver *Error handling*).
+- **B — Marcar para recálculo** (columna `recompute_pending` + barrido con el re-survivorship por lote). Ventana de
+  incoherencia en la base de datos, visible para lectura y para el match (FRAG-MDM-MATCH-001); migración V40 y un
+  job más. Descartado.
+- **C — Evento `MemberDeparted` + listener.** Los eventos son best-effort (se registran, no se propagan): un evento
+  perdido deja la ficha obsoleta para siempre. Descartado.
+
+### Architecture
+
+**Regla R1 (ficha que pierde un miembro).** Cuando una operación cierra el tramo vigente de un registro en una
+ficha que, bajo el bloqueo de esa operación, está `active`, en la **misma transacción**:
+
+1. **Si le quedan miembros vigentes**, se recalculan desde cero sobre **todas las versiones en Silver de los
+   miembros vigentes**, en el orden de `findVersionsOfMembers`: `golden_data`, `field_lineage`, `quality_score`,
+   `latest_source_received_at` y `schema_version`. Es el mismo algoritmo que ya usan el unmerge y el
+   re-survivorship: el primer registro en `create` y el resto en `update` sobre el acumulado. Con él, el
+   `golden_data` previo de la ficha **no** entra como candidato. Para eso existe el modo "recalculate" de
+   DOM-MDM-SURVIVORSHIP-001 §3.8.2, y es una desviación consciente de §3.3 punto 2, que describe el merge
+   incremental (ver *Constraints*).
+   - Tras el recálculo, cada entrada de `field_lineage` cuyo valor difiere del que tenía la ficha lleva en
+     `previous` el valor, la fuente y el registro anteriores. Los campos que solo aportaba el registro que se fue
+     desaparecen de `golden_data` y de `field_lineage`. Así la ficha cumple DOM-MDM-SURVIVORSHIP-001 §3.6.1.
+   - Los `FieldOverrideRule` activos se aplican como en cualquier merge. Un `source_pin` al registro que se fue ya
+     no encuentra valor y el campo cae a survivorship (`DefaultMergeEngine.java:117-121`). Además, el pin se
+     desactiva en la misma transacción (DOM-MDM-PIPELINE-001 §10.9.4 punto 2; ver *Components*).
+2. **Si no le queda ninguno**, pasa a `orphaned` (DOM-MDM-SURVIVORSHIP-001 §3.2, `active → orphaned`). Su
+   `golden_data` y su `field_lineage` se conservan sin recalcular, como lectura histórica.
+3. **La ficha que pierde el miembro sube siempre su `version_num`** (en los dos casos anteriores). Ese es el
+   invariante I2: toda operación que cambia los miembros vigentes de una ficha `active` sube su versión. Sobre él
+   descansa la guarda de versión de *Data flow*.
+
+Una ficha que no está `active` bajo el bloqueo (`merged`, `absorbed`, `orphaned`, `deleted`) no se toca.
+
+**R1 también vale si la ficha es superviviente de un merge manual** (tiene una `ForceRule GOLDEN_TO_GOLDEN` activa
+que la apunta). El `golden_data` de esa ficha ya lo reescribe cualquier ingesta de sus miembros, como dice el
+comentario de `StewardshipService.java:474-477`: "el pipeline si le re-ejecuta survivorship en cada ingesta
+normal". La salida del miembro es a su vez una decisión humana: una `ForceRule` creada por una persona (ADR-022
+§3). La regla `GOLDEN_TO_GOLDEN` **no** se desactiva: la ficha sigue siendo la superviviente. La guarda `409
+manual_merge_survivor` del re-survivorship bajo demanda no cambia.
+
+**Invariante I1 (resultado).** Tras aplicar R1.1, en la ficha recalculada, toda entrada de `field_lineage` cuya
+regla no sea `manual_override` tiene el `source_record_id` de un miembro vigente de la xref, y también su `source`
+cuando la entrada lo lleva. `value_override` queda fuera porque atribuye el linaje al operador (DOM-MDM-PIPELINE-001
+§10.9.4, consolidación STEWARDSHIP-PREVIEWS). I1 se garantiza **en las fichas que pierden un miembro a partir de
+este cambio** y en las que repare el re-survivorship. No es una auditoría global del linaje existente: el que
+atribuyó la migración V38 queda fuera.
+
+**Alcance por operación.**
+- ForceRule en el pipeline: se implementa R1. Es el hueco real.
+- Unmerge: ya cumple R1.1 y no cambia de comportamiento. Pasa a delegar el cálculo en el componente compartido:
+  mismo algoritmo y mismas versiones, y preview ≡ confirm sigue intacto. El relleno de `previous` de R1.1 **no** se
+  aplica al unmerge (queda como OQ-2), para no alterar sus resultados.
+- Consolidación y merge manual: fuera de R1, porque las absorbidas no quedan `active`.
+- Resolución de revisión: hoy no cierra tramos. Cuando lo haga (OQ-3 de WRK-SPEC-MDM-SOURCE-IDENTITY-001, cluster
+  `manual-unification`), aplicará R1 con el mismo componente. Esta WRK-SPEC no implementa esa resolución.
+- Re-survivorship por id (`POST /admin/re-survivorship/{id}`): aplica R1.2 a una ficha `active` sin miembros
+  vigentes, bajo `FOR UPDATE`, y la pasa a `orphaned`. Hoy la cuenta como `skipped` y no escribe. Es la reparación
+  explícita, ficha a ficha, de las que ya se quedaron sin miembros antes de este cambio. **El lote no cambia**: sigue
+  contándolas como `skipped`, para no decidir en automático los casos `golden_without_members` que V38 dejó en
+  `mdm_platform.xref_migration_conflicts` para una persona. Las fichas históricas que conservan miembros ya se
+  reparan con el lote actual, que recalcula desde los miembros vigentes.
+
+### Components
+
+- **`MemberSetRecalculator`** (`mdm-ingest-service`, nuevo; puro, no persiste). Contiene el algoritmo de
+  `StewardshipService.reSurvivorshipFromSources`, movido sin cambios (el primero en `create`, el resto en `update`
+  en el orden recibido, y el `MergeEngine` como parámetro), y la carga de miembros vigentes (`findCurrentMembers` +
+  `findVersionsOfMembers`).
+  - Operación `recalculate(tenant, goldenRecordId, entityType, excluded identities, SurvivorshipConfig,
+    evaluationInstant, MergeEngine, prior golden_data/field_lineage | null)`. Devuelve `MergeResult`, las sources
+    usadas, el score (`QualityScoreResolver`) y `latest_source_received_at` (`LatestSourceReceivedAtResolver` sobre
+    las sources usadas). Si recibe el estado anterior, rellena `previous` como describe R1.1.
+  - En `StewardshipService` solo cambia el **cuerpo** de las dos sobrecargas de `reSurvivorshipFromSources`, que
+    delegan en el componente. Ningún llamante cambia y no se toca ninguna otra ruta de stewardship.
+- **Cálculo en Merge** (`MergeStepHandler`). Si la resolución de pertenencia es `FORCED` con
+  `conflictFromGoldenRecordId` distinto del destino, el paso Merge:
+  1. lee esa ficha (estado y `version_num`);
+  2. si está `active`, llama a `MemberSetRecalculator` excluyendo la identidad entrante y pasando el estado
+     anterior;
+  3. deja en `PipelineContext` un `DepartureRecalculation(goldenRecordId, expectedVersion, kind ∈ {RECOMPUTED,
+     ORPHANED}, MergeResult | null, score, latestSourceReceivedAt, previousScore)`.
+
+  Una ficha no `active` no produce `DepartureRecalculation`.
+- **`MemberDepartureWriter`** (`mdm-ingest-service`, nuevo; lo invoca Persistence). Precondición: el llamante tiene
+  la ficha bloqueada con `FOR UPDATE`. Comprueba que `version_num` = `expectedVersion`; si no coincide, lanza el
+  conflicto de concurrencia de §6.5. Después:
+  - `RECOMPUTED`: escribe `golden_data`, `field_lineage`, `quality_score`, `latest_source_received_at`,
+    `schema_version` y `updated_at`/`updated_by` con `saveAndFlush`, lo que sube `version_num`.
+  - `ORPHANED`: escribe `status = orphaned` y `updated_at`/`updated_by` con `saveAndFlush`.
+  - Pins: desactiva los `source_pin` que apuntan al registro que se fue.
+- **Desactivación de pins.** Se desactiva un `source_pin` activo de la ficha si casa con la identidad que se fue
+  con el mismo criterio con que el motor lo resolvería. Con fuente, por `(pinned_source, pinned_source_record_id)`;
+  un pin legado (`pinned_source = null`), **solo por id**, igual que `DefaultMergeEngine.java:241-243`. Un pin
+  legado cuyo id comparte otro miembro vigente de otra fuente también se desactiva: desactivar es visible y
+  reversible, y seguir fijando el valor de otro sistema de origen sería silencioso. Campos:
+  `deactivation_reason = member_departed`, `deactivated_by = system:pipeline`, y `FieldOverrideAutoDeactivated`
+  tras el commit, como en la consolidación (DOM-MDM-PIPELINE-001 §10.9.5).
+- **Emisión post-commit compartida.** Un único método emite los eventos de las `DepartureRecalculation` escritas.
+  Lo invocan **las dos** rutas de fin de run que hoy duplican el bloque de eventos: `IngestService` (sync) y
+  `AsyncPipelineExecutor` (`AsyncPipelineExecutor.java:200-224`).
+
+### Data flow
+
+ForceRule en el pipeline:
+
+1. **Match** resuelve `FORCED` con `conflictFromGoldenRecordId = F` y destino G (sin cambios).
+2. **Merge** fusiona el entrante en G (sin cambios) y calcula `DepartureRecalculation` para F.
+3. **Persistence**, en `persistMembership`, con F y G bloqueadas en orden ascendente (`lockGoldenRecordsBeforeMove`,
+   sin cambios):
+   1. comprueba `previous == F` (hoy ya: si no, conflicto);
+   2. `membershipRepository.move(...)`;
+   3. `cleanUpAfterLosingMember(F)` (claves, sin cambios);
+   4. **nuevo:** `MemberDepartureWriter.write(F, DepartureRecalculation)`, que puede fallar por versión (conflicto
+      → retrocede a Merge, que recalcula);
+   5. `cacheEvictor.evictAfterCommit(F)`;
+   6. `refreshSourceCounts(tenant, touched)`, **después** de todo `saveAndFlush` sobre F. Es un UPDATE nativo que
+      no toca `version_num`, y la entidad gestionada no queda sucia.
+   7. Para `RECOMPUTED`: `PersistenceStepHandler.maybeEmitQualityTierChange(previousScore, F, ctx)`, con el mismo
+      emisor y la misma métrica que las ramas `update`/`consolidate`.
+4. **Fin del run (post-commit)**, por cada `DepartureRecalculation` escrita:
+   - `golden_record.updated` para F, con payload aditivo `{reason: "member_departed", status, fields_changed[]}`.
+     Invalida las cachés de los otros pods (ARCH-MDM-PERFORMANCE-001 §3.3.1).
+   - `FieldOverrideAutoDeactivated` por cada pin desactivado.
+   - Métrica `mdm_member_departure_total{entity_type, outcome}`.
+
+La `SurvivorshipConfig` es la del schema activo del `entity_type` del contexto. La ficha que pierde el miembro es
+del mismo `entity_type`, porque forma parte de la identidad (ADR-022 §1).
+
+### Error handling
+
+- Un fallo del cálculo en Merge (p. ej. excepción del motor) es un fallo del paso Merge y sigue su política. Si
+  falla la escritura en Persistence, se revierte la transacción entera, movimiento incluido. El conflicto de
+  versión en F retrocede a Merge y recalcula (DOM-MDM-PIPELINE-001 §6.5). R1 no es best-effort.
+- Un miembro vigente sin ninguna versión en Silver es imposible por construcción: V38 abre los tramos desde
+  `mdm_silver.staged_records` y ningún código de producción borra `staged_records`. `MemberSetRecalculator` lanza
+  `IllegalStateException` con la identidad; no lo omite en silencio.
+- Concurrencia:
+  - Un merge concurrente de otro miembro de F que leyó la versión anterior falla la guarda de versión esperada y
+    reintenta (DOM-MDM-PIPELINE-001 §6.5, ADR-020).
+  - Un unmerge concurrente de F toma `FOR UPDATE` antes de leer miembros y se serializa.
+  - El orden de bloqueos no cambia.
+- **Límite conocido (sin cambio respecto a hoy):** otro pod puede tener F cacheada con el valor que se fue hasta
+  recibir el evento o expirar el TTL. Mientras tanto, su paso Match puede comparar contra ese `golden_data`
+  obsoleto, y el reintento por conflicto retrocede a Merge, no a Match (§6.5). Es la misma ventana que tiene
+  cualquier actualización de ficha; no se amplía aquí.
+- Los eventos siguen siendo best-effort y posteriores al commit.
+
+### Testing
+
+- **Unit (`MemberSetRecalculatorTest`):**
+  - excluir la identidad que se fue elimina sus valores;
+  - un campo que solo aportaba el que se fue desaparece;
+  - `previous` recoge el valor anterior;
+  - un miembro sin versiones lanza `IllegalStateException`.
+- **Unit (`MemberDepartureWriterTest`):**
+  - versión distinta → conflicto;
+  - `RECOMPUTED` escribe las columnas y sube la versión;
+  - `ORPHANED` solo cambia el estado;
+  - pin con fuente del que se fue → desactivado;
+  - pin legado por id → desactivado;
+  - pin de otro miembro → intacto.
+- **Unit (`PersistenceStepHandlerTest`):** el `InOrder` del movimiento por ForceRule es `move` → `cleanUp` →
+  `write` → `refreshSourceCounts`.
+- **Unit (`MergeStepHandlerTest`):** `FORCED` con ficha de origen `active` produce `DepartureRecalculation`; con
+  ficha no `active`, no produce nada.
+- **IT (Testcontainers, `MemberDepartureIT`).** La ForceRule `SOURCE_TO_GOLDEN` se siembra como en
+  `SourceIdentityPipelineIT`. Schema de prueba: regla determinista "solo email", `email: most_recent` y `phone:
+  most_recent`. Ficha F con A (CRM, `email = a@x`, `phone` ausente, recibido después) y B (ERP, `email = b@x`,
+  `phone = 600`). La ForceRule mueve A a otra ficha G y se reingesta A. Resultado esperado:
+  - `F.email == "b@x"` y `field_lineage.email.source_record_id == B`;
+  - `field_lineage.email.previous.value == "a@x"`;
+  - `version_num` +1 y `source_count == 1`;
+  - `quality_score` recalculado sobre B solo;
+  - un registro nuevo X (email `a@x`, sin otros campos) **no** hace match con F: el outcome contra F no es
+    `SINGLE_MATCH`. Como control, antes del movimiento un X igual sí hace match con F.
+- **IT:** una ficha con un único miembro movido por ForceRule queda `orphaned` y conserva su `golden_data`. Una
+  ForceRule que la apunte se ignora (§10.8.5).
+- **IT:** la ficha superviviente de un merge manual que pierde un miembro por ForceRule se recalcula, y su regla
+  `GOLDEN_TO_GOLDEN` sigue activa.
+- **IT:** `POST /admin/re-survivorship/{id}` sobre una ficha `active` sin miembros la pasa a `orphaned`. El lote
+  sigue contándola `skipped`.
+- **IT (async):** con `AsyncPipelineExecutor`, se publica `golden_record.updated` para F.
+- **Regresión:** `StewardshipQualityScoreIT.unmerge_persistsQualityScore`, los previews de unmerge y override y
+  `AdminReSurvivorshipIT` siguen en verde tras la extracción.
+
+## Knowledge Context
+
+| Activated Spec | Role in this work |
+|---|---|
+| DOM-MDM-SURVIVORSHIP-001@1.10.1 | Ciclo de vida (`active → orphaned`, §3.2), algoritmo por campo (§3.3), `previous` (§3.6.1), frescura sobre las sources que quedan (§3.7.1.1), emisores del cambio de tier (§3.7.3), re-survivorship (§3.8) |
+| DOM-MDM-PIPELINE-001@1.23.0 | Separación Merge/Persistence y guarda de versión (§6.5), unmerge (§10.6), ForceRule (§10.8.4–10.8.5), pins al perder su registro (§10.9.4–10.9.5) |
+| DOM-MDM-LINEAGE-001@1.7.0 | xref temporal (§3.2.6), `field_lineage` como respuesta a "¿de dónde viene el campo?" (§3.3.3), catálogo de eventos (§3.1.2) |
+| ARCH-MDM-PERFORMANCE-001@1.8.1 | Invalidación de caché por evento tras persistir (§3.3.1) |
+| PROD-MDM-STEWARDSHIP-001@1.8.0 | Re-survivorship: reporte, `skipped` y exclusión del superviviente de merge manual (§3.8.5) |
+| FRAG-MDM-MEMBER-DEPARTURE-001 | Evidence, not activated: qué escribe hoy cada operación en la ficha que pierde un miembro |
+| FRAG-MDM-MATCH-001 | Evidence, not activated: el match compara contra `golden_data` |
+| FRAG-MDM-OVERRIDE-PREVIEW-001 | Evidence, not activated: overrides vía motor, preview ≡ confirm |
+
+Contexto de gobierno (no activado): ADR-020 (versión esperada en persistence), ADR-022 (pertenencia estable,
+identidad completa), RFC-PIPE-039 (lo que esta WRK-SPEC resuelve).
+
+**Huecos de conocimiento** (candidatos para la consolidación):
+- Ninguna spec decía qué pasa con el `golden_data` de una ficha `orphaned`. Se decide aquí: se conserva como
+  lectura histórica.
+- DOM-MDM-PIPELINE-001 §10.8.4 dice `absorbed` para la ficha que se queda sin miembros en un `source_to_golden`, y
+  DOM-MDM-SURVIVORSHIP-001 §3.2 dice `orphaned`. Se decide `orphaned`; hay que corregir §10.8.4.
+- DOM-MDM-LINEAGE-001 §3.1.2 no tiene evento de paso a `orphaned`. Se usa `golden_record.updated` con `status` en
+  el payload; hay que documentarlo.
+- DOM-MDM-SURVIVORSHIP-001 §3.3 punto 2 describe solo el merge incremental. Hay que dejar dicho que el recálculo
+  sobre un conjunto de miembros (unmerge, re-survivorship, R1) no incluye el valor previo como candidato.
+- DOM-MDM-SURVIVORSHIP-001 §3.7.1.1 dice que el merge incremental es válido "porque la ingesta solo AÑADE sources".
+  El movimiento por ForceRule **quita** una en el pipeline; la ficha que la pierde se trata con el cálculo completo.
+- Ninguna spec dice si un pin legado puede cambiar de sistema de origen. Se decide aquí: se desactiva.
+
+## Constraints
+
+- **DOM-MDM-SURVIVORSHIP-001 §3.2**: "`active → orphaned`: Cuando el último registro fuente se reasigna a otro GR
+  (via unmerge o source_to_golden). El GR queda sin datos fuente." Tabla: `orphaned` — "Todos sus registros fuente
+  fueron reasignados a otros golden records (via unmerge o source_to_golden manual merge). No tiene registros fuente
+  activos. | Sí (solo lectura histórica) | No | No".
+- **DOM-MDM-SURVIVORSHIP-001 §3.3 punto 2**: "Si existe un golden record previo (merge, no creacion), el valor
+  actual del golden record se incluye como candidato con `trust_score: 1.0`." **Desviación declarada**: R1.1 no lo
+  hace. Recalcula como el modo "recalculate" de §3.8.2 ("Mismos registros fuente, mismos valores candidatos"),
+  igual que el unmerge (`StewardshipService.java:434`, FRAG-MDM-MEMBER-DEPARTURE-001). Incluir el valor previo
+  mantendría exactamente el valor que RFC-PIPE-039 pide retirar.
+- **DOM-MDM-SURVIVORSHIP-001 §3.6.1**: "`previous` | Valor anterior si hubo cambio. `null` si es la primera
+  resolución o si el valor no cambió."
+- **DOM-MDM-SURVIVORSHIP-001 §3.7.1.1**, fila de stewardship: "`resolve(sources.receivedAt)` sobre el conjunto de
+  sources que QUEDAN vinculadas al golden record tras la operación (nunca combina el valor ya persistido con el
+  candidato nuevo: una operación como `unmerge` puede QUITAR sources, y arrastrar el máximo persistido lo dejaría
+  obsoleto)."
+- **DOM-MDM-SURVIVORSHIP-001 §3.8.1**: "Cambio de reglas de survivorship (nueva schema version) | No | El operador
+  decide cuándo re-calcular." R1 no es un recálculo por cambio de schema. Recalcula una ficha concreta porque una
+  operación le quitó un miembro, igual que una ingesta normal re-evalúa todos los campos con el schema activo y
+  escribe su `schema_version` (`PersistenceStepHandler.java:366`: `gr.setSchemaVersion(ctx.getSchemaVersion() ...`).
+- **DOM-MDM-PIPELINE-001 §6.5**: "Separa la lógica de cálculo (Merge) de la lógica de I/O (Persistence),
+  permitiendo reintentar la escritura sin recalcular el merge"; "Error de concurrencia (version mismatch) →
+  retrocede a Merge para recalcular, luego reintenta Persistence." Por eso el cálculo va en Merge y la escritura en
+  Persistence, con guarda de versión.
+- **DOM-MDM-PIPELINE-001 §10.9.4 punto 2**: "Si el registro fuente fijado por un `source_pin` ya no está vinculado
+  al golden record (por un unmerge posterior), la regla se desactiva automáticamente y se emite un evento
+  `FieldOverrideAutoDeactivated` con el motivo." R1 lo extiende a la salida por ForceRule.
+- **DOM-MDM-PIPELINE-001 §10.8.5**: "Una regla cuyo destino no existe o está `deleted`/`orphaned` se ignora con
+  warning".
+- **DOM-MDM-LINEAGE-001 §3.2.6**: "Cambiar de ficha = cerrar y abrir en la misma transacción; un tramo cerrado no
+  se modifica." R1 no toca tramos.
+- **ARCH-MDM-PERFORMANCE-001 §3.3.1**: "`StewardshipService` invalida vía `GoldenRecordCacheEvictor.evictAfterCommit`
+  … y publica tras el commit el evento canónico del pipeline (`aggregateType=golden_record`,
+  `eventType=golden_record.updated` …), el que consume `CacheInvalidationListener` en los demás pods."
+- **PROD-MDM-STEWARDSHIP-001 §3.8.5**: "`skipped` — golden records `active`, no merge-manual, para los que no se
+  encontró ninguna source resoluble". El lote conserva esta definición; solo la ruta por id pasa a `orphaned`.
+- **Observado** (FRAG-MDM-MEMBER-DEPARTURE-001):
+  - `PersistenceStepHandler.java:808-809@aacdae5`: la ficha que pierde el miembro solo recibe `cleanUpAfterLosingMember` y `evictAfterCommit`;
+  - `StewardshipService.java:1004@aacdae5`: "No re-survivorship: goldenData itself is not touched by" (merge manual);
+  - `MembershipOperationKind.java:28@aacdae5`: `REVIEW_RESOLUTION` sin usos.
+
+## Acceptance Criteria
+
+- [ ] AC1. En el escenario de `MemberDepartureIT`, tras el movimiento por ForceRule de A: `F.golden_data.email ==
+  "b@x"`, `F.golden_data.phone == "600"`, y ningún campo de F conserva un valor que solo traía A.
+- [ ] AC2. I1 en F: ninguna entrada de `field_lineage` con regla distinta de `manual_override` tiene
+  `source_record_id` de A; `field_lineage.email.previous.value == "a@x"`.
+- [ ] AC3. `F.quality_score` es el que `QualityScoreResolver` da para B solo; `F.latest_source_received_at` es el
+  `received_at` de B; `F.version_num` sube en 1; tras el commit se publica `golden_record.updated` para F con
+  `reason = member_departed`, tanto en sync como en async; y `GoldenRecordQualityChanged` si el tier cambia.
+- [ ] AC4. Un registro nuevo X con solo `email = a@x` no obtiene `SINGLE_MATCH` contra F tras el movimiento; el
+  mismo X sí lo obtenía antes.
+- [ ] AC5. Una ficha `active` que pierde su único miembro por ForceRule queda con `status == orphaned`, y su
+  `golden_data` es idéntico al de antes del movimiento. Como regresión, además: `source_count = 0` y sin blocking
+  keys.
+- [ ] AC6. Un `source_pin` de F al registro A (con fuente, o legado por id) queda `active = false` con
+  `deactivation_reason = member_departed`, y se publica `FieldOverrideAutoDeactivated`. Un pin de F al registro B
+  sigue activo.
+- [ ] AC7. Si la versión de F cambia entre Merge y Persistence (IT con un update concurrente de B), Persistence da
+  conflicto y retrocede a Merge. El resultado final contiene la nueva versión de B y no el valor de A; el tramo de A
+  solo se cierra una vez.
+- [ ] AC8. Un fallo de escritura en `MemberDepartureWriter` revierte el movimiento: el tramo de A sigue abierto en F.
+- [ ] AC9. El unmerge produce el mismo `golden_data`, `field_lineage` y score que antes de la extracción, para la
+  ficha original y para la nueva. Los tests de regresión citados siguen en verde; preview ≡ confirm.
+- [ ] AC10. La superviviente de un merge manual que pierde un miembro por ForceRule se recalcula (AC1–AC3), y su
+  regla `GOLDEN_TO_GOLDEN` sigue `active`.
+- [ ] AC11. `POST /admin/re-survivorship/{id}` sobre una ficha `active` sin miembros vigentes la deja `orphaned`. El
+  lote (`/batch`) sobre la misma ficha la cuenta como `skipped` y no la modifica.
+- [ ] AC12. Regresión del orden: tras el recálculo, `F.source_count` es igual al número de tramos vigentes (el
+  `saveAndFlush` del recálculo no lo pisa).
+
+## Open Questions
+
+- OQ-1. El algoritmo encadenado depende del orden de las versiones cuando hay empates (pariente de RFC-STEW-002, ya
+  aceptado). Se conserva el orden de `findVersionsOfMembers`.
+- OQ-2. El unmerge sigue sin rellenar `previous` en la ficha original (el encadenado lo deja a `null`). Aplicarle el
+  relleno de R1.1 cambiaría sus resultados y sus previews; queda para el cluster `manual-unification`.
+- OQ-3. Cuando la resolución de un caso de revisión cierre tramos (OQ-3 de WRK-SPEC-MDM-SOURCE-IDENTITY-001), deberá
+  aplicar R1. Esta WRK-SPEC deja el componente listo, pero no ese llamante.
+
+## Adversarial Review
+
+Gate A1 (2026-09-28): 31 ataques, 22 BROKEN. Todos aceptados; las pruebas se verificaron contra el código antes de
+fallar.
+
+- §3.8.1: R1 aplica las reglas del schema activo sin que el operador lo decida · Aceptado. R1 escribe también
+  `schema_version` y la restricción queda justificada en *Constraints*: una ingesta normal ya re-evalúa la ficha con
+  el schema activo (`PersistenceStepHandler.java:366`); §3.8.1 prohíbe el recálculo masivo por cambio de schema, no
+  el de una ficha que pierde un miembro.
+- La superviviente de un merge manual se recalcula en silencio (el re-survivorship la rechaza con 409) · Aceptado.
+  Queda como decisión explícita: R1 se le aplica, la regla `GOLDEN_TO_GOLDEN` no se desactiva, la guarda 409 no
+  cambia, y lo cubre AC10.
+- El valor previo de la ficha ya no es candidato (§3.3 punto 2) · Aceptado. Desviación declarada en *Constraints* y
+  anotada como hueco para consolidar.
+- Persistence pasa a calcular, contra §6.5 · Aceptado. El cálculo se mueve a Merge (`DepartureRecalculation`) y
+  Persistence solo escribe, con guarda de versión (invariante I2, AC7).
+- Se pierde el `previous` y no hay registro campo a campo del cambio · Aceptado. R1.1 rellena `previous` frente al
+  estado anterior, y el evento lleva `fields_changed[]` (payload aditivo).
+- Dos lecturas: la última versión en Silver o todas · Aceptado. Se fija "todas las versiones de los miembros
+  vigentes en el orden de `findVersionsOfMembers`", lo mismo que el unmerge (`StagedRecordJpaRepository.java:62-75`).
+- Dos lecturas: `IngestService` o también `AsyncPipelineExecutor` · Aceptado. Un emisor compartido lo invocan las
+  dos rutas, y hay un IT en async.
+- Dos lecturas: ¿I1 es global o solo sobre la ficha tocada? · Aceptado. Se acota a las fichas que pierden un miembro
+  desde este cambio y a las reparadas; no es una auditoría global.
+- Dos lecturas: re-survivorship y la precondición de bloqueo · Aceptado. La ruta por id toma `FOR UPDATE` propio;
+  no usa el writer del pipeline.
+- Dos lecturas: la prueba de "no match por el email" · Aceptado. El fixture queda fijado (regla solo email, X con
+  solo email) y hay control previo (AC4).
+- AC9 (source_count) se cumple sin hacer nada · Aceptado. Pasa a AC12, marcado como regresión del orden.
+- AC1 es autorreferente · Aceptado. Se reescribe con valores concretos del fixture.
+- AC4 se cumple en parte sin trabajo · Aceptado. La aserción que decide es `status == orphaned`, y el resto se marca
+  como regresión (AC5).
+- Falta un evento para `active → orphaned`, y `orphaned` "no propaga" · Aceptado como hueco de conocimiento. Se usa
+  `golden_record.updated` con `status`: es una notificación de cambio de estado, no la distribución de sus datos
+  (análoga al aviso de absorción); se documenta en la consolidación.
+- Pin legado con un id que comparte otra fuente; se citaba ADR-022 §6 para algo que no dice · Aceptado. El pin
+  legado se desactiva por id, con cita a `DefaultMergeEngine.java:241-243`, no a ADR-022 §6. Anotado como hueco.
+- "El unmerge ya cumple R1.1 y no cambia", cuando el orden de pins y las versiones difieren · Aceptado. R1.1 usa las
+  mismas versiones que el unmerge. El orden de desactivación de pins no altera el resultado, porque un pin sin su
+  registro cae a survivorship (`DefaultMergeEngine.java:117-121`). El relleno de `previous` no se aplica al unmerge
+  (OQ-2).
+- `maybeEmitQualityTierChange` no está en `IngestService` · Aceptado. Se usa el de `PersistenceStepHandler`, como
+  en `update`/`consolidate`.
+- El lote de re-survivorship dejaría `orphaned` los `golden_without_members` que V38 reservó para una persona ·
+  Aceptado. Solo la ruta por id aplica R1.2; el lote no cambia (AC11).
+- Se refactorizan rutas de stewardship que ya funcionan · Aceptado. Solo cambia el cuerpo de
+  `reSurvivorshipFromSources`, que delega; ningún llamante cambia, y la regresión la fijan los tests citados.
+- "Coherente al commit" no se cumple para el match de otros pods con caché obsoleta · Aceptado (plausible). El
+  enfoque A se reformula: coherencia en la base de datos al commit. El límite de caché queda documentado en *Error
+  handling* como el mismo que tiene cualquier actualización.

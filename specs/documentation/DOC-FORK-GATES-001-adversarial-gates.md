@@ -5,9 +5,9 @@ layer: documentation
 scope: persistent
 status: draft
 confidence: low
-version: 0.1.0
+version: 0.2.0
 created: 2026-09-28
-updated: 2026-09-28
+updated: 2026-09-29
 owner: jmbruzos
 domain: kdd-superpowers
 subdomain: Quality gates
@@ -22,14 +22,19 @@ sources:
   - id: WRK-SPEC-FORK-GATES-001
     resource: specs/work/WRK-SPEC-FORK-GATES-001-adversarial-gate-tuning.md
     title: The work that introduced code premises, A1-after-self-review, Cause and the detail cap
+  - id: FRAG-FORK-GATES-002
+    resource: specs/_capture/FRAG-FORK-GATES-002-ab-mdm-member-departure/
+    title: A/B of 0.2.1 vs 0.3.0 on a real mdm-platform design (RFC-PIPE-039), 2 runs per side, blind classifier + evidence judge
 dependencies:
   - id: FRAG-FORK-GATES-001
+    relation: distilled-from
+  - id: FRAG-FORK-GATES-002
     relation: distilled-from
   - id: DOC-FORK-TOKENS-001
     relation: relates-to
 generated:
   by: claude-code/claude-opus-5-5
-  at: 2026-09-28T12:00:00Z
+  at: 2026-09-29T12:00:00Z
 stale_after: 2027-03-27T12:00:00Z
 tags: [kdd, fork, gates, adversarial, quality, measurement]
 ---
@@ -129,14 +134,48 @@ Decided in WRK-SPEC-FORK-GATES-001 (rulings in its Adversarial Review):
   the spread; turns rose 3-8 on the trivial plan.
 
 **These are not like-for-like comparisons.** The baseline is real
-brownfield work of 4-13 tasks; the after samples are headless fixtures. The
-comparison that counts is the next executed plan in mdm-platform or
-mapfre-gr (see Maintenance).
+brownfield work of 4-13 tasks; the after samples are headless fixtures.
+
+### A/B on a real design (FRAG-FORK-GATES-002)
+
+- **Setup:**
+  - Same prompt, same mdm-platform commit (`aacdae5`), same model.
+  - Architectural brainstorming for RFC-PIPE-039 (recompute the golden
+    record that loses a member), up to the committed WRK-SPEC.
+  - Two runs each on 0.2.1 and 0.3.0.
+  - A blind classifier assigned causes to A1's findings; a judge checked
+    every claim about current code in each final spec against the code.
+- **False claims about current code that survive into the final WRK-SPEC**
+  (the measure that matters):
+
+  | Version | Claims | False | False that would change the design | Mean cost |
+  |---|---|---|---|---|
+  | 0.2.1 | 70 | 6 (8.6 %) | 4 | $6.37 |
+  | 0.3.0 | 71 | 3 (4.2 %) | 1 | $8.35 |
+
+  The best 0.3.0 spec had 37 of 38 claims true, and its premises caught two
+  traps that both 0.2.1 specs fell into.
+- **A1's `code-reality` count is not comparable across versions.** It did
+  not fall (8 vs 5 of 37 vs 32 BROKEN): in 0.2.1, A1 attacks a draft; in
+  0.3.0, the full written spec. Compare what survives into the final spec,
+  not what the adversary breaks on the way.
+- **A premises list only protects what it lists.** 0.3.0's one
+  design-changing error was a claim about current code in *Components*,
+  never listed as a premise, so never verified. The candidate improvement
+  is a verifier that also extracts such claims from the design sections
+  itself.
+- **The adversary finds the same substantive design issues in both
+  versions** (manual-merge survivor, lost `previous`, orphaned lifecycle).
+  Premises move errors about current code, not design judgement.
+- **n = 2 per side, one task.** The direction is consistent with the goal;
+  the size of the effect is not established.
 
 ### Reading an attack table
 
 - **Many `code-reality` rows:** the author did not verify premises. Look at
-  the Code Premises section and at the verifier's table.
+  the Code Premises section and at the verifier's table. Then look for
+  claims about current code outside that section: those were never
+  verified.
 - **Many `ambiguity` rows:** tighten acceptance criteria, which is the cheap
   fix.
 - **`internal` rows in A2:** the plan self-review missed them. Read them
@@ -148,11 +187,14 @@ mapfre-gr (see Maintenance).
 After the next executed plan in a brownfield project, repeat the
 FRAG-FORK-GATES-001 audit on its `## Adversarial Review` tables. It is now
 a count of the Cause column, not a re-derivation. Capture it as a new FRAG
-and bump this document. Owner: jmbruzos.
+and bump this document. To compare plugin versions, repeat the
+FRAG-FORK-GATES-002 method (same prompt and commit, disposable worktrees,
+blind classifier, evidence judge on the final spec). Owner: jmbruzos.
 
 ## Status
 
 Draft, `confidence: low`:
 - The baseline is one project and three plans, with causes inferred from
   condensed prose.
-- The after samples are three headless fixture runs.
+- The after samples are three headless fixture runs and one A/B on a real
+  design, with 2 runs per side.
