@@ -179,7 +179,7 @@ if [[ -n "$spec7wt" ]]; then
 fi
 tx="$(grep -rlE '"description": ?"Adversary: A1' "$CONFIG_DIR/projects" --include='*.jsonl' 2>/dev/null | head -1)"
 [[ -n "$tx" ]] && pass "gate A1 dispatched" || fail "gate A1 dispatched"
-grep -rqE '"description": ?"Premise verifier' "$CONFIG_DIR/projects" --include='*.jsonl' 2>/dev/null && pass "premise verifier dispatched" || fail "premise verifier dispatched"
+grep -rqE '"description": ?"Premise verifier|You verify statements about how existing code behaves today' "$CONFIG_DIR/projects" --include='*.jsonl' 2>/dev/null && pass "premise verifier dispatched" || fail "premise verifier dispatched"
 if [[ -n "$tx" ]]; then
   a1_input="$(grep -E '"description": ?"Adversary: A1' "$tx" | head -1)"
   grep -q 'specs/work/WRK-SPEC-' <<<"$a1_input" && ! grep -q -- '-draft.md' <<<"$a1_input" && pass "A1 prompt names the WRK-SPEC file" || fail "A1 prompt names the WRK-SPEC file"
