@@ -3,7 +3,7 @@ id: WRK-SPEC-FORK-GATES-001
 type: spec
 layer: work-spec
 scope: ephemeral
-status: active
+status: archived
 confidence: low
 version: 0.1.0
 created: 2026-09-28
