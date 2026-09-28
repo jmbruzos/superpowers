@@ -22,6 +22,10 @@ source "$SCRIPT_DIR/usage-lib.sh"   # KDD_FLOW_USAGE=<dir> → per-scenario toke
 KDD_TOOLKIT_DIR="${KDD_TOOLKIT_DIR:-$REPO_ROOT/../knowledge-driven-development/kdd-toolkit}"
 KDD_SPEC_GRAPH="${KDD_SPEC_GRAPH:-$KDD_TOOLKIT_DIR/cli/spec-graph.mjs}"
 TIMEOUT="${CLAUDE_PROMPT_TIMEOUT:-900}"
+# portable timeout: GNU timeout, Homebrew gtimeout, or perl's alarm (macOS ships perl, not timeout)
+if command -v timeout >/dev/null; then TIMEOUT_CMD=(timeout "$TIMEOUT")
+elif command -v gtimeout >/dev/null; then TIMEOUT_CMD=(gtimeout "$TIMEOUT")
+else TIMEOUT_CMD=(perl -e 'alarm shift; exec @ARGV' "$TIMEOUT"); fi
 FAILURES=0
 pass() { echo "  [PASS] $1"; }
 fail() { echo "  [FAIL] $1"; FAILURES=$((FAILURES + 1)); }
@@ -43,7 +47,7 @@ run_scenario() { # DIR PROMPT [extra env…] — runs claude headless in DIR wit
       -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CODE_MESSAGING_SOCKET -u CLAUDE_CODE_MESSAGING_TOKEN \
       -u CLAUDE_CODE_SESSION_ATTENDED -u CLAUDE_CODE_EXECPATH \
       CLAUDE_CONFIG_DIR="$CONFIG_DIR" KDD_SPEC_GRAPH="$KDD_SPEC_GRAPH" "$@" \
-      timeout "$TIMEOUT" claude -p "$prompt" --plugin-dir "$REPO_ROOT" --plugin-dir "$KDD_TOOLKIT_DIR" \
+      "${TIMEOUT_CMD[@]}" claude -p "$prompt" --plugin-dir "$REPO_ROOT" --plugin-dir "$KDD_TOOLKIT_DIR" \
       --allowed-tools=all --permission-mode bypassPermissions $(usage_args) 2>&1 ) > "$raw"
   usage_record "$raw" "$CONFIG_DIR"   # prints the result text; with KDD_FLOW_USAGE also saves the JSON
   rm -f "$raw"
@@ -59,7 +63,7 @@ out="$(cd "$p1" && env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT -u CLAUDE_CODE_CH
       -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CODE_MESSAGING_SOCKET -u CLAUDE_CODE_MESSAGING_TOKEN \
       -u CLAUDE_CODE_SESSION_ATTENDED -u CLAUDE_CODE_EXECPATH \
       CLAUDE_CONFIG_DIR="$CONFIG_DIR" KDD_SPEC_GRAPH=/nonexistent HOME="$CONFIG_DIR" \
-      timeout "$TIMEOUT" claude -p "Let's make a react todo list" --plugin-dir "$REPO_ROOT" --allowed-tools=all --permission-mode bypassPermissions 2>&1)"
+      "${TIMEOUT_CMD[@]}" claude -p "Let's make a react todo list" --plugin-dir "$REPO_ROOT" --allowed-tools=all --permission-mode bypassPermissions 2>&1)"
 assert_contains "$out" "kdd" "mentions the kdd toolkit" || FAILURES=$((FAILURES+1))
 assert_contains "$out" "install\|KDD_SPEC_GRAPH" "gives an install instruction" || FAILURES=$((FAILURES+1))
 [[ ! -d "$p1/specs/work" ]] && pass "no work artifact written" || fail "no work artifact written"
@@ -146,6 +150,45 @@ out="$(run_scenario "$p6" "Use kdd-superpowers:requesting-code-review in mode kd
 assert_contains "$out" "Knowledge Compliance" "report has a knowledge compliance section" || FAILURES=$((FAILURES+1))
 assert_contains "$out" "Critical" "violation is Critical" || FAILURES=$((FAILURES+1))
 assert_contains "$out" "half-up\|Rule 3\|DOM-BILL-PRORATA-001" "names the violated rule" || FAILURES=$((FAILURES+1))
+
+fi
+if want 7; then
+echo "=== Scenario 7: brainstorming, architectural path → code premises verified, gate A1 on the written spec ==="
+p7="$(new_project)"; cp -R "$REPO_ROOT/tests/scripts/fixtures/specs" "$p7/specs"; rm -rf "$p7/specs/work"; mkdir -p "$p7/src"
+printf '%s\n' '// Billing helpers.' '//' '// round2 rounds a positive amount to cents, half-up.' '//' '//' '//' '//' '//' '//' '//' '//' \
+  'export function round2(amount) {' '  return Math.round(amount * 100) / 100;' '}' '' \
+  'export function prorata(monthlyFee, daysInMonth, remainingDays) {' '  return round2((monthlyFee / daysInMonth) * remainingDays);' '}' > "$p7/src/billing.js"
+git -C "$p7" add -A; git -C "$p7" -c user.email=t@e -c user.name=t commit -qm "specs and billing code"
+USAGE_SCENARIO=7
+out="$(run_scenario "$p7" "Use kdd-superpowers:brainstorming, architectural path. I want a monthly statement module for this billing project: for each customer it lists every mid-cycle activation with its pro-rata charge and a monthly total, reusing src/billing.js. I approve every design section and the activation in advance and I will not answer questions: pick sensible defaults, adjudicate every BROKEN finding of gate A1 yourself (accept it unless its evidence is wrong), and stop once the WRK-SPEC is committed — do not transition it to active and do not invoke writing-plans.")"
+spec7wt="$(ls "$p7"/specs/work/WRK-SPEC-*.md 2>/dev/null | head -1)"
+[[ -n "$spec7wt" ]] && pass "WRK-SPEC written under specs/work" || fail "WRK-SPEC written under specs/work"
+if [[ -n "$spec7wt" ]]; then
+  rel7="specs/work/$(basename "$spec7wt")"
+  git -C "$p7" log --format=%s -- "$rel7" | grep -q "^spec(" && pass "WRK-SPEC committed" || fail "WRK-SPEC committed"
+  git -C "$p7" diff --quiet HEAD -- "$rel7" && pass "committed WRK-SPEC equals the working tree" || fail "committed WRK-SPEC equals the working tree (review appended after the commit?)"
+  spec7="$(mktemp)"; git -C "$p7" show "HEAD:$rel7" > "$spec7" 2>/dev/null   # every check below reads the committed version
+  grep -q "^## Code Premises" "$spec7" && pass "Code Premises section" || fail "Code Premises section"
+  grep -q "^## Adversarial Review" "$spec7" && pass "Adversarial Review section" || fail "Adversarial Review section"
+  closing="$(grep -Eo '[0-9]+ attempted, [0-9]+ BROKEN \(code-reality [0-9]+ · spec-rule [0-9]+ · ambiguity [0-9]+ · knowledge-gap [0-9]+ · internal [0-9]+\)' "$spec7" | head -1)"
+  [[ -n "$closing" ]] && pass "closing line parses ($closing)" || fail "closing line parses"
+  m="$(sed -E 's/^[0-9]+ attempted, ([0-9]+) BROKEN.*/\1/' <<<"$closing")"
+  rows="$(awk '/^## Adversarial Review/{s=1; next} s && /^## /{exit} s && /^\| Attack \| Cause \| Evidence \| Ruling \|/{t=1; next} t && /^\|[-| ]+\|$/{next} t && /^\|/{n++; next} t && !/^\|/{t=0} END{print n+0}' "$spec7")"
+  [[ -n "$m" && "$rows" == "$m" ]] && pass "BROKEN table has M=$m rows" || fail "BROKEN table has M rows (closing M=$m, table rows=$rows)"
+  [[ "$(validate "$p7")" == *"0 error"* || "$(validate "$p7")" == *"passed"* ]] && pass "validates" || fail "validates: $(validate "$p7")"
+fi
+tx="$(grep -rlE '"description": ?"Adversary: A1' "$CONFIG_DIR/projects" --include='*.jsonl' 2>/dev/null | head -1)"
+[[ -n "$tx" ]] && pass "gate A1 dispatched" || fail "gate A1 dispatched"
+grep -rqE '"description": ?"Premise verifier' "$CONFIG_DIR/projects" --include='*.jsonl' 2>/dev/null && pass "premise verifier dispatched" || fail "premise verifier dispatched"
+if [[ -n "$tx" ]]; then
+  a1_input="$(grep -E '"description": ?"Adversary: A1' "$tx" | head -1)"
+  grep -q 'specs/work/WRK-SPEC-' <<<"$a1_input" && ! grep -q -- '-draft.md' <<<"$a1_input" && pass "A1 prompt names the WRK-SPEC file" || fail "A1 prompt names the WRK-SPEC file"
+  # order: the first tool call that writes the WRK-SPEC file (Write, or Bash writing it) comes before the A1 dispatch
+  write_line="$(grep -nE '"name": ?"(Write|Bash)"' "$tx" | grep -E 'specs/work/WRK-SPEC-' | grep -vE '"name": ?"Bash".*"command": ?"(cat|ls|grep|sed -n|head|git (log|show|diff))' | head -1 | cut -d: -f1)"
+  a1_line="$(grep -nE '"description": ?"Adversary: A1' "$tx" | head -1 | cut -d: -f1)"
+  [[ -n "$write_line" && -n "$a1_line" && "$write_line" -lt "$a1_line" ]] && pass "WRK-SPEC written before gate A1" || fail "WRK-SPEC written before gate A1 (write line:$write_line A1 line:$a1_line)"
+fi
+rm -f "${spec7:-}"
 
 fi
 echo ""
