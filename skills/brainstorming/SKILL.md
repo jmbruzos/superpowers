@@ -78,6 +78,7 @@ artifact, never the approval.
 | "The spike works, so I'll keep the code" | A spike's output is an answer. Keeping the code is a new request — classify it. |
 | "It grew, but I'm almost done — no need to re-classify" | Hidden complexity upgrades the path mid-task. Stop and say so. |
 | "They approved the spike, so the follow-up change is approved too" | Each task gets its own classification and its own approval. |
+| "The specs cover it, I don't need to read the code" | Specs say what should be; code says what is. Every premise the design leans on is checked, not assumed. |
 
 ## Checklist
 
@@ -107,7 +108,7 @@ your path and complete them in order.
 4. **Offer the visual companion just-in-time** — NOT upfront (see the Visual Companion section)
 5. **Ask clarifying questions** — one at a time; let the rules in candidate specs drive them ("DOM-RISK-VAR-001 requires a 250-day window — does this change touch it?")
 6. **Propose 2-3 approaches** — with trade-offs, your recommendation, and which specs constrain each approach
-7. **Present design** — in sections scaled to their complexity, approval after each; the last section is always **Knowledge activation**
+7. **Present design** — in sections scaled to their complexity, approval after each; the last section is always **Knowledge activation**, and the one before it is **Code premises**, checked by `premise-verifier-prompt.md`
 8. **Write the WRK-SPEC** — `specs/work/<ID>-<slug>.md` per kdd-superpowers:kdd-conventions; `spec-graph validate` with 0 errors; do not commit yet
 9. **Spec self-review** — placeholders, contradictions, ambiguity, scope, *and* every Constraint cites an activated spec or a FRAG
 10. **Gate A1 — spec red-team** — dispatch `spec-adversary-prompt.md` against the written WRK-SPEC; adjudicate every BROKEN finding, fix the spec, record `## Adversarial Review`, re-validate, commit
@@ -210,6 +211,7 @@ is the whole process.
 - Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
 - Ask after each section whether it looks right so far
 - Cover: architecture, components, data flow, error handling, testing — and, **always last, Knowledge activation**: a table of `activates` / `equips` with `ID@version` pins and the role of each, the FRAGs cited as evidence, the gaps (knowledge that should exist and does not — future capture candidates), and the proposed semantic ID path (`WRK-SPEC-<AREA>-<CONCEPT>`, reusing areas the graph already has). **Approving this section freezes the activation**: nothing downstream reopens it; a task that needs more knowledge records a `Knowledge gap:` ruling instead.
+- **Code premises** comes right before *Knowledge activation*: every statement about how existing code behaves today that the design leans on ("X already locks", "test T is green on main", "manual merge does not recompute"). Dispatch [premise-verifier-prompt.md](premise-verifier-prompt.md) with the list and present its table (`| Premise | Verified by | Result |`). A `false` or `unverifiable` premise changes the design before gate A1 — resolve it or stop relying on it; one that contradicts an activated spec is also a `Knowledge gap:`. Greenfield: the section reads "none — no existing code" and nothing is dispatched. A premise is not a FRAG: it is a checked fact for this work and does not enter the graph.
 - Be ready to go back and clarify if something doesn't make sense
 
 **Design for isolation and clarity:**
@@ -250,7 +252,7 @@ Both paths write one; the bounded path writes the compact form.
 - REQUIRED SUB-SKILL: kdd-superpowers:kdd-conventions — IDs, template, trust family, validation.
 - ID: `skills/kdd-conventions/scripts/next-id WRK-SPEC-<AREA>-<CONCEPT>` with the path your human partner confirmed. File: `specs/work/<ID>-<slug>.md` (create `specs/work/` if absent, and add `.kdd/` to `.gitignore` if absent).
 - Frontmatter: `status: draft`, `confidence: low`, `version: 0.1.0`, pinned `activates`/`equips` exactly as approved, `activation_frozen: true`, `activation_resolved_at`, `dependencies` (`constrained-by` each activated spec, `implements` a target FEAT if any), `sources` (each FRAG with its directory), `generated`, `stale_after` (+90 days), `tags`.
-- Body per the template: Problem Statement → Proposed Change (the approved sections as sub-headings) → Knowledge Context (the activation table; FRAGs marked "evidence, not activated") → Constraints (**verbatim** rules from activated specs with source ID and rule number; FRAG-observed behaviour with its anchor) → Acceptance Criteria (testable) → Open Questions.
+- Body per the template: Problem Statement → Proposed Change (the approved sections as sub-headings) → Knowledge Context (the activation table; FRAGs marked "evidence, not activated") → Constraints (**verbatim** rules from activated specs with source ID and rule number; FRAG-observed behaviour with its anchor) → Code Premises (the verifier's table, architectural path) → Acceptance Criteria (testable) → Open Questions.
 - Validate: `<kdd-cli> --specs specs validate` — 0 errors, and no warning naming your artifact.
 - Commit the WRK-SPEC (`spec(<ID>): <title>`) — on the architectural path, only after gate A1 is adjudicated.
 

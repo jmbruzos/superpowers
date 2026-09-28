@@ -182,4 +182,16 @@ must_contain skills/brainstorming/SKILL.md "only after gate A1 is adjudicated" "
 must_contain skills/brainstorming/SKILL.md "Adjudicate every \`BROKEN\` finding — full rows and one-liners" "A1 one-liners are adjudicated too"
 must_contain skills/brainstorming/SKILL.md "\"Gate A1 on the written spec; adjudicate; commit\"" "dot flow has the new A1 node"
 
+# --- code premises (WRK-TASK-FORK-GATES-001-004) ---
+must_contain skills/brainstorming/premise-verifier-prompt.md "Premise verifier: " "verifier dispatch description"
+must_contain skills/brainstorming/premise-verifier-prompt.md "model: [mid tier — REQUIRED]" "verifier is mid tier"
+must_contain skills/brainstorming/premise-verifier-prompt.md "Work read-only. Do not modify files, do not commit, do not dispatch subagents." "verifier is read-only"
+must_contain skills/brainstorming/premise-verifier-prompt.md "| Premise | Verified by | Result |" "verifier returns the premises table"
+must_contain skills/brainstorming/premise-verifier-prompt.md "\`unverifiable\`" "verifier can say unverifiable"
+must_contain skills/brainstorming/SKILL.md "premise-verifier-prompt.md" "brainstorming dispatches the verifier"
+must_contain skills/brainstorming/SKILL.md "**Code premises**" "design has a Code premises section"
+must_contain skills/brainstorming/SKILL.md "none — no existing code" "greenfield wording"
+must_contain skills/brainstorming/SKILL.md "\"The specs cover it, I don't need to read the code\"" "premises red flag"
+must_contain skills/brainstorming/SKILL.md "→ Code Premises" "WRK-SPEC body order includes Code Premises"
+
 finish
