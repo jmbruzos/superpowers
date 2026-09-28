@@ -145,4 +145,21 @@ must_contain skills/finishing-a-development-branch/SKILL.md "scripts/transition"
 must_contain skills/executing-plans/SKILL.md "main/master" "executing-plans keeps the main-branch guard"
 must_contain skills/requesting-code-review/code-reviewer.md "### Requirements Compliance" "code reviewer has a requirements verdict"
 
+# --- adversarial gate tuning (WRK-TASK-FORK-GATES-001-001) ---
+must_contain skills/kdd-conventions/references/adversarial-gates.md "## Design gates (A1, A2): cause, detail cap, persisted table" "design-gate addendum"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "| Attack | Scenario | Result | Cause | Evidence |" "design gates add a Cause column"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "\`code-reality\`" "cause: code-reality defined"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "\`spec-rule\`" "cause: spec-rule defined"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "\`ambiguity\`" "cause: ambiguity defined"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "\`knowledge-gap\`" "cause: knowledge-gap defined"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "\`internal\`" "cause: internal defined"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "At most 3 full rows per attack" "detail cap"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "+ <attack #> · <scenario in one sentence> · <Cause> · <evidence path:lines>" "one-line overflow keeps every BROKEN finding"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "| Attack | Cause | Evidence | Ruling |" "persisted BROKEN table"
+must_contain skills/kdd-conventions/references/adversarial-gates.md "the written WRK-SPEC, after its self-review" "A1 attacks the written spec"
+must_contain skills/kdd-conventions/references/artifact-templates.md "## Code Premises" "WRK-SPEC template has Code Premises"
+must_contain skills/kdd-conventions/references/artifact-templates.md "| Premise | Verified by | Result |" "Code Premises table"
+must_contain skills/kdd-conventions/references/artifact-templates.md "| Attack | Cause | Evidence | Ruling |" "templates persist the BROKEN table"
+must_not_contain skills/kdd-conventions/references/artifact-templates.md "one line per BROKEN attack — attack · ruling" "one-liner persistence replaced"
+
 finish

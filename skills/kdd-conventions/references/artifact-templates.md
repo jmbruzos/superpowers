@@ -56,11 +56,17 @@ Body:
 (FRAGs cited as evidence go here too, marked "evidence, not activated")
 ## Constraints
 (verbatim rules from activated specs, each with its source ID and rule number; FRAG-observed behaviour with its anchor)
+## Code Premises
+| Premise | Verified by | Result |
+|---|---|---|
+(every statement about how existing code behaves today that the design relies on; `path:lines` + literal, or command + output; holds / false / unverifiable. Greenfield: "none — no existing code")
 ## Acceptance Criteria
 - [ ] (testable)
 ## Open Questions
 ## Adversarial Review
-(only when a gate ran: one line per BROKEN attack — attack · ruling)
+(only when a gate ran: the adversary's closing line, then one row per BROKEN finding — adversarial-gates.md, *Design gates*)
+| Attack | Cause | Evidence | Ruling |
+|---|---|---|---|
 ```
 
 Add `- id: <FEAT-ID>\n    relation: implements` under `dependencies` when the work materializes a FEAT.
@@ -136,7 +142,9 @@ Body:
 ## Execution Log
 (appended at finishing: rulings, Knowledge gaps, broken attacks, pending capture candidates)
 ## Adversarial Review
-(only when a gate ran: one line per BROKEN attack — attack · ruling)
+(only when a gate ran: the adversary's closing line, then one row per BROKEN finding — adversarial-gates.md, *Design gates*)
+| Attack | Cause | Evidence | Ruling |
+|---|---|---|---|
 ```
 
 ## WRK-TASK
