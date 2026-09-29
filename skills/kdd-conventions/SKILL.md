@@ -35,6 +35,7 @@ the number disambiguates within a semantic path, it is not a global counter.
 | Knowledge/agentic specs the project owns | wherever the project keeps them under `specs/` | yes |
 | SDD ledger, briefs, reports, review packages | `.kdd/sdd/<WRK-PLAN-ID>/` | no (gitignored) |
 | Visual companion sessions | `.kdd/brainstorm/<session>/` | no |
+| Approved design sections for the premise verifier | `.kdd/brainstorm/<topic>-design.md` | no |
 | Ad-hoc review briefs (modes 2–3) | `.kdd/review/` | no |
 
 No path written by this plugin contains `superpowers`. Runtime state goes

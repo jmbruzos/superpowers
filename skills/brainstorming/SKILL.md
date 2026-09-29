@@ -79,6 +79,7 @@ artifact, never the approval.
 | "It grew, but I'm almost done — no need to re-classify" | Hidden complexity upgrades the path mid-task. Stop and say so. |
 | "They approved the spike, so the follow-up change is approved too" | Each task gets its own classification and its own approval. |
 | "The specs cover it, I don't need to read the code" | Specs say what should be; code says what is. Every premise the design leans on is checked, not assumed. |
+| "The gate runs in the background — I'll wrap up and rule when it reports" | A pending gate is an unreviewed artifact. Wait for its table; a turn that ends first can lose it. |
 
 ## Checklist
 
@@ -211,7 +212,7 @@ is the whole process.
 - Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
 - Ask after each section whether it looks right so far
 - Cover: architecture, components, data flow, error handling, testing — and, **always last, Knowledge activation**: a table of `activates` / `equips` with `ID@version` pins and the role of each, the FRAGs cited as evidence, the gaps (knowledge that should exist and does not — future capture candidates), and the proposed semantic ID path (`WRK-SPEC-<AREA>-<CONCEPT>`, reusing areas the graph already has). **Approving this section freezes the activation**: nothing downstream reopens it; a task that needs more knowledge records a `Knowledge gap:` ruling instead.
-- **Code premises** comes right before *Knowledge activation*: every statement about how existing code behaves today that the design leans on ("X already locks", "test T is green on main", "manual merge does not recompute"). Dispatch [premise-verifier-prompt.md](premise-verifier-prompt.md) with the list and present its table (`| Premise | Verified by | Result |`). A `false` or `unverifiable` premise changes the design before gate A1 — resolve it or stop relying on it; one that contradicts an activated spec is also a `Knowledge gap:`. Greenfield: the section reads "none — no existing code" and nothing is dispatched. A premise is not a FRAG: it is a checked fact for this work and does not enter the graph.
+- **Code premises** comes right before *Knowledge activation*: every statement about how existing code behaves today that the design leans on ("X already locks", "test T is green on main", "manual merge does not recompute"). First make sure `.kdd/` is in `.gitignore` and save every design section approved so far to `.kdd/brainstorm/<topic>-design.md`; then dispatch [premise-verifier-prompt.md](premise-verifier-prompt.md) with the list and that file. Wait for its table before any next step, and present it (`| Premise | Listed | Verified by | Result |`): the verifier also extracts and checks the claims about today's code that you did not list. A `false` or `unverifiable` premise — listed or `unlisted` — changes the design before gate A1 — resolve it or stop relying on it; when it does, dispatch the verifier again on the changed statements only. One that contradicts an activated spec is also a `Knowledge gap:`. The WRK-SPEC's Code Premises carry every listed premise and every unlisted claim that came back `false` or `unverifiable`, then the line `unlisted claims verified: <N> hold`. Greenfield: the section reads "none — no existing code" and nothing is dispatched. A premise is not a FRAG: it is a checked fact for this work and does not enter the graph.
 - Be ready to go back and clarify if something doesn't make sense
 
 **Design for isolation and clarity:**
@@ -234,9 +235,14 @@ before you commit it — dispatch the adversary in
 [spec-adversary-prompt.md](spec-adversary-prompt.md) with the WRK-SPEC path
 and the activated spec files. It returns an attack table
 (kdd-superpowers:kdd-conventions `references/adversarial-gates.md`).
+Wait for its table before any next step: no commit, no hand-off and no
+final message while the gate is pending.
 Adjudicate every `BROKEN` finding — full rows and one-liners — out loud with your human partner — a broken
 attack on an activated rule changes the design; a broken attack that
-reveals missing knowledge becomes a gap in *Knowledge activation*. Then
+reveals missing knowledge becomes a gap in *Knowledge activation*. A
+`spec-rule` finding is rejected only with a permitting quote (same
+reference, *Rejecting a `spec-rule` finding*); without one it is accepted
+and recorded as `Knowledge gap: contested rule — …`. Then
 fix the WRK-SPEC, record the adversary's closing line and every `BROKEN`
 finding with its ruling under `## Adversarial Review` (after Open
 Questions), re-validate and commit.

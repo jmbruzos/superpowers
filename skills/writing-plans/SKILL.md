@@ -210,7 +210,7 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 
 ## Gate A2 — plan red-team (conditional)
 
-Dispatch [plan-adversary-prompt.md](plan-adversary-prompt.md) when **any** of these holds: more than 4 tasks; the spec activates a spec with `confidence: low` or no `verified`; the work touches security, money or regulatory logic. Otherwise skip it and say so. The adversary returns an attack table (kdd-superpowers:kdd-conventions `references/adversarial-gates.md`, *Design gates*); adjudicate every `BROKEN` finding — full rows and one-liners — fix the plan or the tasks, re-validate, and record the adversary's closing line and every `BROKEN` finding with its ruling in the WRK-PLAN under `## Adversarial Review` as `| Attack | Cause | Evidence | Ruling |`.
+Dispatch [plan-adversary-prompt.md](plan-adversary-prompt.md) when **any** of these holds: more than 4 tasks; the spec activates a spec with `confidence: low` or no `verified`; the work touches security, money or regulatory logic. Otherwise skip it and say so. Wait for its table before any next step — no commit, no execution hand-off and no final message while it is pending. The adversary returns an attack table (kdd-superpowers:kdd-conventions `references/adversarial-gates.md`, *Design gates*); adjudicate every `BROKEN` finding — full rows and one-liners (a `spec-rule` finding is rejected only with a permitting quote, per the same reference) — fix the plan or the tasks, re-validate, and record the adversary's closing line and every `BROKEN` finding with its ruling in the WRK-PLAN under `## Adversarial Review` as `| Attack | Cause | Evidence | Ruling |`.
 
 ## Execution Handoff
 

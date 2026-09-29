@@ -26,6 +26,12 @@ review it. The gates and where they sit:
 - Every row is concrete: an input, a state, a reading of a sentence, a rule ID. Abstract worries ("might be ambiguous") are not attacks.
 - The adversary does not fix anything and does not dispatch subagents.
 - **The controller adjudicates** every `BROKEN` row and ledgers it: `Attack: <row> — Ruling: <accepted → fix | rejected → why>`. A broken attack on a rule of an activated spec is blocking. A broken attack that reveals missing knowledge is also tagged `Knowledge gap:`.
+- **Dispatched gates are synchronous.** A1, A2, A4, A6 and the premise
+  verifier run as dispatched subagents. Do not take the next step until the
+  gate's table is in: no commit or hand-off of the artifact under attack,
+  and no final message. In a non-interactive run, ending the turn ends the run:
+  dispatch the gate in the foreground, or wait for its result before your
+  turn ends. A3 and A5 run inside reviewers and are not dispatched.
 - **Where rulings persist:** A1 rows and rulings go into a `## Adversarial
   Review` section of the WRK-SPEC; A2 rows into a `## Adversarial Review`
   section of the WRK-PLAN — both in the table form of *Design gates* below;
@@ -79,6 +85,26 @@ unchanged.
 |---|---|---|---|
 | <attack # — what broke, one line> | <cause> | <path:lines, command output> | <accepted → fix | rejected → why> |
 ```
+
+### Rejecting a `spec-rule` finding (A1, A2)
+
+- A BROKEN finding whose Cause is `spec-rule` may be rejected only by
+  quoting the literal text of a rule that **permits** the design, from an
+  activated spec or from a principle the work is `constrained-by`: ID,
+  section and literal.
+- Not a permitting quote: the WRK-SPEC or WRK-PLAN itself; a narrower reading of the violated rule; the violated rule quoted back.
+- Without a permitting quote the finding is **accepted**: the artifact
+  changes to satisfy the rule, and
+  `Knowledge gap: contested rule — <ID> § <section>: <the disagreement>`
+  records it. Consolidation reads that line as a candidate clarification of
+  the rule, not as missing knowledge.
+- A rejection with a quote is persisted as `rejected → <ID> § <section> "<literal>"`.
+- When the permitting quote comes from another activated rule that
+  contradicts the violated one, the finding stands and
+  `Knowledge gap: conflict — <ID §> vs <ID §>` is recorded; resolving it
+  means changing one of the specs, which is the human partner's call.
+- In A1 the human partner adjudicates under the same rule: disagreeing with
+  an activated rule means changing that spec, not rejecting the finding.
 
 ## Generic dispatch template
 

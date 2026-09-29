@@ -57,9 +57,10 @@ Body:
 ## Constraints
 (verbatim rules from activated specs, each with its source ID and rule number; FRAG-observed behaviour with its anchor)
 ## Code Premises
-| Premise | Verified by | Result |
-|---|---|---|
-(every statement about how existing code behaves today that the design relies on; `path:lines` + literal, or command + output; holds / false / unverifiable. Greenfield: "none — no existing code")
+| Premise | Listed | Verified by | Result |
+|---|---|---|---|
+(every statement about how existing code behaves today that the design relies on; `path:lines` + literal, or command + output; holds / false / unverifiable. Listed: `yes` (the author listed it) or `unlisted` (extracted by the verifier; only false or unverifiable ones appear). Greenfield: "none — no existing code")
+unlisted claims verified: <N> hold
 ## Acceptance Criteria
 - [ ] (testable)
 ## Open Questions

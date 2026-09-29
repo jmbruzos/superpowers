@@ -171,6 +171,7 @@ if [[ -n "$spec7wt" ]]; then
   git -C "$p7" diff --quiet HEAD -- "$rel7" && pass "committed WRK-SPEC equals the working tree" || fail "committed WRK-SPEC equals the working tree (review appended after the commit?)"
   spec7="$(mktemp)"; git -C "$p7" show "HEAD:$rel7" > "$spec7" 2>/dev/null   # every check below reads the committed version
   grep -q "^## Code Premises" "$spec7" && pass "Code Premises section" || fail "Code Premises section"
+  grep -q "| Premise | Listed | Verified by | Result |" "$spec7" && pass "Code Premises carry the Listed column" || fail "Code Premises carry the Listed column"
   grep -q "^## Adversarial Review" "$spec7" && pass "Adversarial Review section" || fail "Adversarial Review section"
   closing="$(grep -Eo '[0-9]+ attempted, [0-9]+ BROKEN \(code-reality [0-9]+ · spec-rule [0-9]+ · ambiguity [0-9]+ · knowledge-gap [0-9]+ · internal [0-9]+\)' "$spec7" | head -1)"
   [[ -n "$closing" ]] && pass "closing line parses ($closing)" || fail "closing line parses"
@@ -182,6 +183,15 @@ fi
 tx="$(grep -rlE '"description": ?"Adversary: A1' "$CONFIG_DIR/projects" --include='*.jsonl' 2>/dev/null | head -1)"
 [[ -n "$tx" ]] && pass "gate A1 dispatched" || fail "gate A1 dispatched"
 grep -rqE '"description": ?"Premise verifier|You verify statements about how existing code behaves today' "$CONFIG_DIR/projects" --include='*.jsonl' 2>/dev/null && pass "premise verifier dispatched" || fail "premise verifier dispatched"
+vtx="$(grep -rlE '"description": ?"Premise verifier|You verify statements about how existing code behaves today' "$CONFIG_DIR/projects" --include='*.jsonl' 2>/dev/null | head -1)"
+if [[ -n "$vtx" ]]; then
+  # the approved design sections are written to .kdd/brainstorm/<topic>-design.md before the verifier is dispatched
+  dwrite="$(grep -nE '"name": ?"(Write|Bash)"' "$vtx" | grep -E '\.kdd/brainstorm/[^" ]*-design\.md' | head -1 | cut -d: -f1)"
+  vline="$(grep -nE '"description": ?"Premise verifier|You verify statements about how existing code behaves today' "$vtx" | head -1 | cut -d: -f1)"
+  [[ -n "$dwrite" && -n "$vline" && "$dwrite" -lt "$vline" ]] && pass "design file written before the verifier" || fail "design file written before the verifier (write:$dwrite verifier:$vline)"
+fi
+# the header also appears in the verifier's prompt, so only assistant messages count
+find "$CONFIG_DIR/projects" -name '*.jsonl' -exec grep -hE '"role": ?"assistant"' {} + 2>/dev/null | grep -qF "| Premise | Listed | Verified by | Result |" && pass "verifier returned the Listed column" || fail "verifier returned the Listed column"
 if [[ -n "$tx" ]]; then
   a1_input="$(grep -E '"description": ?"Adversary: A1' "$tx" | head -1)"
   grep -q 'specs/work/WRK-SPEC-' <<<"$a1_input" && ! grep -q -- '-draft.md' <<<"$a1_input" && pass "A1 prompt names the WRK-SPEC file" || fail "A1 prompt names the WRK-SPEC file"

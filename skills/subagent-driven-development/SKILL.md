@@ -258,6 +258,9 @@ line of status and reconcile your live children: list them, and chase
 any that finished without reporting. A bounded stretch keeps nearly
 all of a long wait's efficiency while guaranteeing a stuck or lost
 child is noticed within minutes, not at the end of the session.
+Never end your turn while a child you dispatched is still running: wait
+for it or reconcile it first. In a non-interactive run a turn that ends
+ends the run, and the child's result is lost.
 
 ### 1. Dispatch the implementer
 

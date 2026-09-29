@@ -5,6 +5,12 @@ Dispatch during brainstorming (architectural path), once the design's
 Skip it in greenfield: the section reads "none — no existing code". The
 verifier checks facts; it does not judge the design.
 
+Before dispatching, make sure `.kdd/` is in the project's `.gitignore` and
+save every design section approved so far to
+`.kdd/brainstorm/<topic>-design.md`; pass that file as the design file.
+The verifier is a dispatched gate: wait for its table before any next step
+(kdd-superpowers:kdd-conventions `references/adversarial-gates.md`).
+
 ```
 Subagent (general-purpose):
   description: "Premise verifier: <WRK-SPEC-ID or topic>"
@@ -18,6 +24,12 @@ Subagent (general-purpose):
     ## Premises
     [PREMISES — one per line, numbered]
 
+    ## Design sections
+    [DESIGN_FILE — .kdd/brainstorm/<topic>-design.md]
+    After the listed premises, read this file and extract every other
+    statement it makes about how the existing code behaves today,
+    not what the design will change, and verify each one the same way.
+
     ## Repository
     [REPO_ROOT], at HEAD.
 
@@ -28,8 +40,9 @@ Subagent (general-purpose):
     - `false` — the evidence contradicts it; quote what the code does instead.
     - `unverifiable` — the repository cannot settle it; say what you searched and what would settle it.
     - An absence ("X never does Y") needs the search command and its empty result.
-    - Return only the table, one row per premise, in the order given.
+    - Listed: `yes` for a premise from the list, `unlisted` for a claim you extracted from the design file.
+    - Return only the table: one row per listed premise in the order given, then one row per unlisted claim.
 
-    | Premise | Verified by | Result |
-    |---|---|---|
+    | Premise | Listed | Verified by | Result |
+    |---|---|---|---|
 ```
