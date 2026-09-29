@@ -1,5 +1,40 @@
 # Release notes
 
+## 0.4.0 — gates hold their findings
+
+Implements WRK-SPEC-FORK-GATES-002, from the superpowers-vs-kdd-superpowers
+study (FRAG-FORK-GATES-003: a run ended while gate A1 was still in the
+background, and a `spec-rule` finding was rejected by narrowing the rule):
+- **Dispatched gates are synchronous** (`adversarial-gates.md`): A1, A2, A4,
+  A6 and the premise verifier are waited for; in a non-interactive run,
+  ending the turn ends the run. brainstorming gains the Red Flags row "The
+  gate runs in the background — I'll wrap up and rule when it reports";
+  writing-plans and subagent-driven-development say the same at their gates.
+- **Rejecting a `spec-rule` finding (A1, A2) needs a permitting quote** from an
+  activated spec or a constrained-by principle, recorded as
+  `rejected → <ID> § <section> "<literal>"`. The WRK-SPEC or WRK-PLAN itself,
+  a narrower reading of the violated rule, or the rule quoted back do not
+  count. Without such a quote the finding is accepted, and the disagreement is
+  recorded as `Knowledge gap: contested rule — …`.
+- **The premise verifier also checks unlisted claims.** Before dispatching
+  it, brainstorming saves the approved sections to
+  `.kdd/brainstorm/<topic>-design.md`. The verifier extracts every other
+  statement about today's code from that file. Its table and `## Code
+  Premises` gain a `Listed` column and the line
+  "unlisted claims verified: <N> hold".
+- `test-kdd-flow.sh` scenario 7 checks the following: the design file is
+  written before the verifier dispatch, gate A1 is dispatched, and the Listed
+  column is present.
+- **Cost** (FRAG-FORK-TOKENS-003, scenario 7, n = 2 per side): +8 % cost and
+  +14 % wall time. The two sides' ranges do not overlap.
+- **Quality** (FRAG-FORK-GATES-004, the FRAG-FORK-GATES-003 task, n = 2):
+  - Both 0.4.0 runs accepted gate A1's manual-merge-survivor finding and
+    changed the design, and both got it right (H1). All five earlier runs
+    had got it wrong.
+  - Blind hard points were 8 and 9, against 5–9 for 0.3.0 and 6–7 for
+    superpowers 6.3.0.
+  - No `spec-rule` finding was rejected.
+
 ## 0.3.0 — adversarial gates A1/A2 tuned
 
 Implements WRK-SPEC-FORK-GATES-001, from an audit of three executed plans
