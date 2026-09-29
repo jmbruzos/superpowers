@@ -3,7 +3,7 @@ id: FRAG-FORK-GATES-003
 type: fragment
 layer: capture
 scope: persistent
-status: ingested
+status: distilled
 confidence: low
 version: 1.0.0
 created: 2026-09-29

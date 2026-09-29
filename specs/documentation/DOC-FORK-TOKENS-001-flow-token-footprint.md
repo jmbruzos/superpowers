@@ -5,9 +5,9 @@ layer: documentation
 scope: persistent
 status: draft
 confidence: low
-version: 0.2.0
+version: 0.3.0
 created: 2026-09-19
-updated: 2026-09-28
+updated: 2026-09-29
 owner: jmbruzos
 domain: kdd-superpowers
 subdomain: Cost
@@ -19,14 +19,25 @@ sources:
   - id: FRAG-FORK-TOKENS-002
     resource: specs/_capture/FRAG-FORK-TOKENS-002-gate-tuning-measurements/
     title: Headless measurements before and after WRK-SPEC-FORK-GATES-001 (2026-09-28), three runs per side
+  - id: FRAG-FORK-TOKENS-003
+    resource: specs/_capture/FRAG-FORK-TOKENS-003-gates-hold-findings-cost/
+    title: Scenario 7 before and after WRK-SPEC-FORK-GATES-002 (2026-09-29), two runs per side
+  - id: FRAG-FORK-GATES-003
+    resource: specs/_capture/FRAG-FORK-GATES-003-superpowers-vs-kdd-superpowers/
+    title: Cost of a real design + plan, superpowers 6.3.0 vs kdd-superpowers 0.3.0
+  - id: FRAG-FORK-GATES-004
+    resource: specs/_capture/FRAG-FORK-GATES-004-gates-hold-findings-quality/
+    title: Cost of the same design + plan with kdd-superpowers 0.4.0
 dependencies:
   - id: FRAG-FORK-TOKENS-001
     relation: distilled-from
   - id: FRAG-FORK-TOKENS-002
     relation: distilled-from
+  - id: FRAG-FORK-TOKENS-003
+    relation: distilled-from
 generated:
   by: claude-code/claude-opus-5-5
-  at: 2026-09-28T12:00:00Z
+  at: 2026-09-29T21:30:00Z
 stale_after: 2027-03-27T12:00:00Z
 tags: [kdd, fork, tokens, cost, measurement, testing]
 ---
@@ -59,6 +70,21 @@ plugin, or asks "does KDD make this more expensive?".
 | writing-plans, 2 tasks + gate A2 | 20-22 | $3.06-3.24 | FRAG-FORK-TOKENS-001 (Opus 5, CC 2.1.278) |
 | writing-plans, 2 tasks + gate A2 | 44-52 | $1.53-2.28 | FRAG-FORK-TOKENS-002 (Opus 5.5, CC 2.1.283, 6 runs) |
 | subagent-driven-development, 2 tasks, 5-7 seats | 26-38 | $2.93-4.03 | FRAG-FORK-TOKENS-001 |
+| brainstorming, architectural path, 0.3.0, up to the committed WRK-SPEC (scenario 7) | 44-49 | $1.65-1.72 | FRAG-FORK-TOKENS-003 (2 runs) |
+| same, 0.4.0 (design file, unlisted-claim check, synchronous gates) | 42-44 | $1.78-1.86 | FRAG-FORK-TOKENS-003 (2 runs) |
+
+### A real design + plan (mdm-platform RFC-PIPE-039, Opus, headless)
+
+| Arm | Turns | Wall | Cost | Source |
+|---|---|---|---|---|
+| superpowers 6.3.0, no gates | 65-79 | 15-22 min | $6.03-8.17 | FRAG-FORK-GATES-003 |
+| kdd-superpowers 0.3.0 | 57-94 | 45-50 min | $18.38-19.70 | FRAG-FORK-GATES-003 |
+| kdd-superpowers 0.4.0 | 63-90 | 40-42 min | $16.88-20.47 | FRAG-FORK-GATES-004 |
+
+On real work the flow costs about 2.7× plain superpowers. Most of the
+difference is the premise verifier, the gates, and the output of
+adjudicating them. The 0.4.0 changes add a measurable 8 % on the small
+fixture, but on this task they are not visible above the run-to-run spread.
 
 The two writing-plans rows differ in model and Claude Code version; compare
 runs only within one fragment. The full architectural flow on a trivial
@@ -106,6 +132,13 @@ order of magnitude does not.
   prompt text, n=3 per side. The saving it targets (fewer `code-reality`
   findings to adjudicate) only shows on work with real code premises; see
   DOC-FORK-GATES-001.
+- Gates-hold-their-findings (WRK-SPEC-FORK-GATES-002: design file, the
+  verifier checking unlisted claims, synchronous gates, the permitting
+  quote):
+  - On scenario 7: +8 % cost, +7 % output tokens and +14 % wall time, with
+    non-overlapping ranges (n=2 per side). Turns did not rise; the cost is
+    in output and time.
+  - On a real design + plan, the difference sits inside the spread.
 
 ### How to measure
 
@@ -135,10 +168,11 @@ before/after; repeat until the effect you claim exceeds the spread you see.
 
 Re-measure after any change to a workflow skill, a prompt template, the
 hook, or a Claude Code major release; append the run to a new FRAG that
-`supersedes` the latest one (now FRAG-FORK-TOKENS-002) and bump this
+`supersedes` the latest one (now FRAG-FORK-TOKENS-003) and bump this
 document. Owner: jmbruzos.
 
 ## Status
 
 Draft, `confidence: low`: one machine; one to three samples per scenario;
-two models and two Claude Code versions across the fragments.
+two models and two Claude Code versions across the fragments; the real-task
+figures are 2-3 runs per arm on one task.

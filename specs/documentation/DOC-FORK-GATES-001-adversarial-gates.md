@@ -5,7 +5,7 @@ layer: documentation
 scope: persistent
 status: draft
 confidence: low
-version: 0.2.0
+version: 0.3.0
 created: 2026-09-28
 updated: 2026-09-29
 owner: jmbruzos
@@ -25,16 +25,29 @@ sources:
   - id: FRAG-FORK-GATES-002
     resource: specs/_capture/FRAG-FORK-GATES-002-ab-mdm-member-departure/
     title: A/B of 0.2.1 vs 0.3.0 on a real mdm-platform design (RFC-PIPE-039), 2 runs per side, blind classifier + evidence judge
+  - id: FRAG-FORK-GATES-003
+    resource: specs/_capture/FRAG-FORK-GATES-003-superpowers-vs-kdd-superpowers/
+    title: superpowers 6.3.0 vs kdd-superpowers 0.3.0 on the RFC-PIPE-039 design + plan, blind hard points
+  - id: FRAG-FORK-GATES-004
+    resource: specs/_capture/FRAG-FORK-GATES-004-gates-hold-findings-quality/
+    title: kdd-superpowers 0.4.0 on the same design + plan, blind hard points over all seven runs
+  - id: WRK-SPEC-FORK-GATES-002
+    resource: specs/work/WRK-SPEC-FORK-GATES-002-gates-hold-their-findings.md
+    title: The work that made dispatched gates synchronous, required a permitting quote to reject a spec-rule finding, and had the verifier check unlisted claims
 dependencies:
   - id: FRAG-FORK-GATES-001
     relation: distilled-from
   - id: FRAG-FORK-GATES-002
     relation: distilled-from
+  - id: FRAG-FORK-GATES-003
+    relation: distilled-from
+  - id: FRAG-FORK-GATES-004
+    relation: distilled-from
   - id: DOC-FORK-TOKENS-001
     relation: relates-to
 generated:
   by: claude-code/claude-opus-5-5
-  at: 2026-09-29T12:00:00Z
+  at: 2026-09-29T21:30:00Z
 stale_after: 2027-03-27T12:00:00Z
 tags: [kdd, fork, gates, adversarial, quality, measurement]
 ---
@@ -121,6 +134,36 @@ Decided in WRK-SPEC-FORK-GATES-001 (rulings in its Adversarial Review):
 - **A2 keeps its six attacks and its trigger**, and gains attack 7,
   *Code premise*.
 
+Added in WRK-SPEC-FORK-GATES-002 (0.4.0), after FRAG-FORK-GATES-002/003
+showed where findings leaked:
+
+- **Dispatched gates are synchronous.** A1, A2, A4, A6 and the premise
+  verifier are waited for: no commit or hand-off of the artifact under
+  attack, and no final message, while one is pending. In a non-interactive
+  run, ending the turn ends the run, and a gate still in the background is
+  lost (FRAG-FORK-GATES-003, K2 lost A2 this way).
+- **A `spec-rule` finding is rejected only with a permitting quote.**
+  - The quote must come from an activated spec or a `constrained-by`
+    principle, and must explicitly scope the violated rule: an exception to
+    it, or a stated precedence over it.
+  - These do not count: the WRK-SPEC or WRK-PLAN itself, a narrower reading
+    of the violated rule, or the violated rule quoted back. Those were
+    exactly how 0.3.0 runs rejected the manual-merge-survivor finding.
+  - Without a quote the finding is accepted. A disputed rule becomes
+    `Knowledge gap: contested rule — …`, which consolidation reads as a
+    candidate clarification of the rule.
+  - Two activated rules that contradict each other become
+    `Knowledge gap: conflict — …`: the finding is accepted, and a human
+    changes one of the specs.
+  - The human partner adjudicates under the same rule; there is no human
+    exception.
+- **The verifier also checks claims it was not given.** The approved design
+  sections are saved to `.kdd/brainstorm/<topic>-design.md`. The verifier
+  extracts every other statement about today's code from them, and marks
+  each row `Listed: yes | unlisted`. The WRK-SPEC keeps the listed premises
+  and the unlisted claims that failed, then `unlisted claims verified: <N>
+  hold`.
+
 ### What changed after (first samples)
 
 - **Scenario 7** (architectural brainstorming on a small billing project
@@ -170,6 +213,50 @@ brownfield work of 4-13 tasks; the after samples are headless fixtures.
 - **n = 2 per side, one task.** The direction is consistent with the goal;
   the size of the effect is not established.
 
+### Against plain superpowers, and after 0.4.0 (FRAG-FORK-GATES-003, -004)
+
+- **Setup:**
+  - Design + plan for RFC-PIPE-039 at mdm-platform `aacdae5`, headless.
+  - One neutral prompt, with every approval given in advance.
+  - Arms: superpowers 6.3.0 (U1, U2), kdd-superpowers 0.3.0 (K1–K3) and
+    0.4.0 (K4, K5).
+  - Ten hard points were fixed before any run. A blind judge scored neutral
+    summaries against the code and specs; evidence judges checked every
+    claim about current code.
+- **Results:**
+
+  | Arm | Hard points (of 10) | H1 right | False claims about code | Mean cost |
+  |---|---|---|---|---|
+  | superpowers 6.3.0 | 7, 6 | 0/2 | 10/110 (9.1 %) | $7.10 |
+  | kdd-superpowers 0.3.0 | 9, 5, 6 | 0/3 | 9/192 (4.7 %) | $19.18 |
+  | kdd-superpowers 0.4.0 | 8, 9 | 2/2 | 3/117 (2.6 %) | $18.68 |
+
+  H1 asks that the manual-merge survivor's data is not overwritten by the
+  recompute.
+- **0.3.0 did not beat plain superpowers on design quality.** It halved the
+  false claims about code, at about 2.7× the cost.
+- **The gates found the right problems, but the authors overrode them.**
+  In 0.3.0, A1 flagged the manual-merge survivor as `spec-rule`. The
+  authors rejected or "kept" the design by narrowing the rule, and all three
+  runs lost H1.
+- **Under the permitting-quote rule, both 0.4.0 runs accepted the finding
+  and changed the design.** Both got H1 right. The floor rose from 5–6 to
+  8; the best run did not change (9).
+- **Accepting a finding records a disagreement; it does not resolve a
+  conflict between specs.**
+  - One mdm-platform rule says an orphaned record does not propagate
+    downstream (DOM-MDM-SURVIVORSHIP-001 §3.2).
+  - Another says cross-pod cache invalidation rides the same event
+    (ARCH-MDM-PERFORMANCE-001 §3.3.1).
+  - K4 honoured the first and lost the second; K5 did the opposite.
+  - Only a human change to a spec settles it.
+- **A KDD-organised repository makes plain superpowers produce KDD-shaped
+  artifacts.** The difference is activation, verified premises, gates and
+  rulings, not format.
+- **n = 2–3 per arm, one task, and the judge varies by about ±1 per run.**
+  The H1 result is consistent; the size of the overall gain is not
+  established.
+
 ### Reading an attack table
 
 - **Many `code-reality` rows:** the author did not verify premises. Look at
@@ -189,7 +276,12 @@ FRAG-FORK-GATES-001 audit on its `## Adversarial Review` tables. It is now
 a count of the Cause column, not a re-derivation. Capture it as a new FRAG
 and bump this document. To compare plugin versions, repeat the
 FRAG-FORK-GATES-002 method (same prompt and commit, disposable worktrees,
-blind classifier, evidence judge on the final spec). Owner: jmbruzos.
+blind classifier, evidence judge on the final spec). To judge design
+quality, not only claims about code, repeat the FRAG-FORK-GATES-003 method:
+pre-registered hard points, neutral summaries, and one blind pass over every
+arm's summaries together. After a change to how gates are adjudicated, also
+count the rulings: rejected `spec-rule` findings, and contested-rule and
+conflict gaps. Owner: jmbruzos.
 
 ## Status
 
@@ -198,3 +290,5 @@ Draft, `confidence: low`:
   condensed prose.
 - The after samples are three headless fixture runs and one A/B on a real
   design, with 2 runs per side.
+- The quality comparison is one task with 2–3 runs per arm, scored by one
+  blind judge.
