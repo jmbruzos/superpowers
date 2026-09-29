@@ -91,16 +91,18 @@ unchanged.
 - A BROKEN finding whose Cause is `spec-rule` may be rejected only by
   quoting the literal text of a rule that **permits** the design, from an
   activated spec or from a principle the work is `constrained-by`: ID,
-  section and literal.
+  section and literal. A quote permits only when it explicitly scopes the
+  violated rule — an exception to it, or a stated precedence over it.
 - Not a permitting quote: the WRK-SPEC or WRK-PLAN itself; a narrower reading of the violated rule; the violated rule quoted back.
 - Without a permitting quote the finding is **accepted**: the artifact
-  changes to satisfy the rule, and
+  changes to satisfy the rule. When you dispute the rule,
   `Knowledge gap: contested rule — <ID> § <section>: <the disagreement>`
   records it. Consolidation reads that line as a candidate clarification of
   the rule, not as missing knowledge.
 - A rejection with a quote is persisted as `rejected → <ID> § <section> "<literal>"`.
-- When the permitting quote comes from another activated rule that
-  contradicts the violated one, the finding stands and
+- Text from another activated rule that contradicts the violated one
+  without scoping it is not a permitting quote but a conflict: the finding
+  is accepted (`accepted → fix`) and
   `Knowledge gap: conflict — <ID §> vs <ID §>` is recorded; resolving it
   means changing one of the specs, which is the human partner's call.
 - In A1 the human partner adjudicates under the same rule: disagreeing with

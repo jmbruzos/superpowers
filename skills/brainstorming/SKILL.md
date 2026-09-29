@@ -241,8 +241,8 @@ Adjudicate every `BROKEN` finding — full rows and one-liners — out loud with
 attack on an activated rule changes the design; a broken attack that
 reveals missing knowledge becomes a gap in *Knowledge activation*. A
 `spec-rule` finding is rejected only with a permitting quote (same
-reference, *Rejecting a `spec-rule` finding*); without one it is accepted
-and recorded as `Knowledge gap: contested rule — …`. Then
+reference, *Rejecting a `spec-rule` finding*); without one it is accepted,
+and if you dispute it, recorded as `Knowledge gap: contested rule — …`. Then
 fix the WRK-SPEC, record the adversary's closing line and every `BROKEN`
 finding with its ruling under `## Adversarial Review` (after Open
 Questions), re-validate and commit.
@@ -258,7 +258,7 @@ Both paths write one; the bounded path writes the compact form.
 - REQUIRED SUB-SKILL: kdd-superpowers:kdd-conventions — IDs, template, trust family, validation.
 - ID: `skills/kdd-conventions/scripts/next-id WRK-SPEC-<AREA>-<CONCEPT>` with the path your human partner confirmed. File: `specs/work/<ID>-<slug>.md` (create `specs/work/` if absent, and add `.kdd/` to `.gitignore` if absent).
 - Frontmatter: `status: draft`, `confidence: low`, `version: 0.1.0`, pinned `activates`/`equips` exactly as approved, `activation_frozen: true`, `activation_resolved_at`, `dependencies` (`constrained-by` each activated spec, `implements` a target FEAT if any), `sources` (each FRAG with its directory), `generated`, `stale_after` (+90 days), `tags`.
-- Body per the template: Problem Statement → Proposed Change (the approved sections as sub-headings) → Knowledge Context (the activation table; FRAGs marked "evidence, not activated") → Constraints (**verbatim** rules from activated specs with source ID and rule number; FRAG-observed behaviour with its anchor) → Code Premises (the verifier's table, architectural path) → Acceptance Criteria (testable) → Open Questions.
+- Body per the template: Problem Statement → Proposed Change (the approved sections as sub-headings) → Knowledge Context (the activation table; FRAGs marked "evidence, not activated") → Constraints (**verbatim** rules from activated specs with source ID and rule number; FRAG-observed behaviour with its anchor) → Code Premises (the verifier's table, filtered as in *Code premises*; architectural path) → Acceptance Criteria (testable) → Open Questions.
 - Validate: `<kdd-cli> --specs specs validate` — 0 errors, and no warning naming your artifact.
 - Commit the WRK-SPEC (`spec(<ID>): <title>`) — on the architectural path, only after gate A1 is adjudicated.
 

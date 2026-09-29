@@ -3,28 +3,32 @@
 ## 0.4.0 — gates hold their findings
 
 Implements WRK-SPEC-FORK-GATES-002, from the superpowers-vs-kdd-superpowers
-study (FRAG-FORK-GATES-003: a run ended while gate A1 was still in the
+study (FRAG-FORK-GATES-003: a run ended while gate A2 was still in the
 background, and a `spec-rule` finding was rejected by narrowing the rule):
 - **Dispatched gates are synchronous** (`adversarial-gates.md`): A1, A2, A4,
   A6 and the premise verifier are waited for; in a non-interactive run,
   ending the turn ends the run. brainstorming gains the Red Flags row "The
   gate runs in the background — I'll wrap up and rule when it reports";
-  writing-plans and subagent-driven-development say the same at their gates.
+  writing-plans says the same at A2, and subagent-driven-development's
+  waiting rule forbids ending a turn with a live child.
 - **Rejecting a `spec-rule` finding (A1, A2) needs a permitting quote** from an
-  activated spec or a constrained-by principle, recorded as
+  activated spec or a constrained-by principle that explicitly scopes the
+  violated rule, recorded as
   `rejected → <ID> § <section> "<literal>"`. The WRK-SPEC or WRK-PLAN itself,
   a narrower reading of the violated rule, or the rule quoted back do not
-  count. Without such a quote the finding is accepted, and the disagreement is
-  recorded as `Knowledge gap: contested rule — …`.
+  count. Without such a quote the finding is accepted; a disputed rule is
+  recorded as `Knowledge gap: contested rule — …`, and two contradicting
+  activated rules as `Knowledge gap: conflict — …`.
 - **The premise verifier also checks unlisted claims.** Before dispatching
   it, brainstorming saves the approved sections to
   `.kdd/brainstorm/<topic>-design.md`. The verifier extracts every other
   statement about today's code from that file. Its table and `## Code
-  Premises` gain a `Listed` column and the line
+  Premises` gain a `Listed` column; `## Code Premises` keeps only the listed
+  premises plus the unlisted claims that failed, then the line
   "unlisted claims verified: <N> hold".
 - `test-kdd-flow.sh` scenario 7 checks the following: the design file is
-  written before the verifier dispatch, gate A1 is dispatched, and the Listed
-  column is present.
+  written before the verifier dispatch, gate A1 is dispatched, and the
+  verifier's own reply carries the Listed column.
 - **Cost** (FRAG-FORK-TOKENS-003, scenario 7, n = 2 per side): +8 % cost and
   +14 % wall time. The two sides' ranges do not overlap.
 - **Quality** (FRAG-FORK-GATES-004, the FRAG-FORK-GATES-003 task, n = 2):
@@ -34,6 +38,11 @@ background, and a `spec-rule` finding was rejected by narrowing the rule):
   - Blind hard points were 8 and 9, against 5–9 for 0.3.0 and 6–7 for
     superpowers 6.3.0.
   - No `spec-rule` finding was rejected.
+  - Accepting a contested finding can move the error: K4 dropped the
+    orphan's update event and lost cross-pod cache invalidation (H6), which
+    all five earlier runs had right; K5 kept the event and lost H10,
+    recording the two rules' conflict instead of resolving it.
+  - Cost did not rise on this task: mean $18.68 against $19.18 for 0.3.0.
 
 ## 0.3.0 — adversarial gates A1/A2 tuned
 

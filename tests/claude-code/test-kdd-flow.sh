@@ -195,10 +195,10 @@ a1_line=""; [[ -n "$tx" ]] && a1_line="$(grep -nE '"name": ?"Agent"' "$tx" | gre
 vline=""; [[ -n "$tx" ]] && vline="$(grep -nE '"name": ?"Agent"' "$tx" | grep -E "$VPAT" | head -1 | cut -d: -f1)"
 [[ -n "$vline" ]] && pass "premise verifier dispatched" || fail "premise verifier dispatched"
 # the approved design sections are written to .kdd/brainstorm/<topic>-design.md before (or with) the verifier dispatch
-dwrite=""; [[ -n "$tx" ]] && dwrite="$(grep -nE '"name": ?"(Write|Bash)"' "$tx" | grep -E '\.kdd/brainstorm/[^" ]*-design\.md' | head -1 | cut -d: -f1)"
-[[ -n "$dwrite" && -n "$vline" && "$dwrite" -le "$vline" ]] && pass "design file written before the verifier" || fail "design file written before the verifier (write:$dwrite verifier:$vline)"
-# the header also appears in the verifier's prompt, so only assistant messages count
-listed="$(find "$CONFIG_DIR/projects" -name '*.jsonl' -exec grep -hE '"role": ?"assistant"' {} + 2>/dev/null | grep -cF "| Premise | Listed | Verified by | Result |")"
+dwrite=""; [[ -n "$tx" ]] && dwrite="$(grep -nE '"name": ?"(Write|Bash)"' "$tx" | grep -E '\.kdd/brainstorm/[^" *]*-design\.md' | grep -vE '"name": ?"Bash".*"command": ?"(cat|ls|grep|sed -n|head|git (log|show|diff))' | head -1 | cut -d: -f1)"
+[[ -n "$dwrite" && -n "$vline" && "$dwrite" -lt "$vline" ]] && pass "design file written before the verifier" || fail "design file written before the verifier (write:$dwrite verifier:$vline)"
+# the header is also in the controller's dispatch prompt (an assistant line), so only the subagents' own replies count
+listed="$(find "$CONFIG_DIR/projects" -name 'agent-*.jsonl' -exec grep -hE '"role": ?"assistant"' {} + 2>/dev/null | grep -cF "| Premise | Listed | Verified by | Result |")"
 [[ "${listed:-0}" -gt 0 ]] && pass "verifier returned the Listed column" || fail "verifier returned the Listed column"
 if [[ -n "$a1_line" ]]; then
   a1_input="$(sed -n "${a1_line}p" "$tx")"
