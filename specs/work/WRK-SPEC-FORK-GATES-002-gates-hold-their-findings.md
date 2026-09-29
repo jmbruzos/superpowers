@@ -3,7 +3,7 @@ id: WRK-SPEC-FORK-GATES-002
 type: spec
 layer: work-spec
 scope: ephemeral
-status: draft
+status: active
 confidence: low
 version: 0.1.0
 created: 2026-09-29
@@ -33,6 +33,9 @@ sources:
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-09-29T12:00:00Z
+verified:
+  - by: human:jmbruzos
+    at: 2026-09-29T18:05:28+02:00
 stale_after: 2026-12-28T12:00:00Z
 tags: [kdd, fork, gates, adversarial, brainstorming, writing-plans, subagent-driven-development]
 ---
