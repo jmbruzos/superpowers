@@ -18,8 +18,9 @@ were fixed before any run (`raw/preregistration.md`).
 - **Runs.** U1, K1, U2 and K2 ran in series, then K3.
   - K2's headless session ended its turn while gate A2 was still running
     in the background. Its plan was never adjudicated or committed, so it
-    was rebuilt from the transcript by replaying the Write and Edit calls
-    (`raw/K2-bundle.txt`).
+    was rebuilt from the transcript by replaying the Write and Edit calls.
+    `raw/K2-bundle.txt` pairs that replayed plan with K2's committed spec
+    (see Correction).
   - K3 re-ran K2 with one added sentence: never end the turn while a
     dispatched subagent is running. K3 adjudicated A2 and committed.
 - **Setup notes.**
@@ -38,9 +39,10 @@ were fixed before any run (`raw/preregistration.md`).
   - **Neutral summaries** (sonnet): one per run, with format, IDs and
     process vocabulary removed (`raw/*-neutral-summary.md`).
   - **Blind H1–H10 judge** (opus): scores the five summaries under shuffled
-    codes, with the same bar for all, against the code and specs. A first
-    pass over the four original summaries gave the same scores for those
-    four.
+    codes, with the same bar for all, against the code and specs. Three
+    passes were run (four summaries, five, then five with K2 corrected);
+    scores moved by at most 1 per run between passes, and the table reports
+    the last pass.
 
 ## Observed — runs
 
@@ -59,7 +61,7 @@ were fixed before any run (`raw/preregistration.md`).
 | U1 | 51 | 5 | 0 | 0 | 6 | 0 | yes |
 | U2 | 59 | 5 | 1 | 0 | 5 | 0 | yes |
 | K1 | 74 | 3 | 2 | 0 | 6 | 0 | yes |
-| K2 | 64 | 2 | 1 | 0 | 5 | 0 | yes |
+| K2 | 62 | 3 | 1 | 0 | 5 | 0 | yes |
 | K3 | 56 | 3 | 0 | 0 | 8 | 0 | yes |
 
 Violations shared across both arms:
@@ -79,10 +81,10 @@ Violations specific to one arm:
 | Run | H1 | H2 | H3 | H4 | H5 | H6 | H7 | H8 | H9 | H10 | C |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | U1 | W | W | C | C | C | C | C | C | C | W | 7 |
-| U2 | W | W | C | C | C | C | C | C | C | W | 7 |
+| U2 | W | N | C | C | C | N | C | C | C | W | 6 |
 | K1 | W | C | C | C | C | C | C | C | C | C | 9 |
-| K2 | W | W | W | W | C | C | C | C | C | W | 5 |
-| K3 | W | W | W | C | C | C | C | C | C | W | 6 |
+| K2 | W | N | W | W | C | C | C | C | C | W | 5 |
+| K3 | W | N | W | C | C | C | C | C | C | W | 6 |
 
 Key: U1 = N2, U2 = N4, K1 = N3, K2 = N1, K3 = N5.
 
@@ -110,11 +112,13 @@ The blind judge scored those decisions W against the same rules.
 ## Inferred
 
 - **Design quality is not better with kdd-superpowers on this task.**
-  - Mean hard points: U 7.0, K 6.7 (7.5 excluding truncated K2).
+  - Mean hard points: U 6.5, K 6.7 (7.5 excluding truncated K2).
+  - Between two judge passes, U2 moved from 7 to 6: the judge varies by
+    about ±1 per run.
   - K produced the best design (K1, 9/10) and the two weakest (K2 5, K3 6).
   - n = 2 or 3 per arm (rests on: blind judge table).
 - **kdd-superpowers halves false claims about current code.**
-  - K: 8 of 194 (4.1 %); U: 10 of 110 (9.1 %).
+  - K: 9 of 192 (4.7 %); U: 10 of 110 (9.1 %).
   - Consistent with FRAG-FORK-GATES-002. None was design-changing here, in
     either arm (rests on: evidence judges table).
 - **It costs about 2.7× and takes about 2.7× the time.**
@@ -131,3 +135,23 @@ The blind judge scored those decisions W against the same rules.
   plain superpowers produce KDD-shaped artifacts. What kdd-superpowers adds
   over that is activation, verified premises, gates and ledgers; format
   alone is not the difference (rests on: Method, U artifacts).
+
+## Correction (2026-09-29, before publication)
+
+The first version of this fragment built K2's bundle entirely by replaying
+Write and Edit calls from the transcript. K2's spec had been changed after
+its first Write by other means, so the bundle carried an early spec: 252
+lines, before the premise verifier and gate A1. The committed spec has 334
+lines and includes its `## Adversarial Review`.
+
+Gate A1 of WRK-SPEC-FORK-GATES-002 found the defect (attack 5). With the
+human partner's ruling, this fragment was corrected in place before being
+pushed:
+- `raw/K2-bundle.txt` now pairs the committed spec with the replayed plan
+  and tasks.
+- K2's evidence judge and neutral summary were re-run.
+- The blind judge re-scored all five summaries in one pass. The table above
+  is that pass.
+
+Earlier figures for K2 were 64 claims, 2 false, and hard points 5. Earlier
+figures for U2 were 7, from the first judge pass.
