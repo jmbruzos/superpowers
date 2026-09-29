@@ -180,25 +180,33 @@ if [[ -n "$spec7wt" ]]; then
   [[ -n "$m" && "$rows" == "$m" ]] && pass "BROKEN table has M=$m rows" || fail "BROKEN table has M rows (closing M=$m, table rows=$rows)"
   out7v="$(validate "$p7")"; [[ "$out7v" == *"Validation passed"* ]] && pass "validates" || fail "validates: $out7v"
 fi
-tx="$(grep -rlE '"description": ?"Adversary: A1' "$CONFIG_DIR/projects" --include='*.jsonl' 2>/dev/null | head -1)"
-[[ -n "$tx" ]] && pass "gate A1 dispatched" || fail "gate A1 dispatched"
-grep -rqE '"description": ?"Premise verifier|You verify statements about how existing code behaves today' "$CONFIG_DIR/projects" --include='*.jsonl' 2>/dev/null && pass "premise verifier dispatched" || fail "premise verifier dispatched"
-vtx="$(grep -rlE '"description": ?"Premise verifier|You verify statements about how existing code behaves today' "$CONFIG_DIR/projects" --include='*.jsonl' 2>/dev/null | head -1)"
-if [[ -n "$vtx" ]]; then
-  # the approved design sections are written to .kdd/brainstorm/<topic>-design.md before the verifier is dispatched
-  dwrite="$(grep -nE '"name": ?"(Write|Bash)"' "$vtx" | grep -E '\.kdd/brainstorm/[^" ]*-design\.md' | head -1 | cut -d: -f1)"
-  vline="$(grep -nE '"description": ?"Premise verifier|You verify statements about how existing code behaves today' "$vtx" | head -1 | cut -d: -f1)"
-  [[ -n "$dwrite" && -n "$vline" && "$dwrite" -lt "$vline" ]] && pass "design file written before the verifier" || fail "design file written before the verifier (write:$dwrite verifier:$vline)"
-fi
+# Transcript checks. Dispatch descriptions are paraphrased by sessions, so gates are
+# recognised by description or by their prompt's opening line. Counts, not grep -q:
+# grep -q closes the pipe early and, with pipefail, reads as a failure.
+VPAT='"description": ?"Premise verifier|You verify statements about how existing code behaves today'
+APAT='"description": ?"[^"]*(Adversary: A1|Gate A1|A1 spec red-team)|You are an adversary\. Your job is to break a work specification'
+tx=""
+for f in $(find "$CONFIG_DIR/projects" -name '*.jsonl' 2>/dev/null); do
+  n="$(grep -E '"name": ?"Agent"' "$f" | grep -cE "$VPAT|$APAT")"
+  if [[ "${n:-0}" -gt 0 ]]; then tx="$f"; break; fi
+done
+a1_line=""; [[ -n "$tx" ]] && a1_line="$(grep -nE '"name": ?"Agent"' "$tx" | grep -E "$APAT" | head -1 | cut -d: -f1)"
+[[ -n "$a1_line" ]] && pass "gate A1 dispatched" || fail "gate A1 dispatched"
+vline=""; [[ -n "$tx" ]] && vline="$(grep -nE '"name": ?"Agent"' "$tx" | grep -E "$VPAT" | head -1 | cut -d: -f1)"
+[[ -n "$vline" ]] && pass "premise verifier dispatched" || fail "premise verifier dispatched"
+# the approved design sections are written to .kdd/brainstorm/<topic>-design.md before (or with) the verifier dispatch
+dwrite=""; [[ -n "$tx" ]] && dwrite="$(grep -nE '"name": ?"(Write|Bash)"' "$tx" | grep -E '\.kdd/brainstorm/[^" ]*-design\.md' | head -1 | cut -d: -f1)"
+[[ -n "$dwrite" && -n "$vline" && "$dwrite" -le "$vline" ]] && pass "design file written before the verifier" || fail "design file written before the verifier (write:$dwrite verifier:$vline)"
 # the header also appears in the verifier's prompt, so only assistant messages count
-find "$CONFIG_DIR/projects" -name '*.jsonl' -exec grep -hE '"role": ?"assistant"' {} + 2>/dev/null | grep -qF "| Premise | Listed | Verified by | Result |" && pass "verifier returned the Listed column" || fail "verifier returned the Listed column"
-if [[ -n "$tx" ]]; then
-  a1_input="$(grep -E '"description": ?"Adversary: A1' "$tx" | head -1)"
-  grep -q 'specs/work/WRK-SPEC-' <<<"$a1_input" && ! grep -q -- '-draft.md' <<<"$a1_input" && pass "A1 prompt names the WRK-SPEC file" || fail "A1 prompt names the WRK-SPEC file"
+listed="$(find "$CONFIG_DIR/projects" -name '*.jsonl' -exec grep -hE '"role": ?"assistant"' {} + 2>/dev/null | grep -cF "| Premise | Listed | Verified by | Result |")"
+[[ "${listed:-0}" -gt 0 ]] && pass "verifier returned the Listed column" || fail "verifier returned the Listed column"
+if [[ -n "$a1_line" ]]; then
+  a1_input="$(sed -n "${a1_line}p" "$tx")"
+  n1="$(grep -c 'specs/work/WRK-SPEC-' <<<"$a1_input")"; n2="$(grep -c -- '-draft.md' <<<"$a1_input")"
+  [[ "$n1" -gt 0 && "$n2" -eq 0 ]] && pass "A1 prompt names the WRK-SPEC file" || fail "A1 prompt names the WRK-SPEC file"
   # order: the first tool call that writes the WRK-SPEC file (Write, or Bash writing it) comes before the A1 dispatch
   write_line="$(grep -nE '"name": ?"(Write|Bash)"' "$tx" | grep -E 'specs/work/WRK-SPEC-' | grep -vE '"name": ?"Bash".*"command": ?"(cat|ls|grep|sed -n|head|git (log|show|diff))' | head -1 | cut -d: -f1)"
-  a1_line="$(grep -nE '"description": ?"Adversary: A1' "$tx" | head -1 | cut -d: -f1)"
-  [[ -n "$write_line" && -n "$a1_line" && "$write_line" -lt "$a1_line" ]] && pass "WRK-SPEC written before gate A1" || fail "WRK-SPEC written before gate A1 (write line:$write_line A1 line:$a1_line)"
+  [[ -n "$write_line" && "$write_line" -lt "$a1_line" ]] && pass "WRK-SPEC written before gate A1" || fail "WRK-SPEC written before gate A1 (write line:$write_line A1 line:$a1_line)"
 fi
 rm -f "${spec7:-}"
 
