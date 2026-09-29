@@ -1,0 +1,2596 @@
+---
+id: WRK-PLAN-MDM-MEMBER-LEAVE-001
+type: spec
+layer: work-plan
+scope: ephemeral
+status: draft
+confidence: low
+version: 0.1.0
+created: 2026-09-29
+updated: 2026-09-29
+owner: bruzos
+title: "La ficha que pierde un miembro se recalcula — implementation plan"
+parent: WRK-SPEC-MDM-MEMBER-LEAVE-001
+activates:
+  - DOM-MDM-SURVIVORSHIP-001@1.10.1
+  - DOM-MDM-PIPELINE-001@1.23.0
+  - DOM-MDM-LINEAGE-001@1.7.0
+  - PROD-MDM-STEWARDSHIP-001@1.8.0
+  - ARCH-MDM-PERFORMANCE-001@1.8.1
+equips: []
+activation_frozen: true
+dependencies:
+  - id: WRK-SPEC-MDM-MEMBER-LEAVE-001
+    relation: implements
+  - id: DOM-MDM-SURVIVORSHIP-001
+    relation: constrained-by
+  - id: DOM-MDM-PIPELINE-001
+    relation: constrained-by
+  - id: DOM-MDM-LINEAGE-001
+    relation: constrained-by
+  - id: PROD-MDM-STEWARDSHIP-001
+    relation: constrained-by
+  - id: ARCH-MDM-PERFORMANCE-001
+    relation: constrained-by
+sources:
+  - id: WRK-SPEC-MDM-MEMBER-LEAVE-001
+    resource: specs/work/WRK-SPEC-MDM-MEMBER-LEAVE-001-la-ficha-que-pierde-un-miembro-se-recalcula.md
+  - id: FRAG-MDM-MEMBER-LEAVE-001
+    resource: specs/_capture/FRAG-MDM-MEMBER-LEAVE-001-la-ficha-que-pierde-un-miembro/
+generated: { by: claude-code/claude-opus-5-5, at: 2026-09-29T11:30:00+02:00 }
+stale_after: 2026-12-28
+tags: [mdm, pipeline, survivorship, plan, work:manual-unification]
+---
+
+# WRK-PLAN-MDM-MEMBER-LEAVE-001 — La ficha que pierde un miembro se recalcula
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use kdd-superpowers:subagent-driven-development (recommended) or kdd-superpowers:executing-plans to implement this plan task-by-task. Each task is its own WRK-TASK file under `specs/work/`; steps use checkbox (`- [ ]`) syntax for tracking.
+
+## Approach
+
+**Goal:** cuando una ForceRule saca un registro de la ficha L en el pipeline, L se recalcula con survivorship sobre
+sus miembros vigentes (o pasa a `orphaned`) en la misma transacción, desactiva los pins que apuntaban al registro, sube
+su versión y lo notifica tras el commit.
+
+**Architecture:** dos puertos nuevos de mdm-core (versiones en Silver de un conjunto de miembros; desactivación de
+source pins) con adaptadores en mdm-persistence; un componente sin JPA en mdm-ingest-service
+(`MemberSurvivorshipRecomputer`) que encadena el `MergeEngine` como la re-survivorship de stewardship y rellena
+`previous`; y `PersistenceStepHandler`, que ya bloquea L, aplica la regla sobre la entidad bloqueada y registra los
+eventos con `TransactionSynchronization.afterCommit` (el patrón de `ConsolidationOverrideMigrator`). Cada intento de
+persistence es su propia transacción (`PipelineOrchestrator.java:322`), así que un intento revertido no publica nada:
+no hace falta la lista por intento en `PipelineContext` que el §2 de la WRK-SPEC listaba (ver *Desviaciones*).
+
+**Tech Stack:** Java 21, Spring Boot 3.4, Spring Data JPA, JUnit 5 + AssertJ + Mockito, Testcontainers PostgreSQL,
+Maven multi-módulo (`src/pom.xml`).
+
+**Spec:** `specs/work/WRK-SPEC-MDM-MEMBER-LEAVE-001-la-ficha-que-pierde-un-miembro-se-recalcula.md` — el plan argumenta
+desde la spec; los ejecutores leen las dos.
+
+## Task Breakdown
+
+| Task ID | Description | Dependencies |
+|---|---|---|
+| WRK-TASK-MDM-MEMBER-LEAVE-001-001 | Puertos `SourceRecordVersionReader.findVersionsOfMembers` y `SourcePinDeactivator` con sus adaptadores e ITs | — |
+| WRK-TASK-MDM-MEMBER-LEAVE-001-002 | `MemberSurvivorshipRecomputer` (encadenado, `previous`, frescura, score, `NoMembers`/`NoVersions`) | 001 |
+| WRK-TASK-MDM-MEMBER-LEAVE-001-003 | Evento `golden_record.orphaned` (emisor + `CacheInvalidationListener`) | — |
+| WRK-TASK-MDM-MEMBER-LEAVE-001-004 | `PersistenceStepHandler` aplica la regla a la ficha que pierde el miembro | 001, 002, 003 |
+| WRK-TASK-MDM-MEMBER-LEAVE-001-005 | ITs de extremo a extremo: ForceRule, orphaned, pins, rollback/reintento, regresión de unmerge, paridad | 004 |
+
+## Architecture Impact
+
+| Constraint | Source | Impact on plan |
+|---|---|---|
+| "`active → orphaned`: Cuando el último registro fuente se reasigna a otro GR (via unmerge o source_to_golden). El GR queda sin datos fuente." | DOM-MDM-SURVIVORSHIP-001 §3.2 | 004: sin miembros vigentes, `status = orphaned` |
+| "`orphaned` \| … No tiene registros fuente activos. \| Sí (solo lectura histórica) \| No \| No" | DOM-MDM-SURVIVORSHIP-001 §3.2 | 003/004: se conserva `golden_data`; `golden_record.orphaned`, no `golden_record.updated` |
+| "Operación de stewardship (recálculo completo) \| `resolve(sources.receivedAt)` sobre el conjunto de sources que QUEDAN vinculadas al golden record tras la operación (nunca combina el valor ya persistido con el candidato nuevo…)" | DOM-MDM-SURVIVORSHIP-001 §3.7.1.1 | 002: frescura = `resolve` sobre las versiones de los miembros vigentes |
+| "un golden record recién creado por la propia operación … **no emite** evento con su primer score" | DOM-MDM-SURVIVORSHIP-001 §3.7.3 | 004: L no es nueva → su cruce de tier sí se emite (score nulo parte de 0.5, §3.3.6) |
+| "`previous` \| Valor anterior si hubo cambio. `null` si es la primera resolución o si el valor no cambió." | DOM-MDM-SURVIVORSHIP-001 §3.6.1 | 002: `previous` = valor/fuente persistidos solo en los campos que cambian |
+| "Mismos registros fuente, mismos valores candidatos" (re-survivorship, punto 2c) | DOM-MDM-SURVIVORSHIP-001 §3.8.2 | 002: todas las versiones en Silver de los miembros vigentes, como stewardship |
+| "**Recálculo del GR origen** (sin el registro fuente que se mueve)." | DOM-MDM-PIPELINE-001 §10.8.4 p.3 | 004 |
+| "Si la escritura falla (version mismatch), el orquestador **retrocede al paso de Merge**: relee el golden record actualizado y recalcula el merge con los datos frescos, luego reintenta Persistence." | DOM-MDM-PIPELINE-001 §6.5 p.3 | 004: `saveAndFlush` de L sube `@Version` |
+| "Si el registro fuente fijado por un `source_pin` ya no está vinculado al golden record … la regla se desactiva automáticamente y se emite un evento `FieldOverrideAutoDeactivated` con el motivo." | DOM-MDM-PIPELINE-001 §10.9.4 p.2 | 001/004 |
+| "Cambiar de ficha = cerrar y abrir en la misma transacción; un tramo cerrado no se modifica." | DOM-MDM-LINEAGE-001 §3.2.6 | 004: la regla corre en la transacción de persistence, tras `move` |
+| "El barrido nunca instancia su propio `MergeEngine`: hacerlo perdería en silencio los overrides activos del tenant." | PROD-MDM-STEWARDSHIP-001 §3.8.5 | 002: el recomputer recibe el `MergeEngine` bean |
+| "Update de golden record \| Añade `PRODUCED` (run → GR)" | DOM-MDM-LINEAGE-001 §3.2.5 | 004: `PRODUCED` run → L (`action: updated`, `reason: member_left`/`member_left_orphaned`) cuando se escribe L |
+| `mdm.*.golden_record.updated` — invalida GR en L2 + blocking keys en L1 | ARCH-MDM-PERFORMANCE-001 (invalidación por evento; `CacheInvalidationListener.java:45`) | 003: `golden_record.orphaned` hace lo mismo |
+| Cero imports JPA fuera de mdm-persistence en clases nuevas | CLAUDE.md; WRK-SPEC Constraints | 001/002: puertos en mdm-core; 005 lo comprueba |
+| `PersistenceStepHandler.java:806-809@aacdae5`: tras `move`, solo `cleanUpAfterLosingMember` y `evictAfterCommit(previous)` | FRAG-MDM-MEMBER-LEAVE-001 | 004 añade la regla tras esas dos llamadas |
+
+## Risk Assessment
+
+| Risk | Likelihood | Impact | Mitigation |
+|---|---|---|---|
+| El recálculo de L en la transacción de ingesta alarga la ingesta con fichas de muchos miembros | Baja (solo movimientos por ForceRule, decisión humana) | Media | Consulta por lote única (`findVersionsOfMembers`); sin bucles por miembro |
+| Los tests existentes de la rama FORCED fallan al escribirse L | Media | Baja | 004: en los tests existentes L no se devuelve de `findByIdForUpdate` (mock → `null`) = "inexistente", sin escritura |
+| Divergencia entre el encadenado del recomputer y el de stewardship | Media | Media | 005 AC9: IT de paridad |
+| `previous` sobre campos anidados | Baja | Baja | Se compara `FieldLineageEntry.value()` por clave de lineage, no `golden_data` |
+| `@MockitoSpyBean` sobre `SourceMembershipRepository` (bean `@Repository` con proxy) no intercepta `refreshSourceCounts` | Baja | Media | Si el spy no aplica, inyectar el fallo con un spy de `SearchIndexRepository.replaceMemberKeys` (también posterior a la regla, `PersistenceStepHandler.java:813`) — misma aserción |
+| Añadir un componente a `FieldLineagePrevious` rompe la deserialización del lineage persistido | Baja | Alta | Constructor de 3 argumentos conservado; `@JsonInclude(NON_NULL)`; test de ida y vuelta con mapper plano y `SNAKE_CASE` (002) |
+| Serialización de `golden_record.orphaned` sin lector en consumidores downstream | Baja | Baja | Solo lo consume `CacheInvalidationListener`; catálogo en consolidación (Knowledge gap 5 de la spec) |
+
+## Dependencies
+
+- Testcontainers (Docker) para los `*IT` de `mdm-app`.
+- Sin migraciones Flyway: `field_override_rules` ya tiene `deactivated_*`; `golden_records.status` ya admite `orphaned`.
+
+## Desviaciones de la WRK-SPEC (decididas al planificar)
+
+- **D1.** §2 lista una lista por intento en `PipelineContext` y emisión en `IngestService`/`AsyncPipelineExecutor`. El
+  plan registra los eventos de L con `afterCommit` dentro de la transacción del intento: cumple §1.2 ("tras el commit y
+  solo si el run hace commit", "un intento revertido no deja eventos") con el mecanismo que ya usan
+  `ConsolidationOverrideMigrator` y `StewardshipService`. AC7 se prueba igual (005).
+- **D2.** ~~El plan no escribía `changed_by_pipeline_run`.~~ Retirada en el gate A2: 002 añade `changedByPipelineRun` a
+  `FieldLineagePrevious` (constructor de 3 argumentos conservado) y el recomputer lo rellena con el run actual.
+- **D3.** El fixture de AC1 usa `phone` (regla por defecto `most_recent`) en vez de `email`: el schema de
+  `SourceIdentityPipelineIT` fija `email` a `source_priority` con `crm` primero.
+- **D4.** AC5 (cruce de tier) se prueba en `PersistenceStepHandlerTest` con el `QualityScoreResolver` simulado: el
+  schema de los ITs no tiene `quality.field_weights` y no puede forzar un cruce determinista.
+- **D5.** §2 decía "`SourceRecordVersion` gana `qualityScore`": 001 añade un record nuevo `MemberVersion` en el mismo
+  puerto y deja `SourceRecordVersion` intacto (sus llamadores no cambian).
+- **D6.** §2 describía `recompute(tenantId, entityType, goldenRecordId, survivorshipConfig, evaluationInstant)` con un
+  resultado que incluía `mergeResult` y el número de miembros: 002 usa `Request(tenantId, entityType, goldenRecordId,
+  survivorshipConfig, persistedLineage, evaluationInstant, pipelineRunId)` (el lineage persistido y el run hacen falta
+  para `previous`) y un `Outcome` cerrado `Recomputed | NoMembers | NoVersions` (sustituye al conteo).
+- **D7.** Consecuencia de D1: `clearMergeOutput` no cambia; la limpieza por intento la da la transacción.
+
+## Execution Log
+
+## Adversarial Review
+
+Gate A2 (2026-09-29): 13 attempted, 10 BROKEN (code-reality 2 · spec-rule 2 · ambiguity 2 · knowledge-gap 0 · internal 4). Rulings por el controlador (el humano delegó las decisiones de revisión).
+
+| Attack | Cause | Evidence | Ruling |
+|---|---|---|---|
+| 1 — L se modifica sin arista `PRODUCED` | spec-rule | DOM-MDM-LINEAGE-001 §3.2.5; `PersistenceStepHandler.java:893-897` | accepted → 004 `producedEdge` (`action: updated`, `reason`), tests; fila nueva en Architecture Impact |
+| 1 — D2 elimina `changed_by_pipeline_run` exigido por la WRK-SPEC | spec-rule | WRK-SPEC §1; DOM-MDM-SURVIVORSHIP-001 §3.6.1; `FieldLineageEntry.java:43-54` | accepted → 002 añade `changedByPipelineRun`; D2 retirada |
+| 3 — AC3 "tras el commit" no se prueba: el fallo se inyectaba antes de registrar eventos | ambiguity | 005 (retry sobre `recompute`) | accepted → 005 inyecta el conflicto en `refreshSourceCounts` (después de la regla) y exige un solo evento; prueba de discriminación con emisión inline |
+| 3 — AC7 no comprobaba claves de L ni datos/versión de F | internal | WRK-SPEC AC7; 005 rollback | accepted → 005 compara claves de L y datos, versión y `source_count` de F |
+| 5 — el unitario "nothing is notified" no distingue nada sin transacción | ambiguity | 004 `memberLeft_recomputeFailure…` | accepted → renombrado a `…_propagates`, aserción sobre la no escritura de L; la prueba transaccional vive en 005 |
+| 7 — la rama huérfana hace `locked.add` sobre lo que pasa a ser un `Map` | code-reality | `PersistenceStepHandler.java:789-790` | accepted → 004 Step 3 reescribe la rama con `LinkedHashMap` + `put(previous, Optional.empty())` |
+| 7 — JaCoCo no está enlazado en ningún módulo | code-reality | `src/pom.xml:159-225` | accepted → 005 invoca `prepare-agent`/`report` explícitamente; los adaptadores se justifican por cobertura de ramas del IT |
+| +3 — AC5 con score y tier simulados | internal | WRK-PLAN D4; 004 | rejected: 004 posee la comparación del tier anterior de L con el nuevo (probada); el score recalculado lo producen el recomputer (002, verificado contra el resolver) y AC1 (score = control ±0.0010). Un IT de cruce exigiría un schema con `field_weights` ajeno al alcance |
+| +3 — el WARN de AC6 no se aserta | internal | 004 NoVersions | accepted → `ListAppender` de logback en el test |
+| +2 — cambios de interfaz de §2 no declarados | internal | WRK-SPEC §2; 001; 002 | accepted → desviaciones D5–D7 |
+---
+id: WRK-SPEC-MDM-MEMBER-LEAVE-001
+type: spec
+layer: work-spec
+scope: ephemeral
+status: active
+confidence: low
+version: 0.1.0
+created: 2026-09-29
+updated: 2026-09-29
+owner: bruzos
+title: "La ficha que pierde un miembro se recalcula con survivorship sobre sus miembros vigentes (o pasa a orphaned) en la misma transacción que cierra el tramo"
+activates:
+  - DOM-MDM-SURVIVORSHIP-001@1.10.1
+  - DOM-MDM-PIPELINE-001@1.23.0
+  - DOM-MDM-LINEAGE-001@1.7.0
+  - PROD-MDM-STEWARDSHIP-001@1.8.0
+  - ARCH-MDM-PERFORMANCE-001@1.8.1
+equips: []
+activation_frozen: true
+activation_resolved_at: 2026-09-29T10:30:00+02:00
+dependencies:
+  - id: DOM-MDM-SURVIVORSHIP-001
+    relation: constrained-by
+  - id: DOM-MDM-PIPELINE-001
+    relation: constrained-by
+  - id: DOM-MDM-LINEAGE-001
+    relation: constrained-by
+  - id: PROD-MDM-STEWARDSHIP-001
+    relation: constrained-by
+  - id: ARCH-MDM-PERFORMANCE-001
+    relation: constrained-by
+  - id: ADR-022
+    relation: constrained-by
+  - id: ADR-020
+    relation: constrained-by
+  - id: ADR-013
+    relation: constrained-by
+  - id: ADR-014
+    relation: constrained-by
+  - id: RFC-PIPE-039
+    relation: depends-on
+sources:
+  - id: FRAG-MDM-MEMBER-LEAVE-001
+    resource: specs/_capture/FRAG-MDM-MEMBER-LEAVE-001-la-ficha-que-pierde-un-miembro/
+  - id: RFC-PIPE-039
+    resource: specs/governance/RFC-PIPE-039-la-ficha-que-pierde-un-miembro-conserva-sus-datos.md
+generated:
+  by: claude-code/claude-opus-5-5
+  at: 2026-09-29T10:30:00+02:00
+verified:
+  - by: human:ab-test
+    at: 2026-09-29T10:10:29+02:00
+stale_after: 2026-12-28
+tags: [mdm, pipeline, survivorship, lineage, membership, work:manual-unification]
+---
+
+# WRK-SPEC-MDM-MEMBER-LEAVE-001 — La ficha que pierde un miembro se recalcula
+
+Resuelve RFC-PIPE-039. Cluster `work:manual-unification` (ADR-011).
+
+## Problem Statement
+
+Cuando un registro de origen sale de una ficha (se cierra su tramo vigente en `mdm_gold.source_record_xref`), la
+ficha que lo pierde debe dejar de mostrar lo que aportaba ese registro. Hoy (FRAG-MDM-MEMBER-LEAVE-001):
+
+- **Unmerge**: correcto. La ficha original se recalcula con survivorship sobre los miembros que quedan y su
+  `field_lineage` se reemplaza entero (`StewardshipService.java:435`, `:457-459`). No puede quedarse sin miembros
+  (`:2256-2258`).
+- **Movimiento por ForceRule en el pipeline** (`PersistenceStepHandler.persistMembership`, rama `FORCED`,
+  `:777-780`, `:806-809`): la ficha que pierde el miembro (`previous`) solo ve limpiadas sus blocking keys, recalculado
+  su `source_count` y evictada la caché local. `golden_data`, `field_lineage`, `quality_score` y
+  `latest_source_received_at` conservan los valores del que se fue; su `@Version` no sube; no se publica
+  `golden_record.updated`. Si era su único miembro, la ficha queda `active` con `source_count = 0`, sin claves y con
+  los datos del registro que ya vive en otra ficha — nadie escribe `orphaned`.
+- **Resolución de revisión**: `MembershipOperationKind.REVIEW_RESOLUTION` está declarado pero ninguna ruta de
+  producción cierra tramos con él (WRK-SPEC 3, OQ-3 de WRK-SPEC-MDM-SOURCE-IDENTITY-001).
+
+Consecuencia: un consumidor lee en la ficha un email o un NIF que ya pertenece a otra; una actualización concurrente
+de la ficha calculada sobre esos datos no choca con la guarda de versión, porque la versión no sube.
+
+## Proposed Change
+
+### 1. Regla — la ficha que pierde un miembro en el pipeline
+
+Alcance: los cierres de tramo del **pipeline** (`PersistenceStepHandler.persistMembership`), que hoy son la única ruta
+que deja una ficha `active` sin recalcular (FRAG-MDM-MEMBER-LEAVE-001). El unmerge ya cumple la regla y no cambia; la
+resolución de revisión (WRK-SPEC 3) queda en OQ-3.
+
+Tras `move` y la limpieza de claves, **en la misma transacción** y bajo el bloqueo `FOR UPDATE` que ya tiene la ficha L
+que pierde el miembro X:
+
+| Estado de L | Qué se hace con L |
+|---|---|
+| `active`, ≥ 1 miembro vigente con versión en Silver | **Recálculo completo**: survivorship sobre **todas** las versiones en Silver de sus miembros vigentes (mismas entradas que la re-survivorship de DOM-MDM-SURVIVORSHIP-001 §3.8.2 y que el unmerge). Se reemplazan `golden_data`, `field_lineage`, `quality_score` y `latest_source_received_at` (candidato de "recálculo completo", §3.7.1.1). En cada campo cuyo valor cambia respecto al persistido, `field_lineage.<campo>.previous` = `{value, source}` del lineage persistido de L, `changed_at` = instante de la operación, `changed_by_pipeline_run` = run actual (§3.6.1). Se desactivan los pins (§1.1). Se guarda la entidad (sube `@Version`). |
+| `active`, ≥ 1 miembro vigente, **ninguno** con versión en Silver | L **no se escribe**: conserva `golden_data`, `field_lineage`, `quality_score`, `latest_source_received_at` y versión; se desactivan los pins (§1.1) y se registra un WARN con tenant, L y X. (Hoy solo ocurre con datos anteriores a la xref.) |
+| `active`, **sin** miembros vigentes | **Pasa a `orphaned`** (DOM-MDM-SURVIVORSHIP-001 §3.2). `golden_data`, `field_lineage` y `quality_score` se conservan como lectura histórica; se desactivan los pins (§1.1); se guarda (sube `@Version`). |
+| `absorbed`, `orphaned`, `deleted` o inexistente | Nada (comportamiento actual). |
+
+**1.1 Pins.** Se desactivan los `source_pin` activos de L cuyo registro fijado es X: `pinned_source = X.source` y
+`pinned_source_record_id = X.source_record_id`, o `pinned_source` nulo (legado) con el mismo id — el mismo criterio que
+`autoDeactivatePins` del unmerge. `deactivation_reason = "member_left"`, `deactivated_by = "system:pipeline"`, y tras el
+commit se publica `FieldOverrideAutoDeactivated` (DOM-MDM-PIPELINE-001 §10.9.4 p.2), como `ConsolidationOverrideMigrator`.
+Los value overrides no se tocan: en el recálculo se siguen aplicando vía `FieldOverrideProvider`; en una ficha
+`orphaned` quedan inertes (no participa en merge).
+
+**1.2 Eventos, tras el commit y solo si el run hace commit.**
+- L recalculada: `golden_record.updated` con la firma actual de `IngestEventEmitter.emitGoldenRecordUpdated` (sin campo
+  `reason`); invalida la caché en todos los pods (`CacheInvalidationListener`). Si el tier de L cambia (score
+  persistido antes → score nuevo de L; un score nulo parte de 0.5, §3.3.6), `GoldenRecordQualityChanged` para L.
+- L `orphaned`: evento nuevo `golden_record.orphaned` (aggregate `golden_record`, payload `goldenRecordId`, `entityType`,
+  `sourceRecord` = identidad de X) — la notificación análoga a la de absorción; **no** `golden_record.updated`, porque
+  una ficha `orphaned` no propaga actualizaciones (§3.2). `CacheInvalidationListener` también evicta con él.
+- Las fichas que perdieron un miembro se acumulan por **intento** de persistence: la lista se vacía cuando el
+  orquestador limpia la salida de merge para reintentar (`clearMergeOutput`), así que un intento revertido no deja
+  eventos.
+
+**1.3 Superviviente de merge manual.** Si L tiene una ForceRule `GOLDEN_TO_GOLDEN` activa, **también** se recalcula. El
+filtro de PROD-MDM-STEWARDSHIP-001 §3.8.5 acota las rutas de re-survivorship de administración ("ambas rutas"); aquí
+conservar los valores de X es el defecto a corregir. Consecuencia aceptada: los valores de los miembros que llegaron
+por el merge manual pueden ganar campos por primera vez (OQ-2).
+
+### 2. Componentes
+
+- **Puerto `SourceRecordVersionReader.findVersionsOfMembers(tenantId, entityType, members)`** (mdm-core): todas las
+  versiones en Silver de un conjunto de identidades, en el orden de `StagedRecordJpaRepository.findVersionsOfMembers`
+  (`coalesce(received_at, created_at)`, `source_record_id`, `source`, `created_at`, ascendente). `SourceRecordVersion`
+  gana `qualityScore` (nullable). Implementación en mdm-persistence sobre la consulta existente.
+- **Puerto `SourcePinDeactivator`** (mdm-core; implementación en mdm-persistence): desactiva los pins de §1.1 y devuelve
+  los desactivados (para el evento).
+- **`MemberSurvivorshipRecomputer`** (mdm-ingest-service; solo puertos de mdm-core, `MergeEngine`,
+  `QualityScoreResolver`, `LatestSourceReceivedAtResolver`): `recompute(tenantId, entityType, goldenRecordId,
+  survivorshipConfig, persistedGoldenData, persistedLineage, evaluationInstant, runId)` → `Recomputed(mergeResult,
+  latestSourceReceivedAt, qualityScore)` | `NoMembers` | `NoVersions`. Encadena `MergeEngine.merge` (`create` para la
+  primera versión, `update` para el resto; confianza 1.0; `qualityScore` de la versión o 0.8) — el mismo algoritmo que
+  `StewardshipService.reSurvivorshipFromSources` — y rellena `previous` según §1.
+- **`StewardshipService` no cambia.** La equivalencia de los dos encadenados la fija un test de paridad (AC9).
+- **`PersistenceStepHandler.persistMembership`**: tras `move` + `cleanUpAfterLosingMember`, si L está `active` aplica §1
+  sobre la entidad bloqueada (`saveAndFlush`), y registra en el contexto la ficha, su score anterior y nuevo, y los pins
+  desactivados.
+- **`PipelineContext`**: lista por intento de fichas que perdieron un miembro; `clearMergeOutput` la vacía.
+- **Emisión post-commit** (`IngestService`, `AsyncPipelineExecutor`): recorre esa lista y emite los eventos de §1.2.
+- **`CacheInvalidationListener`** (mdm-app): evicta también con `golden_record.orphaned`.
+
+### 3. Flujo de datos
+
+Match resuelve `FORCED` con `conflictFromGoldenRecordId = L` → merge sobre F → persistence: bloqueo de F y L en orden
+de id (ya existe) → escritura de F → `move` (cierra en L, abre en F) → limpieza de claves de L → **§1 sobre L** →
+`refreshSourceCounts({F, L})` → commit → eventos de F (actuales) y de L (§1.2).
+
+### 4. Errores y concurrencia
+
+- Un fallo del recálculo lanza dentro de la transacción de persistence: se revierte el paso entero y aplica ADR-013;
+  agotados los reintentos, el run va a la DLQ relanzable (ADR-016). No hay degradación a "marcar para recálculo".
+- La subida de `@Version` de L hace fallar la guarda de ADR-020 de cualquier run concurrente que calculó un merge sobre
+  L con los datos antiguos, que retrocede a Merge con lectura fresca (DOM-MDM-PIPELINE-001 §6.5).
+
+### 5. Pruebas
+
+- Unitarias: `MemberSurvivorshipRecomputerTest` (encadenado, `previous`, frescura, score, `NoMembers`, `NoVersions`);
+  `PersistenceStepHandlerTest` (rama FORCED en los cuatro estados de §1; pins; registro por intento).
+- Integración (Testcontainers): `SourceIdentityPipelineIT` (AC1–AC7), `StewardshipFlowsIT` (AC8), un IT de paridad
+  (AC9), ITs de los adaptadores de los dos puertos.
+
+## Knowledge Context
+
+| Spec | Rol en este trabajo |
+|---|---|
+| DOM-MDM-SURVIVORSHIP-001@1.10.1 | Ciclo de vida (§3.2, `active → orphaned`), field lineage (§3.6), candidato de frescura del recálculo completo (§3.7.1.1), evento de tier (§3.7.3), re-survivorship (§3.8.2) |
+| DOM-MDM-PIPELINE-001@1.23.0 | Persistence y guarda de versión (§6.5), pertenencia estable (§10.4), unmerge (§10.6), ForceRule (§10.8.4, §10.8.5) |
+| DOM-MDM-LINEAGE-001@1.7.0 | La xref como pertenencia; cierre y apertura en la misma transacción (§3.2.6) |
+| PROD-MDM-STEWARDSHIP-001@1.8.0 | Re-survivorship: filtros por estado, overrides vía `MergeEngine` inyectado, eventos (§3.8.5) |
+| ARCH-MDM-PERFORMANCE-001@1.8.1 | Invalidación de caché de golden records por evento |
+| FRAG-MDM-MEMBER-LEAVE-001 | Evidencia, no activado: qué hace hoy cada ruta que cierra tramos |
+
+Gobernanza que restringe: ADR-022 (xref única fuente de verdad), ADR-020 (versión esperada), ADR-013 (reintentos),
+ADR-014 (quality score persistido).
+
+**Huecos de conocimiento** (candidatos de consolidación):
+
+1. DOM-MDM-PIPELINE-001 §10.8.4 dice que el GR origen sin registros "se marca como `absorbed`"; DOM-MDM-SURVIVORSHIP-001
+   §3.2 dice `orphaned`. Esta WRK-SPEC aplica §3.2 (no hay ficha que absorba); consolidación corrige §10.8.4.
+2. Ninguna spec de conocimiento enuncia la regla de "la ficha que pierde un miembro" para todas las rutas.
+3. El recálculo de stewardship usa confianza 1.0 por miembro; el pipeline resuelve la confianza por fuente
+   (`x-mdm.sources`). Ver OQ-1.
+4. Ninguna ruta de producción crea ForceRules `SOURCE_TO_GOLDEN` (FRAG-MDM-MEMBER-LEAVE-001, ausencia 4).
+5. El evento `golden_record.orphaned` no existe en el catálogo (ARCH-MDM-INTEGRATION-001, no activada): se añade en
+   consolidación.
+6. `GoldenRecordUpdated` del pipeline no lleva el detalle campo a campo que pide DOM-MDM-SURVIVORSHIP-001 §3.6.2
+   (preexistente; `IngestEventEmitter.java:128-134`). Esta WRK-SPEC tampoco lo añade; el cambio queda trazado en
+   `field_lineage.previous`.
+7. PROD-MDM-STEWARDSHIP-001 §3.8.5 no dice si su filtro de supervivientes de merge manual aplica fuera de las rutas de
+   administración; esta WRK-SPEC decide que no (§1.3).
+
+## Constraints
+
+- DOM-MDM-SURVIVORSHIP-001 §3.2: "`active → orphaned`: Cuando el último registro fuente se reasigna a otro GR (via
+  unmerge o source_to_golden). El GR queda sin datos fuente."
+- DOM-MDM-SURVIVORSHIP-001 §3.2 (tabla): "`orphaned` | Todos sus registros fuente fueron reasignados a otros golden
+  records (via unmerge o source_to_golden manual merge). No tiene registros fuente activos. | Sí (solo lectura
+  histórica) | No | No".
+- DOM-MDM-SURVIVORSHIP-001 §3.7.1.1: "Operación de stewardship (recálculo completo) | `resolve(sources.receivedAt)`
+  sobre el conjunto de sources que QUEDAN vinculadas al golden record tras la operación (nunca combina el valor ya
+  persistido con el candidato nuevo: una operación como `unmerge` puede QUITAR sources, y arrastrar el máximo
+  persistido lo dejaría obsoleto)."
+- DOM-MDM-SURVIVORSHIP-001 §3.7.1.1: el candidato incremental del pipeline es "Válido porque la ingesta solo AÑADE
+  sources a un golden record, nunca las quita." — no vale para L, que pierde un miembro.
+- DOM-MDM-SURVIVORSHIP-001 §3.7.3: "un golden record recién creado por la propia operación … **no emite** evento con su
+  primer score". L no es nueva: su cambio de tier sí se emite.
+- DOM-MDM-PIPELINE-001 §10.6 p.3: "**Recálculo del golden record original**: Se aplican las reglas de survivorship
+  sobre los registros fuente que permanecen. El golden record se actualiza campo a campo."
+- DOM-MDM-PIPELINE-001 §10.8.4 p.3: "**Recálculo del GR origen** (sin el registro fuente que se mueve)."
+- DOM-MDM-PIPELINE-001 §6.5 p.3: "Si la escritura falla (version mismatch), el orquestador **retrocede al paso de
+  Merge**: relee el golden record actualizado y recalcula el merge con los datos frescos, luego reintenta Persistence."
+- DOM-MDM-LINEAGE-001 §3.2.6: "Cambiar de ficha = cerrar y abrir en la misma transacción; un tramo cerrado no se
+  modifica."
+- PROD-MDM-STEWARDSHIP-001 §3.8.5: "Solo golden records `status: active`; un `absorbed` nunca se toca" y "El barrido
+  nunca instancia su propio `MergeEngine`: hacerlo perdería en silencio los overrides activos del tenant."
+- DOM-MDM-SURVIVORSHIP-001 §3.6.1: "`previous` | Valor anterior si hubo cambio. `null` si es la primera resolución o
+  si el valor no cambió."
+- DOM-MDM-PIPELINE-001 §10.9.4 p.2: "Si el registro fuente fijado por un `source_pin` ya no está vinculado al golden
+  record (por un unmerge posterior), la regla se desactiva automáticamente y se emite un evento
+  `FieldOverrideAutoDeactivated` con el motivo."
+- PROD-MDM-STEWARDSHIP-001 §3.8.5: "Excluye a los golden records que son el **superviviente** de un merge manual" —
+  filtro de "ambas rutas" de re-survivorship de administración; no aplica a esta regla (§1.3).
+- ADR-022 §2: "Cambiar de ficha = cerrar el tramo vigente y abrir otro en la misma transacción."
+- Proyecto (CLAUDE.md, E4 de WRK-SPEC-MDM-SOURCE-IDENTITY-001): el código nuevo fuera de mdm-persistence usa puertos de
+  mdm-core; cero imports JPA fuera de mdm-persistence en clases nuevas.
+- FRAG-MDM-MEMBER-LEAVE-001, `PersistenceStepHandler.java:806-809@aacdae5`: tras `move`, solo
+  `cleanUpAfterLosingMember(ctx.getTenantId(), previous)` y `cacheEvictor.evictAfterCommit(previous)`.
+
+## Code Premises
+
+| Premise | Verified by | Result |
+|---|---|---|
+| Tras `move`, persistence no escribe `golden_data`/`field_lineage`/score/frescura de `previous`, no la guarda ni publica `golden_record.updated` | `PersistenceStepHandler.java:802-810`; `emitGoldenRecordUpdated` solo en `IngestService.java:418`, `AsyncPipelineExecutor.java:222` con `context.getGoldenRecordId()` | holds |
+| `previous` se bloquea `FOR UPDATE` antes de `move`, en la transacción de persistence | `PersistenceStepHandler.java:702-726`, `:802-806`; `GoldenRecordJpaRepository.java:63-65`; `PipelineOrchestrator.java:317-329` | holds |
+| Unmerge recalcula la ficha original y reemplaza `golden_data`/`field_lineage` enteros | `StewardshipService.java:434-465` | holds |
+| `reSurvivorshipFromSources` encadena create/update con confianza 1.0 sobre versiones ordenadas por `coalesce(received_at, created_at), source_record_id, source, created_at` | `StewardshipService.java:2898-2934`; `StagedRecordJpaRepository.java:69-77` | holds |
+| mdm-api-gateway depende de mdm-ingest-service y no al revés | `mdm-api-gateway/pom.xml:28`; grep en `mdm-ingest-service/pom.xml` → 0 | holds |
+| `QualityScoreResolver`/`LatestSourceReceivedAtResolver` viven en mdm-ingest-service; `QualityScoreInput(tenantId, entityType, goldenData, lineage, latestSourceReceivedAt, evaluationInstant)`; el resolver carga la configuración de calidad | `QualityScoreResolver.java:61-72` | holds |
+| `SourceRecordVersionReader` solo expone `findLatestVersion` | `SourceRecordVersionReader.java:17-27` | holds |
+| Ninguna ruta de producción escribe `orphaned` | grep `ORPHANED` en `src/*/src/main` → enum + 2 lecturas | holds |
+| `PipelineContext.getSurvivorshipConfig()` existe y L es del mismo entity type que el registro | `PipelineContext.java:126-127`; `DefaultMatchEngine.java:139,158,293` | holds |
+| Un `@Version` subido por otra transacción hace fallar `assertExpectedVersion` y el orquestador retrocede a Merge | `PersistenceStepHandler.java:577-594`; `GoldenRecordEntity.java:41-43`; `PipelineOrchestrator.java:332` | holds |
+| `refreshSourceCounts` es un UPDATE nativo que no toca `@Version` | `PersistenceStepHandler.java:814` | holds |
+| Solo la rama FORCED deja como `previous` una ficha `active` | `PersistenceStepHandler.java:769-811`, `:824-834` | holds |
+| Un source pin cuyo registro no está entre las entradas cae a survivorship con WARN | `DefaultMergeEngine.java:113-122` | holds |
+| Unmerge desactiva los pins de los separados; persistence no toca pins; no hay puerto de mdm-core para desactivar overrides (`ConsolidationOverrideMigrator` usa JPA) | `StewardshipService.java:2409-2436`; `FieldOverrideProvider` (solo lectura); `ConsolidationOverrideMigrator.java:6,39,42` | holds |
+| `emitGoldenRecordUpdated` existe en ingest y `CacheInvalidationListener` evicta con `golden_record.updated` | `IngestEventEmitter.java:128-135`; `CacheInvalidationListener.java:184-203` | holds |
+| Persistence ya emite cambios de tier comparando score previo y nuevo | `PersistenceStepHandler.java:613-643` | holds |
+| Las lecturas de golden records no filtran `orphaned` y exponen el estado | `GoldenRecordQueryService.java:110-140`, `:374-397` | holds |
+
+## Acceptance Criteria
+
+Fixture común: tenant T1, entity type con survivorship `most_recent` en `email`; X1 (`crm`, `email` = a@x,
+`received_at` = t1) y X2 (`erp`, `email` = b@x, `received_at` = t2 > t1) enlazados a L; ForceRule `SOURCE_TO_GOLDEN`
+activa de X2 hacia F; se re-ingesta X2 (t3).
+
+- [ ] **AC1** — Tras el run: `L.golden_data.email = a@x`; ningún campo de `L.field_lineage` tiene
+  `(source, source_record_id)` = `(erp, X2)`; `L.field_lineage.email.previous.value = b@x` con `source = erp`;
+  `L.latest_source_received_at = t1`; `L.quality_score` = el de una ficha creada en el tenant T2 ingestando solo X1 con
+  el mismo schema; la versión de L subió en 1.
+- [ ] **AC2** — Mismo flujo con L de un solo miembro (X2): L queda `orphaned`, `source_count = 0`, sin blocking keys,
+  `golden_data` sin cambios; la versión subió.
+- [ ] **AC3** — En AC1 se publica tras el commit `golden_record.updated` para L y para F; en AC2 se publica
+  `golden_record.orphaned` para L y **no** `golden_record.updated` para L. Con el run revertido (fallo inyectado tras
+  §1) no se publica nada para L.
+- [ ] **AC4** — En AC1, un `source_pin` activo de L sobre `(erp, X2)` y otro legado con `pinned_source` nulo e id X2
+  quedan inactivos (`member_left`, `system:pipeline`) y se publica `FieldOverrideAutoDeactivated` por cada uno; un
+  value override activo de L en otro campo sigue en `L.golden_data` tras el recálculo.
+- [ ] **AC5** — Fixture de tier: X2 aporta los campos que dan a L tier `high`; sin X2, L cae a `medium`: se emite un
+  `GoldenRecordQualityChanged` para L con `previous_tier = high`, `new_tier = medium`. Fixture sin cruce de tier: no se
+  emite ninguno para L.
+- [ ] **AC6** — `previous` `absorbed`, `orphaned`, `deleted` o inexistente: L no se escribe (tests existentes de las
+  ramas CONSOLIDATION y huérfana en verde). L con miembros sin versión en Silver: L no se escribe, WARN registrado,
+  pins desactivados.
+- [ ] **AC7** — Intento 1 registra L y falla por conflicto de versión; en el intento 2 la lista de fichas que
+  perdieron un miembro empieza vacía (unitario del orquestador/contexto). Un fallo del recálculo de L revierte el paso
+  entero (tramo, claves, F y L).
+- [ ] **AC8** — Unmerge (regresión): tras separar X2 de L, ningún campo de `L.field_lineage` apunta a `(erp, X2)`; los
+  tests de stewardship existentes siguen en verde.
+- [ ] **AC9** — Paridad: para los mismos miembros, `MemberSurvivorshipRecomputer` y el unmerge producen el mismo
+  `golden_data` y los mismos `value`/`source`/`source_record_id`/`rule_applied` por campo en `field_lineage`.
+- [ ] **AC10** — Las clases nuevas fuera de mdm-persistence no importan `jakarta.persistence` ni
+  `com.mdm.persistence`; `mvn -f src/pom.xml verify` en verde; cobertura ≥ 80 % en las clases nuevas.
+
+## Open Questions
+
+- OQ-1. Confianza por fuente en los recálculos completos: stewardship y este recálculo usan 1.0; el pipeline resuelve
+  `x-mdm.sources`. Fuera de alcance; candidato a RFC en consolidación.
+- OQ-2. Merge manual (RFC-STEW-007): la superviviente de un merge manual no se re-survivoriza al fusionar, pero sí al
+  perder un miembro por esta WRK-SPEC (§1.3). Cuando RFC-STEW-007 se resuelva, la asimetría desaparece.
+- OQ-3 (a WRK-SPEC 3). La resolución de revisión que cierre tramos (`REVIEW_RESOLUTION`) debería aplicar la regla §1
+  con `MemberSurvivorshipRecomputer`; decisión de esa WRK-SPEC.
+- OQ-4. Unificar el encadenado de `StewardshipService.reSurvivorshipFromSources` con el del recomputer (hoy dos
+  implementaciones del mismo algoritmo, fijadas por AC9).
+
+## Adversarial Review
+
+Gate A1 (2026-09-29): 19 attempted, 18 BROKEN (code-reality 2 · spec-rule 4 · ambiguity 5 · knowledge-gap 4 · internal 3). Premises re-verified: 17 hold. Rulings por el controlador (el humano delegó las decisiones de revisión).
+
+| Attack | Cause | Evidence | Ruling |
+|---|---|---|---|
+| 1 — recalcular la superviviente de un merge manual contradice el filtro de §3.8.5 | spec-rule | PROD-MDM-STEWARDSHIP-001 §3.8.5; `ForceRuleJpaRepository.java:61-74` | rejected como violación (el filtro acota "ambas rutas" de administración) → aceptado como aclaración: §1.3, cita en Constraints, OQ-2, Knowledge gap 7 |
+| 1 — desactivar pins sin `FieldOverrideAutoDeactivated` ni `deactivated_by` | spec-rule | DOM-MDM-PIPELINE-001 §10.9.4 p.2; `ConsolidationOverrideMigrator.java:35,75` | accepted → §1.1 (`system:pipeline`, evento tras commit), AC4 |
+| 1 — el encadenado desde `create` deja `previous` vacío; el cambio no queda trazado | spec-rule | DOM-MDM-SURVIVORSHIP-001 §3.6.1, §3.6.2; `DefaultMergeEngine.java:184-209`; `IngestEventEmitter.java:128-134` | accepted → §1 rellena `previous` de los campos que cambian, AC1; el detalle por campo en el evento es preexistente → Knowledge gap 6 |
+| 2 — pin legado con `pinned_source` nulo | ambiguity | `StewardshipService.java:2415-2417` | accepted → §1.1 usa el criterio de `autoDeactivatePins`, AC4 |
+| 2 — evento de tier inline vs tras commit, y con el score de F | internal | `PersistenceStepHandler.java:625-643` | accepted → §1.2: score anterior/nuevo de L, tras commit, AC5 |
+| 2 — miembros sin versión en Silver: qué se conserva | ambiguity | `StewardshipService.java:452-454` | accepted → §1 fila "ninguno con versión": L no se escribe, AC6 |
+| 3 — AC1 satisfacible con el propio recomputer como oráculo | ambiguity | WRK-SPEC AC1 | accepted → fixture con valores concretos y score de control en otro tenant |
+| 3 — AC5 condicional satisfacible sin emisión | ambiguity | WRK-SPEC AC5 | accepted → fixture con cruce de tier obligatorio y otro sin cruce |
+| 4 — lista de fichas registradas sobrevive a un reintento | knowledge-gap | `PipelineOrchestrator.java:320-345` | accepted → §1.2 lista por intento vaciada en `clearMergeOutput`, AC7 |
+| 4 — `orphaned` "no propaga" pero se publicaba `golden_record.updated` | knowledge-gap | DOM-MDM-SURVIVORSHIP-001 §3.2 | accepted → evento `golden_record.orphaned`, AC3; Knowledge gap 5 (catálogo de eventos) |
+| 4 — perdedoras de conflictos de V38 pierden valores de no-miembros | knowledge-gap | `V38__backfill_source_record_xref.sql:256-267` | rejected: ADR-022 §2 hace de la xref la única fuente de verdad; retirar valores de no-miembros es exactamente lo que RFC-PIPE-039 pide |
+| 5 — `emitGoldenRecordUpdated` no admite `reason` | code-reality | `IngestEventEmitter.java:128-134` | accepted → §1.2 sin `reason` |
+| 5 — "WARN como el unmerge (`StewardshipService.java:457`)" es falso | code-reality | `StewardshipService.java:452-457` | accepted → texto corregido en §1 |
+| 6 — "cualquier ruta" compromete al unmerge y a WRK-SPEC 3 | internal | `StewardshipService.java:2423` | accepted → §1 acotado al pipeline; OQ-3 como recomendación |
+| 6 — mover el encadenado de stewardship a ingest (previews, paridad de score) | internal | `StewardshipService.java:2873-2884`, `:1746` | accepted → `StewardshipService` no cambia; AC9 de paridad; OQ-4 |
+| +1 — value overrides de una ficha `orphaned` | knowledge-gap | DOM-MDM-SURVIVORSHIP-001 §3.2 | rejected: quedan inertes (no participa en merge); dicho en §1.1 |
+| +2 — todas las versiones vs la última por miembro | ambiguity | `StagedRecordJpaRepository.java:69-77` | accepted → §1: todas, como re-survivorship y unmerge |
+| +4 — fallo determinista acaba en DLQ sin degradar | knowledge-gap | RFC-PIPE-039 | rejected: consistencia sobre disponibilidad; la DLQ es relanzable (ADR-016); dicho en §4 |
+---
+id: WRK-TASK-MDM-MEMBER-LEAVE-001-001
+type: spec
+layer: work-task
+scope: ephemeral
+status: draft
+confidence: low
+version: 0.1.0
+created: 2026-09-29
+updated: 2026-09-29
+owner: bruzos
+title: "Puertos de mdm-core: versiones en Silver de un conjunto de miembros y desactivación de source pins de un registro que sale"
+parent: WRK-PLAN-MDM-MEMBER-LEAVE-001
+activates:
+  - DOM-MDM-SURVIVORSHIP-001@1.10.1
+  - DOM-MDM-PIPELINE-001@1.23.0
+equips: []
+dependencies:
+  - id: WRK-PLAN-MDM-MEMBER-LEAVE-001
+    relation: implements
+sources:
+  - id: FRAG-MDM-MEMBER-LEAVE-001
+    resource: specs/_capture/FRAG-MDM-MEMBER-LEAVE-001-la-ficha-que-pierde-un-miembro/
+generated: { by: claude-code/claude-opus-5-5, at: 2026-09-29T11:30:00+02:00 }
+stale_after: 2026-12-28
+tags: [mdm, persistence, task, work:manual-unification]
+---
+
+# WRK-TASK-MDM-MEMBER-LEAVE-001-001 — Puertos de versiones de miembros y de pins
+
+## Objective
+
+El recomputer (002) y persistence (004) viven fuera de mdm-persistence y no pueden importar JPA. Esta tarea añade los
+dos puertos de mdm-core que necesitan y sus adaptadores: leer todas las versiones en Silver de un conjunto de miembros
+(en el orden de la re-survivorship de stewardship) y desactivar los source pins de una ficha que apuntan a un registro
+que sale (criterio de `autoDeactivatePins`).
+
+## Implementation Notes
+
+**Files:**
+- Modify: `src/mdm-core/src/main/java/com/mdm/core/repository/SourceRecordVersionReader.java` (método y record nuevos)
+- Modify: `src/mdm-persistence/src/main/java/com/mdm/persistence/repository/SourceRecordVersionReaderAdapter.java`
+- Create: `src/mdm-core/src/main/java/com/mdm/core/repository/SourcePinDeactivator.java`
+- Create: `src/mdm-persistence/src/main/java/com/mdm/persistence/repository/SourcePinDeactivatorAdapter.java`
+- Test: `src/mdm-app/src/test/java/com/mdm/integration/MemberLeavePortsIT.java`
+
+**Interfaces:**
+- Consumes: `StagedRecordJpaRepository.findVersionsOfMembers(String tenantId, String entityType, String[] sources, String[] srids)` (`StagedRecordJpaRepository.java:69-77`); `FieldOverrideRuleJpaRepository.findByGoldenRecordIdAndTenantIdAndActiveAndOverrideType(UUID, String, boolean, String)`.
+- Produces (usados por 002 y 004):
+  - `List<SourceRecordVersionReader.MemberVersion> SourceRecordVersionReader.findVersionsOfMembers(String tenantId, String entityType, List<SourceRecordIdentity> members)`
+  - `record SourceRecordVersionReader.MemberVersion(SourceRecordIdentity identity, Map<String, Object> normalizedData, Instant receivedAt, Instant createdAt, Double qualityScore)`
+  - `List<SourcePinDeactivator.DeactivatedPin> SourcePinDeactivator.deactivatePinsOf(String tenantId, String goldenRecordId, SourceRecordIdentity member, String reason, String actor, Instant at)`
+  - `record SourcePinDeactivator.DeactivatedPin(String field, String pinnedSourceRecordId)`
+  - Constantes: `SourcePinDeactivator.REASON_MEMBER_LEFT = "member_left"`, `SourcePinDeactivator.ACTOR_PIPELINE = "system:pipeline"`
+
+**Premises:**
+- `StagedRecordEntity` expone `getQualityScore()` (`BigDecimal`, nullable): usado en `StewardshipService.java:2914` (`first.getQualityScore() != null ? first.getQualityScore().doubleValue() : 0.8`).
+- Criterio de pin legado: `StewardshipService.java:2416-2417` — `id.sourceRecordId().equals(pin.getPinnedSourceRecordId()) && (pin.getPinnedSource() == null || id.source().equals(pin.getPinnedSource()))`.
+- El tipo de override se guarda como `OverrideType.SOURCE_PIN.name()` (`StewardshipService.java:2413`), es decir `"SOURCE_PIN"`.
+
+- [ ] **Step 1: Write the failing IT**
+
+```java
+package com.mdm.integration;
+
+import com.mdm.core.domain.membership.SourceRecordIdentity;
+import com.mdm.core.repository.SourcePinDeactivator;
+import com.mdm.core.repository.SourceRecordVersionReader;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Puertos de WRK-SPEC-MDM-MEMBER-LEAVE-001 §2 contra PostgreSQL: versiones de los miembros en el orden de la
+ * re-survivorship y desactivacion de los source pins de un registro que sale (DOM-MDM-PIPELINE-001 §10.9.4 p.2).
+ */
+class MemberLeavePortsIT extends BaseIntegrationTest {
+
+    private static final String T = "ml-ports-tenant";
+    private static final String OTHER_T = "ml-ports-other";
+    private static final String E = "supplier";
+
+    @Autowired private SourceRecordVersionReader versions;
+    @Autowired private SourcePinDeactivator pins;
+    @Autowired private JdbcTemplate jdbc;
+
+    private final SourceRecordIdentity x1 = new SourceRecordIdentity(T, E, "crm", "X1");
+    private final SourceRecordIdentity x2 = new SourceRecordIdentity(T, E, "erp_sap", "X2");
+
+    @BeforeEach
+    void clean() {
+        for (String t : List.of(T, OTHER_T)) {
+            jdbc.update("DELETE FROM mdm_gold.field_override_rules WHERE tenant_id = ?", t);
+            jdbc.update("DELETE FROM mdm_silver.staged_records WHERE tenant_id = ?", t);
+            jdbc.update("DELETE FROM mdm_gold.golden_records WHERE tenant_id = ?", t);
+        }
+    }
+
+    @Test
+    void findVersionsOfMembers_returnsEveryVersionOfTheGivenMembersInArrivalOrder() {
+        staged(x2, "{\"phone\":\"2a\"}", "2026-09-01T10:00:00Z", 0.7);
+        staged(x1, "{\"phone\":\"1a\"}", "2026-09-01T09:00:00Z", null);
+        staged(x1, "{\"phone\":\"1b\"}", "2026-09-01T11:00:00Z", 0.9);
+        staged(new SourceRecordIdentity(T, E, "web", "X1"), "{\"phone\":\"homonym\"}", "2026-09-01T08:00:00Z", null);
+        staged(new SourceRecordIdentity(OTHER_T, E, "crm", "X1"), "{\"phone\":\"other-tenant\"}",
+                "2026-09-01T08:00:00Z", null);
+
+        List<SourceRecordVersionReader.MemberVersion> result = versions.findVersionsOfMembers(T, E, List.of(x1, x2));
+
+        assertThat(result).extracting(v -> v.normalizedData().get("phone")).containsExactly("1a", "2a", "1b");
+        assertThat(result).extracting(SourceRecordVersionReader.MemberVersion::identity).containsExactly(x1, x2, x1);
+        assertThat(result.get(0).qualityScore()).isNull();
+        assertThat(result.get(1).qualityScore()).isEqualTo(0.7);
+        assertThat(result.get(0).receivedAt()).isEqualTo(Instant.parse("2026-09-01T09:00:00Z"));
+    }
+
+    @Test
+    void findVersionsOfMembers_withNoMembers_isEmpty() {
+        assertThat(versions.findVersionsOfMembers(T, E, List.of())).isEmpty();
+    }
+
+    @Test
+    @Transactional
+    void deactivatePinsOf_deactivatesFullIdentityAndLegacyPinsOfThatRecordOnly() {
+        UUID gr = goldenRecord(T);
+        UUID full = pin(gr, "phone", "SOURCE_PIN", "erp_sap", "X2");
+        UUID legacy = pin(gr, "email", "SOURCE_PIN", null, "X2");
+        UUID otherSource = pin(gr, "legal_name", "SOURCE_PIN", "web", "X2");
+        UUID otherRecord = pin(gr, "tax_id", "SOURCE_PIN", "crm", "X1");
+        UUID valueOverride = pin(gr, "website", "VALUE_OVERRIDE", null, null);
+        Instant at = Instant.parse("2026-09-29T10:00:00Z");
+
+        List<SourcePinDeactivator.DeactivatedPin> result = pins.deactivatePinsOf(T, gr.toString(), x2,
+                SourcePinDeactivator.REASON_MEMBER_LEFT, SourcePinDeactivator.ACTOR_PIPELINE, at);
+
+        assertThat(result).extracting(SourcePinDeactivator.DeactivatedPin::field)
+                .containsExactlyInAnyOrder("phone", "email");
+        assertThat(result).allSatisfy(p -> assertThat(p.pinnedSourceRecordId()).isEqualTo("X2"));
+        for (UUID id : List.of(full, legacy)) {
+            Map<String, Object> row = row(id);
+            assertThat(row.get("active")).isEqualTo(false);
+            assertThat(row.get("deactivation_reason")).isEqualTo("member_left");
+            assertThat(row.get("deactivated_by")).isEqualTo("system:pipeline");
+            assertThat(row.get("deactivated_at")).isNotNull();
+        }
+        for (UUID id : List.of(otherSource, otherRecord, valueOverride)) {
+            assertThat(row(id).get("active")).isEqualTo(true);
+        }
+    }
+
+    private void staged(SourceRecordIdentity id, String normalized, String receivedAt, Double quality) {
+        jdbc.update("""
+                INSERT INTO mdm_silver.staged_records
+                    (id, tenant_id, entity_type, source, source_record_id, schema_version, raw_data, normalized_data,
+                     pipeline_run_id, status, created_at, updated_at, version_num, received_at, quality_score)
+                VALUES (?, ?, ?, ?, ?, '1.0.0', ?::jsonb, ?::jsonb, ?, 'merged', ?::timestamptz, ?::timestamptz, 0,
+                        ?::timestamptz, ?)
+                """, "sr_" + UUID.randomUUID(), id.tenantId(), id.entityType(), id.source(), id.sourceRecordId(),
+                normalized, normalized, "run-" + UUID.randomUUID(), receivedAt, receivedAt, receivedAt, quality);
+    }
+
+    private UUID goldenRecord(String tenant) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO mdm_gold.golden_records (id, tenant_id, entity_type, golden_data)
+                VALUES (?, ?, ?, '{}'::jsonb)""", id, tenant, E);
+        return id;
+    }
+
+    private UUID pin(UUID gr, String field, String type, String pinnedSource, String pinnedSrid) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO mdm_gold.field_override_rules
+                    (id, tenant_id, golden_record_id, entity_type, field, override_type, value, pinned_source,
+                     pinned_source_record_id, active, created_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, CASE WHEN ? = 'VALUE_OVERRIDE' THEN '"v"'::jsonb END, ?, ?, true, 'test', now())
+                """, id, T, gr, E, field, type, type, pinnedSource, pinnedSrid);
+        return id;
+    }
+
+    private Map<String, Object> row(UUID id) {
+        return jdbc.queryForMap("SELECT * FROM mdm_gold.field_override_rules WHERE id = ?", id);
+    }
+}
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `cd src && mvn -q verify -pl mdm-app -am -Dit.test=MemberLeavePortsIT -Dtest=none -DfailIfNoTests=false`
+Expected: compilation FAIL — `findVersionsOfMembers`/`MemberVersion`/`SourcePinDeactivator` do not exist.
+
+- [ ] **Step 3: Minimal implementation**
+
+`SourceRecordVersionReader.java` — añadir tras `findLatestVersion` (y los imports `java.util.List`):
+
+```java
+    /**
+     * Todas las versiones en Silver de los miembros dados (identidad completa), en el orden de la re-survivorship
+     * de stewardship: {@code coalesce(received_at, created_at)}, {@code source_record_id}, {@code source},
+     * {@code created_at}, ascendente (WRK-SPEC-MDM-MEMBER-LEAVE-001 §2; DOM-MDM-SURVIVORSHIP-001 §3.8.2).
+     *
+     * @return lista vacia si {@code members} esta vacia
+     */
+    List<MemberVersion> findVersionsOfMembers(String tenantId, String entityType, List<SourceRecordIdentity> members);
+
+    /**
+     * Una version en Silver de un miembro, con lo que necesita el encadenado de survivorship.
+     *
+     * @param qualityScore quality score de la version en Silver, {@code null} si no se calculo
+     */
+    record MemberVersion(SourceRecordIdentity identity, Map<String, Object> normalizedData, Instant receivedAt,
+                         Instant createdAt, Double qualityScore) {}
+```
+
+`SourceRecordVersionReaderAdapter.java` — añadir (imports `java.util.List`, `com.mdm.core.repository.SourceRecordVersionReader.MemberVersion`):
+
+```java
+    /** {@inheritDoc} */
+    @Override
+    @SuppressWarnings("unchecked")
+    public List<MemberVersion> findVersionsOfMembers(String tenantId, String entityType,
+                                                     List<SourceRecordIdentity> members) {
+        if (members.isEmpty()) {
+            return List.of();
+        }
+        String[] sources = members.stream().map(SourceRecordIdentity::source).toArray(String[]::new);
+        String[] srids = members.stream().map(SourceRecordIdentity::sourceRecordId).toArray(String[]::new);
+        return repository.findVersionsOfMembers(tenantId, entityType, sources, srids).stream()
+                .map(e -> new MemberVersion(
+                        new SourceRecordIdentity(tenantId, entityType, e.getSource(), e.getSourceRecordId()),
+                        e.getNormalizedData() != null ? objectMapper.convertValue(e.getNormalizedData(), Map.class)
+                                : Map.of(),
+                        e.getReceivedAt(), e.getCreatedAt(),
+                        e.getQualityScore() != null ? e.getQualityScore().doubleValue() : null))
+                .toList();
+    }
+```
+
+`SourcePinDeactivator.java` (mdm-core):
+
+```java
+package com.mdm.core.repository;
+
+import com.mdm.core.domain.membership.SourceRecordIdentity;
+
+import java.time.Instant;
+import java.util.List;
+
+/**
+ * Puerto de desactivacion de los {@code source_pin} de una ficha que apuntan a un registro que deja de ser miembro
+ * (DOM-MDM-PIPELINE-001 §10.9.4 p.2; WRK-SPEC-MDM-MEMBER-LEAVE-001 §1.1). Un pin con {@code pinned_source} casa por
+ * identidad completa; uno legado (sin fuente) casa solo por id — el criterio de {@code autoDeactivatePins} del
+ * unmerge. Corre en la transaccion del llamante; el evento lo publica el llamante tras el commit.
+ */
+public interface SourcePinDeactivator {
+
+    String REASON_MEMBER_LEFT = "member_left";
+    String ACTOR_PIPELINE = "system:pipeline";
+
+    List<DeactivatedPin> deactivatePinsOf(String tenantId, String goldenRecordId, SourceRecordIdentity member,
+                                          String reason, String actor, Instant at);
+
+    /** Pin desactivado: campo y registro fijado (para {@code FieldOverrideAutoDeactivated}). */
+    record DeactivatedPin(String field, String pinnedSourceRecordId) {}
+}
+```
+
+`SourcePinDeactivatorAdapter.java` (mdm-persistence):
+
+```java
+package com.mdm.persistence.repository;
+
+import com.mdm.core.domain.membership.SourceRecordIdentity;
+import com.mdm.core.repository.SourcePinDeactivator;
+import com.mdm.persistence.entity.FieldOverrideRuleEntity;
+import org.springframework.stereotype.Repository;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+/** Adaptador de {@link SourcePinDeactivator} sobre {@link FieldOverrideRuleJpaRepository}. */
+@Repository
+public class SourcePinDeactivatorAdapter implements SourcePinDeactivator {
+
+    private static final String SOURCE_PIN = "SOURCE_PIN";
+
+    private final FieldOverrideRuleJpaRepository repository;
+
+    public SourcePinDeactivatorAdapter(FieldOverrideRuleJpaRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    public List<DeactivatedPin> deactivatePinsOf(String tenantId, String goldenRecordId, SourceRecordIdentity member,
+                                                 String reason, String actor, Instant at) {
+        List<DeactivatedPin> deactivated = new ArrayList<>();
+        for (FieldOverrideRuleEntity pin : repository.findByGoldenRecordIdAndTenantIdAndActiveAndOverrideType(
+                UUID.fromString(goldenRecordId), tenantId, true, SOURCE_PIN)) {
+            boolean sameRecord = member.sourceRecordId().equals(pin.getPinnedSourceRecordId())
+                    && (pin.getPinnedSource() == null || member.source().equals(pin.getPinnedSource()));
+            if (!sameRecord) {
+                continue;
+            }
+            pin.setActive(false);
+            pin.setDeactivatedAt(at);
+            pin.setDeactivatedBy(actor);
+            pin.setDeactivationReason(reason);
+            repository.saveAndFlush(pin);
+            deactivated.add(new DeactivatedPin(pin.getField(), pin.getPinnedSourceRecordId()));
+        }
+        return deactivated;
+    }
+}
+```
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run: `cd src && mvn -q verify -pl mdm-app -am -Dit.test=MemberLeavePortsIT -Dtest=none -DfailIfNoTests=false`
+Expected: PASS (3 tests). Then `cd src && mvn -q -pl mdm-core,mdm-persistence -am test` — PASS (no existing test breaks; `SourceRecordVersion` is untouched).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/mdm-core/src/main/java/com/mdm/core/repository/SourceRecordVersionReader.java \
+        src/mdm-core/src/main/java/com/mdm/core/repository/SourcePinDeactivator.java \
+        src/mdm-persistence/src/main/java/com/mdm/persistence/repository/SourceRecordVersionReaderAdapter.java \
+        src/mdm-persistence/src/main/java/com/mdm/persistence/repository/SourcePinDeactivatorAdapter.java \
+        src/mdm-app/src/test/java/com/mdm/integration/MemberLeavePortsIT.java
+git commit -m "feat(WRK-TASK-MDM-MEMBER-LEAVE-001-001): puertos de versiones de miembros y de desactivacion de pins"
+```
+
+## Acceptance Criteria
+
+- [ ] `findVersionsOfMembers` devuelve todas las versiones de los miembros dados (ni homónimos de otra fuente ni de otro tenant), en el orden de `StagedRecordJpaRepository.findVersionsOfMembers`, con `qualityScore` nullable (WRK-SPEC §2; DOM-MDM-SURVIVORSHIP-001 §3.8.2).
+- [ ] `deactivatePinsOf` desactiva los pins por identidad completa y los legados por id, con `member_left` / `system:pipeline`, y no toca otros pins ni value overrides (WRK-SPEC §1.1, AC4; DOM-MDM-PIPELINE-001 §10.9.4 p.2).
+- [ ] Los puertos viven en mdm-core sin imports JPA (WRK-SPEC AC10).
+
+## Test Plan
+
+`MemberLeavePortsIT` (3 tests). Regresión: `mvn -pl mdm-core,mdm-persistence -am test`.
+---
+id: WRK-TASK-MDM-MEMBER-LEAVE-001-002
+type: spec
+layer: work-task
+scope: ephemeral
+status: draft
+confidence: low
+version: 0.1.0
+created: 2026-09-29
+updated: 2026-09-29
+owner: bruzos
+title: "MemberSurvivorshipRecomputer: survivorship completa sobre los miembros vigentes, con previous, frescura y score"
+parent: WRK-PLAN-MDM-MEMBER-LEAVE-001
+activates:
+  - DOM-MDM-SURVIVORSHIP-001@1.10.1
+  - PROD-MDM-STEWARDSHIP-001@1.8.0
+  - DOM-MDM-LINEAGE-001@1.7.0
+equips: []
+dependencies:
+  - id: WRK-PLAN-MDM-MEMBER-LEAVE-001
+    relation: implements
+sources:
+  - id: FRAG-MDM-MEMBER-LEAVE-001
+    resource: specs/_capture/FRAG-MDM-MEMBER-LEAVE-001-la-ficha-que-pierde-un-miembro/
+generated: { by: claude-code/claude-opus-5-5, at: 2026-09-29T11:30:00+02:00 }
+stale_after: 2026-12-28
+tags: [mdm, survivorship, task, work:manual-unification]
+---
+
+# WRK-TASK-MDM-MEMBER-LEAVE-001-002 — MemberSurvivorshipRecomputer
+
+## Objective
+
+Componente sin JPA en mdm-ingest-service que recalcula una ficha desde sus miembros vigentes: lee la xref, lee todas
+las versiones en Silver (001), encadena el `MergeEngine` con el mismo algoritmo que
+`StewardshipService.reSurvivorshipFromSources`, rellena `previous` en los campos que cambian respecto a lo persistido y
+resuelve frescura y quality score. Distingue "sin miembros" y "miembros sin versiones". No escribe nada.
+
+## Implementation Notes
+
+**Files:**
+- Create: `src/mdm-ingest-service/src/main/java/com/mdm/ingest/survivorship/MemberSurvivorshipRecomputer.java`
+- Modify: `src/mdm-core/src/main/java/com/mdm/core/domain/merge/FieldLineageEntry.java:43-54` — `FieldLineagePrevious` gains `changedByPipelineRun` (DOM-MDM-SURVIVORSHIP-001 §3.6.1 `changed_by_pipeline_run`; A2 ruling, replaces plan deviation D2)
+- Test: `src/mdm-ingest-service/src/test/java/com/mdm/ingest/survivorship/MemberSurvivorshipRecomputerTest.java`
+- Test: `src/mdm-core/src/test/java/com/mdm/core/domain/merge/FieldLineagePreviousJsonTest.java`
+
+**Interfaces:**
+- Consumes (001): `SourceRecordVersionReader.findVersionsOfMembers(String, String, List<SourceRecordIdentity>)` → `List<MemberVersion>`. Existing: `SourceMembershipRepository.findCurrentMembers(String tenantId, String goldenRecordId)` → `List<MembershipSpan>` (`MembershipSpan::identity`); `MergeEngine.merge(MergeRequest)` → `MergeResult`; the 15-arg `MergeRequest` constructor (`MergeRequest.java:93-101`); `LatestSourceReceivedAtResolver.resolve(Collection<Instant>)`; `QualityScoreResolver.resolve(QualityScoreInput)` → `QualityScoreResult(double score, String tier)`.
+- Produces (used by 004 and 005):
+
+```java
+public MemberSurvivorshipRecomputer.Outcome recompute(MemberSurvivorshipRecomputer.Request request)
+
+public record Request(String tenantId, String entityType, String goldenRecordId,
+                      SurvivorshipConfig survivorshipConfig,
+                      Map<String, FieldLineageEntry> persistedLineage,
+                      Instant evaluationInstant, String pipelineRunId) {}
+public sealed interface Outcome permits Recomputed, NoMembers, NoVersions {}
+public record Recomputed(Map<String, Object> goldenData, Map<String, FieldLineageEntry> fieldLineage,
+                         Instant latestSourceReceivedAt, QualityScoreResult quality) implements Outcome {}
+public record NoMembers() implements Outcome {}
+public record NoVersions(int members) implements Outcome {}
+```
+
+**Premises:**
+- `LatestSourceReceivedAtResolver` es `@Component` (`LatestSourceReceivedAtResolver.java:37`); `QualityScoreResolver` es bean (inyectado en `MergeStepHandler.java:61`); `MergeEngine` es bean (inyectado en `MergeStepHandler`).
+- Encadenado de referencia: `StewardshipService.java:2898-2934` — primera versión `"create"` con `existingGoldenData = null`, el resto `"update"` sobre el resultado acumulado; confianza `1.0`; `qualityScore` de la versión o `0.8`.
+- `FieldLineageEntry(Object value, String source, String sourceRecordId, String ruleApplied, String resolvedAt, double confidence, boolean conflict, List<CompetingValue> competingValues, FieldLineagePrevious previous)`; hoy `FieldLineagePrevious(Object value, String source, String changedAt)` con `of(value, source, Instant)` (`FieldLineageEntry.java:43-54`). Llamadores del constructor/`of` de 3 argumentos: `DefaultMergeEngine.java:143` y `:209` (`grep -rn "FieldLineagePrevious(\|FieldLineagePrevious.of(" src --include='*.java'`) — se conservan con un constructor de 3 argumentos que delega en el canónico con `null`.
+- Jackson ≥ 2.15 (Spring Boot 3.4) deserializa los records por su constructor canónico aunque haya otros; el test de ida y vuelta de Step 1 lo fija para el mapper plano y para `SNAKE_CASE` (ADR-003).
+
+- [ ] **Step 1: Write the failing test**
+
+```java
+package com.mdm.ingest.survivorship;
+
+import com.mdm.core.domain.membership.MembershipOperationKind;
+import com.mdm.core.domain.membership.MembershipSpan;
+import com.mdm.core.domain.membership.SourceRecordIdentity;
+import com.mdm.core.domain.merge.FieldLineageEntry;
+import com.mdm.core.domain.merge.MergeResult;
+import com.mdm.core.domain.schema.SurvivorshipConfig;
+import com.mdm.core.repository.SourceMembershipRepository;
+import com.mdm.core.repository.SourceRecordVersionReader;
+import com.mdm.core.repository.SourceRecordVersionReader.MemberVersion;
+import com.mdm.engine.merge.MergeEngine;
+import com.mdm.engine.merge.MergeRequest;
+import com.mdm.ingest.quality.LatestSourceReceivedAtResolver;
+import com.mdm.ingest.quality.QualityScoreResolver;
+import com.mdm.ingest.quality.QualityScoreResolver.QualityScoreInput;
+import com.mdm.ingest.quality.QualityScoreResolver.QualityScoreResult;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.Instant;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class MemberSurvivorshipRecomputerTest {
+
+    private static final String T = "tenant-1";
+    private static final String E = "supplier";
+    private static final String L = "00000000-0000-0000-0000-0000000000a1";
+    private static final Instant NOW = Instant.parse("2026-09-29T10:00:00Z");
+    private static final Instant T1 = Instant.parse("2026-09-01T09:00:00Z");
+    private static final Instant T3 = Instant.parse("2026-09-01T11:00:00Z");
+    private static final SourceRecordIdentity X1 = new SourceRecordIdentity(T, E, "crm", "X1");
+    private static final SourceRecordIdentity X3 = new SourceRecordIdentity(T, E, "web", "X3");
+
+    @Mock private SourceMembershipRepository membership;
+    @Mock private SourceRecordVersionReader versions;
+    @Mock private MergeEngine engine;
+    @Mock private QualityScoreResolver quality;
+
+    private MemberSurvivorshipRecomputer recomputer;
+    private final SurvivorshipConfig config = mock(SurvivorshipConfig.class);
+
+    @BeforeEach
+    void setUp() {
+        recomputer = new MemberSurvivorshipRecomputer(membership, versions, engine, quality,
+                new LatestSourceReceivedAtResolver());
+    }
+
+    @Test
+    void noCurrentMembers_isNoMembers_andReadsNothingElse() {
+        when(membership.findCurrentMembers(T, L)).thenReturn(List.of());
+
+        assertThat(recomputer.recompute(request(Map.of()))).isInstanceOf(MemberSurvivorshipRecomputer.NoMembers.class);
+        verifyNoInteractions(versions, engine, quality);
+    }
+
+    @Test
+    void membersWithoutSilverVersions_isNoVersions() {
+        when(membership.findCurrentMembers(T, L)).thenReturn(List.of(span(X1)));
+        when(versions.findVersionsOfMembers(T, E, List.of(X1))).thenReturn(List.of());
+
+        assertThat(recomputer.recompute(request(Map.of())))
+                .isEqualTo(new MemberSurvivorshipRecomputer.NoVersions(1));
+        verifyNoInteractions(engine, quality);
+    }
+
+    @Test
+    void chainsCreateThenUpdateInVersionOrder_withTrustOneAndVersionQuality() {
+        when(membership.findCurrentMembers(T, L)).thenReturn(List.of(span(X1), span(X3)));
+        when(versions.findVersionsOfMembers(T, E, List.of(X1, X3))).thenReturn(List.of(
+                new MemberVersion(X1, Map.of("phone", "111"), T1, T1, null),
+                new MemberVersion(X3, Map.of("phone", "333"), T3, T3, 0.6)));
+        MergeResult first = result(Map.of("phone", "111"), entry("111", "crm", "X1", null));
+        MergeResult second = result(Map.of("phone", "333"), entry("333", "web", "X3", null));
+        when(engine.merge(any())).thenReturn(first, second);
+        when(quality.resolve(any())).thenReturn(new QualityScoreResult(0.7, "medium"));
+
+        recomputer.recompute(request(Map.of()));
+
+        ArgumentCaptor<MergeRequest> reqs = ArgumentCaptor.forClass(MergeRequest.class);
+        verify(engine, times(2)).merge(reqs.capture());
+        MergeRequest create = reqs.getAllValues().get(0);
+        MergeRequest update = reqs.getAllValues().get(1);
+        assertThat(create.action()).isEqualTo("create");
+        assertThat(create.existingGoldenData()).isNull();
+        assertThat(create.incomingSource()).isEqualTo("crm");
+        assertThat(create.incomingTrustScore()).isEqualTo(1.0);
+        assertThat(create.incomingQualityScore()).isEqualTo(0.8);
+        assertThat(create.goldenRecordId()).isEqualTo(L);
+        assertThat(create.pipelineRunId()).isEqualTo("run-7");
+        assertThat(update.action()).isEqualTo("update");
+        assertThat(update.existingGoldenData()).isEqualTo(first.goldenData());
+        assertThat(update.existingFieldLineage()).isEqualTo(first.fieldLineage());
+        assertThat(update.incomingSourceRecordId()).isEqualTo("X3");
+        assertThat(update.incomingQualityScore()).isEqualTo(0.6);
+    }
+
+    @Test
+    void recomputed_carriesFreshnessOfRemainingVersions_scoreOfTheResult_andPreviousOnlyForChangedFields() {
+        when(membership.findCurrentMembers(T, L)).thenReturn(List.of(span(X1)));
+        when(versions.findVersionsOfMembers(T, E, List.of(X1))).thenReturn(List.of(
+                new MemberVersion(X1, Map.of("phone", "111", "legal_name", "Lima"), T1, T1, null)));
+        Map<String, FieldLineageEntry> lineage = new HashMap<>();
+        lineage.put("phone", entry("111", "crm", "X1", null));
+        lineage.put("legal_name", entry("Lima", "crm", "X1", null));
+        when(engine.merge(any())).thenReturn(new MergeResult("create", Map.of("phone", "111", "legal_name", "Lima"),
+                lineage, List.of(), List.of(), List.of()));
+        when(quality.resolve(any())).thenReturn(new QualityScoreResult(0.55, "low"));
+        Map<String, FieldLineageEntry> persisted = Map.of(
+                "phone", entry("222", "erp_sap", "X2", null),     // X2 ganaba phone: cambia
+                "legal_name", entry("Lima", "crm", "X1", null),   // no cambia
+                "email", entry("b@x.es", "erp_sap", "X2", null)); // solo lo tenia X2: desaparece
+
+        var outcome = (MemberSurvivorshipRecomputer.Recomputed) recomputer.recompute(request(persisted));
+
+        assertThat(outcome.goldenData()).containsOnlyKeys("phone", "legal_name");
+        assertThat(outcome.latestSourceReceivedAt()).isEqualTo(T1);
+        assertThat(outcome.quality()).isEqualTo(new QualityScoreResult(0.55, "low"));
+        FieldLineageEntry phone = outcome.fieldLineage().get("phone");
+        assertThat(phone.value()).isEqualTo("111");
+        assertThat(phone.previous().value()).isEqualTo("222");
+        assertThat(phone.previous().source()).isEqualTo("erp_sap");
+        assertThat(phone.previous().changedAt()).isEqualTo(NOW.toString());
+        assertThat(phone.previous().changedByPipelineRun()).isEqualTo("run-7");
+        assertThat(outcome.fieldLineage().get("legal_name").previous()).isNull();
+        assertThat(outcome.fieldLineage()).doesNotContainKey("email");
+        assertThat(outcome.fieldLineage().values())
+                .noneMatch(e -> "X2".equals(e.sourceRecordId()) && "erp_sap".equals(e.source()));
+
+        ArgumentCaptor<QualityScoreInput> in = ArgumentCaptor.forClass(QualityScoreInput.class);
+        verify(quality).resolve(in.capture());
+        assertThat(in.getValue().tenantId()).isEqualTo(T);
+        assertThat(in.getValue().entityType()).isEqualTo(E);
+        assertThat(in.getValue().goldenData()).isEqualTo(outcome.goldenData());
+        assertThat(in.getValue().latestSourceReceivedAt()).isEqualTo(T1);
+        assertThat(in.getValue().evaluationInstant()).isEqualTo(NOW);
+    }
+
+    private MemberSurvivorshipRecomputer.Request request(Map<String, FieldLineageEntry> persistedLineage) {
+        return new MemberSurvivorshipRecomputer.Request(T, E, L, config, persistedLineage, NOW, "run-7");
+    }
+
+    private static MembershipSpan span(SourceRecordIdentity id) {
+        return new MembershipSpan(UUID.randomUUID(), id, L, T1, null, MembershipOperationKind.PIPELINE_RUN,
+                "run-0", null, null);
+    }
+
+    private static FieldLineageEntry entry(Object value, String source, String srid,
+                                           FieldLineageEntry.FieldLineagePrevious previous) {
+        return new FieldLineageEntry(value, source, srid, "most_recent", T1.toString(), 0.9, false, null, previous);
+    }
+
+    private static MergeResult result(Map<String, Object> data, FieldLineageEntry phone) {
+        return new MergeResult("update", data, Map.of("phone", phone), List.of(), List.of(), List.of());
+    }
+}
+```
+
+`FieldLineagePreviousJsonTest.java` (mdm-core):
+
+```java
+package com.mdm.core.domain.merge;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategies;
+import com.mdm.core.domain.merge.FieldLineageEntry.FieldLineagePrevious;
+import org.junit.jupiter.api.Test;
+
+import java.time.Instant;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class FieldLineagePreviousJsonTest {
+
+    private static final Instant AT = Instant.parse("2026-09-29T10:00:00Z");
+
+    @Test
+    void roundTrip_keepsTheRun_withPlainAndSnakeCaseMappers() throws Exception {
+        FieldLineagePrevious p = FieldLineagePrevious.of("222", "erp_sap", AT, "run-7");
+        for (ObjectMapper m : new ObjectMapper[] {new ObjectMapper(),
+                new ObjectMapper().setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)}) {
+            assertThat(m.readValue(m.writeValueAsString(p), FieldLineagePrevious.class)).isEqualTo(p);
+        }
+        String snake = new ObjectMapper().setPropertyNamingStrategy(PropertyNamingStrategies.SNAKE_CASE)
+                .writeValueAsString(p);
+        assertThat(snake).contains("\"changed_by_pipeline_run\":\"run-7\"");
+    }
+
+    @Test
+    void threeArgumentForm_omitsTheRun() throws Exception {
+        FieldLineagePrevious p = FieldLineagePrevious.of("v", "crm", AT);
+        assertThat(p.changedByPipelineRun()).isNull();
+        assertThat(new ObjectMapper().writeValueAsString(p)).doesNotContain("changedByPipelineRun");
+        assertThat(new FieldLineagePrevious("v", "crm", AT.toString()).changedByPipelineRun()).isNull();
+    }
+}
+```
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `cd src && mvn -q test -pl mdm-core -Dtest=FieldLineagePreviousJsonTest -DfailIfNoTests=false`
+Expected: compilation FAIL — `of(Object, String, Instant, String)` and `changedByPipelineRun()` do not exist.
+Run: `cd src && mvn -q test -pl mdm-ingest-service -am -Dtest=MemberSurvivorshipRecomputerTest -DfailIfNoTests=false`
+Expected: compilation FAIL — `MemberSurvivorshipRecomputer` does not exist.
+
+- [ ] **Step 3: Minimal implementation**
+
+`FieldLineageEntry.java` — replace the `FieldLineagePrevious` record (`:43-54`):
+
+```java
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record FieldLineagePrevious(
+            Object value,
+            String source,
+            String changedAt,
+            String changedByPipelineRun
+    ) {
+        /** Forma de 3 argumentos (sin run): la que ya usa el motor de merge. */
+        public FieldLineagePrevious(Object value, String source, String changedAt) {
+            this(value, source, changedAt, null);
+        }
+
+        /** Factory that accepts Instant and converts to ISO-8601 string. */
+        public static FieldLineagePrevious of(Object value, String source, Instant changedAt) {
+            return of(value, source, changedAt, null);
+        }
+
+        /** Con el run que causo el cambio (DOM-MDM-SURVIVORSHIP-001 §3.6.1 {@code changed_by_pipeline_run}). */
+        public static FieldLineagePrevious of(Object value, String source, Instant changedAt,
+                                              String changedByPipelineRun) {
+            return new FieldLineagePrevious(value, source, changedAt != null ? changedAt.toString() : null,
+                    changedByPipelineRun);
+        }
+    }
+```
+
+`MemberSurvivorshipRecomputer.java`:
+
+```java
+package com.mdm.ingest.survivorship;
+
+import com.mdm.core.domain.membership.MembershipSpan;
+import com.mdm.core.domain.membership.SourceRecordIdentity;
+import com.mdm.core.domain.merge.FieldLineageEntry;
+import com.mdm.core.domain.merge.FieldLineageEntry.FieldLineagePrevious;
+import com.mdm.core.domain.merge.MergeResult;
+import com.mdm.core.domain.schema.SurvivorshipConfig;
+import com.mdm.core.repository.SourceMembershipRepository;
+import com.mdm.core.repository.SourceRecordVersionReader;
+import com.mdm.core.repository.SourceRecordVersionReader.MemberVersion;
+import com.mdm.engine.merge.MergeEngine;
+import com.mdm.engine.merge.MergeRequest;
+import com.mdm.ingest.quality.LatestSourceReceivedAtResolver;
+import com.mdm.ingest.quality.QualityScoreResolver;
+import com.mdm.ingest.quality.QualityScoreResolver.QualityScoreInput;
+import com.mdm.ingest.quality.QualityScoreResolver.QualityScoreResult;
+import org.springframework.stereotype.Component;
+
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+/**
+ * Recalcula una ficha desde sus miembros vigentes de la xref (WRK-SPEC-MDM-MEMBER-LEAVE-001 §1-2): survivorship
+ * completa sobre todas sus versiones en Silver, con el mismo encadenado que la re-survivorship de stewardship
+ * (DOM-MDM-SURVIVORSHIP-001 §3.8.2), frescura de "recalculo completo" (§3.7.1.1) y {@code previous} en los campos que
+ * cambian respecto a lo persistido (§3.6.1). No escribe: el llamante decide que hacer con el resultado.
+ *
+ * <p>Recibe el {@link MergeEngine} bean para que los overrides activos de la ficha se sigan aplicando
+ * (PROD-MDM-STEWARDSHIP-001 §3.8.5). Confianza 1.0 por miembro, como stewardship (OQ-1 de la WRK-SPEC).
+ */
+@Component
+public class MemberSurvivorshipRecomputer {
+
+    private static final double TRUST = 1.0;
+    private static final double DEFAULT_VERSION_QUALITY = 0.8;
+
+    private final SourceMembershipRepository membership;
+    private final SourceRecordVersionReader versions;
+    private final MergeEngine engine;
+    private final QualityScoreResolver qualityScoreResolver;
+    private final LatestSourceReceivedAtResolver latestSourceReceivedAtResolver;
+
+    public MemberSurvivorshipRecomputer(SourceMembershipRepository membership, SourceRecordVersionReader versions,
+                                        MergeEngine engine, QualityScoreResolver qualityScoreResolver,
+                                        LatestSourceReceivedAtResolver latestSourceReceivedAtResolver) {
+        this.membership = membership;
+        this.versions = versions;
+        this.engine = engine;
+        this.qualityScoreResolver = qualityScoreResolver;
+        this.latestSourceReceivedAtResolver = latestSourceReceivedAtResolver;
+    }
+
+    /** Entrada del recalculo; {@code persistedLineage} es el lineage de la ficha antes de perder el miembro. */
+    public record Request(String tenantId, String entityType, String goldenRecordId,
+                          SurvivorshipConfig survivorshipConfig,
+                          Map<String, FieldLineageEntry> persistedLineage,
+                          Instant evaluationInstant, String pipelineRunId) {}
+
+    public sealed interface Outcome permits Recomputed, NoMembers, NoVersions {}
+
+    public record Recomputed(Map<String, Object> goldenData, Map<String, FieldLineageEntry> fieldLineage,
+                             Instant latestSourceReceivedAt, QualityScoreResult quality) implements Outcome {}
+
+    /** La ficha no tiene miembros vigentes: pasa a {@code orphaned} (DOM-MDM-SURVIVORSHIP-001 §3.2). */
+    public record NoMembers() implements Outcome {}
+
+    /** Tiene miembros vigentes pero ninguno con version en Silver (datos anteriores a la xref). */
+    public record NoVersions(int members) implements Outcome {}
+
+    public Outcome recompute(Request r) {
+        List<SourceRecordIdentity> members = membership.findCurrentMembers(r.tenantId(), r.goldenRecordId()).stream()
+                .map(MembershipSpan::identity).toList();
+        if (members.isEmpty()) {
+            return new NoMembers();
+        }
+        List<MemberVersion> all = versions.findVersionsOfMembers(r.tenantId(), r.entityType(), members);
+        if (all.isEmpty()) {
+            return new NoVersions(members.size());
+        }
+        MergeResult merged = chain(all, r);
+        Map<String, FieldLineageEntry> lineage = withPrevious(merged.fieldLineage(), r.persistedLineage(),
+                r.evaluationInstant(), r.pipelineRunId());
+        Instant latest = latestSourceReceivedAtResolver.resolve(all.stream().map(MemberVersion::receivedAt).toList());
+        QualityScoreResult quality = qualityScoreResolver.resolve(new QualityScoreInput(r.tenantId(), r.entityType(),
+                merged.goldenData(), lineage, latest, r.evaluationInstant()));
+        return new Recomputed(merged.goldenData(), lineage, latest, quality);
+    }
+
+    /** El encadenado de {@code StewardshipService.reSurvivorshipFromSources}: create y despues update, en orden. */
+    private MergeResult chain(List<MemberVersion> all, Request r) {
+        MergeResult result = null;
+        for (MemberVersion v : all) {
+            boolean first = result == null;
+            result = engine.merge(new MergeRequest(
+                    first ? "create" : "update", v.normalizedData(),
+                    first ? null : result.goldenData(), first ? null : result.fieldLineage(),
+                    r.survivorshipConfig(), v.identity().source(), v.identity().sourceRecordId(),
+                    TRUST, v.qualityScore() != null ? v.qualityScore() : DEFAULT_VERSION_QUALITY,
+                    r.pipelineRunId(), r.goldenRecordId(), r.tenantId(), null, null, null));
+        }
+        return result;
+    }
+
+    /**
+     * {@code previous} solo en los campos cuyo valor cambia respecto al lineage persistido (§3.6.1); se compara el
+     * {@code value} del lineage por clave, no {@code golden_data}, para cubrir rutas anidadas.
+     */
+    private static Map<String, FieldLineageEntry> withPrevious(Map<String, FieldLineageEntry> recomputed,
+                                                               Map<String, FieldLineageEntry> persisted,
+                                                               Instant at, String runId) {
+        Map<String, FieldLineageEntry> out = new LinkedHashMap<>();
+        recomputed.forEach((field, e) -> {
+            FieldLineageEntry before = persisted != null ? persisted.get(field) : null;
+            FieldLineagePrevious previous = before != null && !Objects.equals(before.value(), e.value())
+                    ? FieldLineagePrevious.of(before.value(), before.source(), at, runId)
+                    : null;
+            out.put(field, new FieldLineageEntry(e.value(), e.source(), e.sourceRecordId(), e.ruleApplied(),
+                    e.resolvedAt(), e.confidence(), e.conflict(), e.competingValues(), previous));
+        });
+        return out;
+    }
+}
+```
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run the two commands of Step 2. Expected: PASS (2 + 4 tests). Regression of the record change:
+`cd src && mvn -q test -pl mdm-core,mdm-merge-engine,mdm-ingest-service -am` — PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/mdm-ingest-service/src/main/java/com/mdm/ingest/survivorship/MemberSurvivorshipRecomputer.java \
+        src/mdm-ingest-service/src/test/java/com/mdm/ingest/survivorship/MemberSurvivorshipRecomputerTest.java \
+        src/mdm-core/src/main/java/com/mdm/core/domain/merge/FieldLineageEntry.java \
+        src/mdm-core/src/test/java/com/mdm/core/domain/merge/FieldLineagePreviousJsonTest.java
+git commit -m "feat(WRK-TASK-MDM-MEMBER-LEAVE-001-002): recomputer de survivorship sobre los miembros vigentes"
+```
+
+## Acceptance Criteria
+
+- [ ] Sin miembros vigentes → `NoMembers` sin más lecturas; miembros sin versiones → `NoVersions(n)` (WRK-SPEC §1, filas 2 y 3).
+- [ ] Encadenado idéntico al de stewardship: `create` + `update`, orden de versiones, confianza 1.0, calidad de versión o 0.8, `MergeEngine` bean (WRK-SPEC §2; PROD-MDM-STEWARDSHIP-001 §3.8.5).
+- [ ] Frescura = `resolve` sobre las versiones restantes (DOM-MDM-SURVIVORSHIP-001 §3.7.1.1); score del resultado con el `evaluationInstant` recibido.
+- [ ] `previous` solo en los campos que cambian, con `value`/`source` persistidos, `changedAt` = instante de la operación y `changedByPipelineRun` = run actual; ningún campo del resultado apunta al registro que salió (WRK-SPEC AC1; DOM-MDM-SURVIVORSHIP-001 §3.6.1).
+- [ ] Sin imports `jakarta.persistence` ni `com.mdm.persistence` (WRK-SPEC AC10).
+
+## Test Plan
+
+`FieldLineagePreviousJsonTest` (2 tests), `MemberSurvivorshipRecomputerTest` (4 tests). La paridad con stewardship contra PostgreSQL es AC9 en 005.
+---
+id: WRK-TASK-MDM-MEMBER-LEAVE-001-003
+type: spec
+layer: work-task
+scope: ephemeral
+status: draft
+confidence: low
+version: 0.1.0
+created: 2026-09-29
+updated: 2026-09-29
+owner: bruzos
+title: "Evento golden_record.orphaned: emisor en ingest e invalidación de caché en CacheInvalidationListener"
+parent: WRK-PLAN-MDM-MEMBER-LEAVE-001
+activates:
+  - DOM-MDM-SURVIVORSHIP-001@1.10.1
+  - ARCH-MDM-PERFORMANCE-001@1.8.1
+equips: []
+dependencies:
+  - id: WRK-PLAN-MDM-MEMBER-LEAVE-001
+    relation: implements
+sources:
+  - id: WRK-SPEC-MDM-MEMBER-LEAVE-001
+    resource: specs/work/WRK-SPEC-MDM-MEMBER-LEAVE-001-la-ficha-que-pierde-un-miembro-se-recalcula.md
+generated: { by: claude-code/claude-opus-5-5, at: 2026-09-29T11:30:00+02:00 }
+stale_after: 2026-12-28
+tags: [mdm, events, cache, task, work:manual-unification]
+---
+
+# WRK-TASK-MDM-MEMBER-LEAVE-001-003 — Evento golden_record.orphaned
+
+## Objective
+
+Una ficha que pasa a `orphaned` no propaga actualizaciones (DOM-MDM-SURVIVORSHIP-001 §3.2), pero su caché tiene que
+invalidarse en todos los pods y los consumidores deben saber que dejó de ser operativa — la notificación análoga a la de
+absorción. Esta tarea añade `golden_record.orphaned` al emisor del pipeline y hace que `CacheInvalidationListener` la
+trate como `golden_record.updated` (evict L2 + blocking keys L1).
+
+## Implementation Notes
+
+**Files:**
+- Modify: `src/mdm-ingest-service/src/main/java/com/mdm/ingest/event/IngestEventEmitter.java` (método nuevo tras `emitGoldenRecordUpdated`, `:128-135`)
+- Modify: `src/mdm-app/src/main/java/com/mdm/app/cache/CacheInvalidationListener.java` (`:44-46` javadoc, `:66-68` constantes, `:125-127` suscripciones)
+- Test: `src/mdm-ingest-service/src/test/java/com/mdm/ingest/event/IngestEventEmitterOrphanedTest.java`
+- Test: `src/mdm-app/src/test/java/com/mdm/integration/CacheInvalidationNatsIT.java` (test nuevo)
+
+**Interfaces:**
+- Produces (used by 004):
+  `public void emitGoldenRecordOrphaned(String goldenRecordId, String entityType, String leftSource, String leftSourceRecordId, String pipelineRunId, String source, String tenantId, String userId)`
+  → event_type `golden_record.orphaned`, aggregate `golden_record`, payload `{goldenRecordId, entityType, sourceRecord: {source, source_record_id}, pipeline_run_id?}`.
+
+**Premises:**
+- El stream de NATS captura `mdm.>` (`NatsConfig.java:35`): un subject nuevo no requiere configuración.
+- `CacheInvalidationListener.onGoldenRecordUpdated` (`:184-203`) solo lee `payload.goldenRecordId` y siempre invalida las blocking keys L1: reutilizable tal cual.
+
+- [ ] **Step 1: Write the failing tests**
+
+`IngestEventEmitterOrphanedTest.java`:
+
+```java
+package com.mdm.ingest.event;
+
+import com.mdm.core.domain.events.DomainEvent;
+import com.mdm.events.publisher.EventPublisher;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
+class IngestEventEmitterOrphanedTest {
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void emitGoldenRecordOrphaned_publishesGoldenRecordAggregateWithTheRecordThatLeft() {
+        EventPublisher publisher = mock(EventPublisher.class);
+        new IngestEventEmitter(publisher).emitGoldenRecordOrphaned("gr-1", "supplier", "erp_sap", "X2",
+                "run-9", "erp_sap", "tenant-1", "user-1");
+
+        ArgumentCaptor<DomainEvent> captor = ArgumentCaptor.forClass(DomainEvent.class);
+        verify(publisher).publish(captor.capture());
+        DomainEvent<?> e = captor.getValue();
+        assertThat(e.aggregateType()).isEqualTo("golden_record");
+        assertThat(e.aggregateId()).isEqualTo("gr-1");
+        assertThat(e.eventType()).isEqualTo("golden_record.orphaned");
+        Map<String, Object> payload = (Map<String, Object>) e.payload();
+        assertThat(payload).containsEntry("goldenRecordId", "gr-1").containsEntry("entityType", "supplier")
+                .containsEntry("pipeline_run_id", "run-9");
+        assertThat((Map<String, Object>) payload.get("sourceRecord"))
+                .containsEntry("source", "erp_sap").containsEntry("source_record_id", "X2");
+        assertThat(e.metadata().tenantId()).isEqualTo("tenant-1");
+    }
+}
+```
+
+`DomainEvent` (`mdm-core/.../domain/events/DomainEvent.java:15-23`) is a record `(id, aggregateType, aggregateId, eventType, eventVersion, payload, metadata)`; `EventMetadata(tenantId, userId, traceId, timestamp)`; `EventPublisher.publish(DomainEvent<?>)` (`EventPublisher.java:16`).
+
+`CacheInvalidationNatsIT.java` — add after `updatedEvent_evictsCache` (same setup; copy its first half):
+
+```java
+    @Test
+    @DisplayName("golden_record.orphaned event evicts L1/L2 like golden_record.updated (WRK-SPEC-MDM-MEMBER-LEAVE-001 §1.2)")
+    void orphanedEvent_evictsCache() throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("entity_type", "customer");
+        body.put("source", "crm_salesforce");
+        body.put("source_record_id", "inv-orphan-001");
+        body.put("data", Map.of("legal_name", "Orphan Corp", "email", "orphan@acme.es",
+                "phone", "+34600777999", "nif", "66677799H"));
+        MvcResult r = mockMvc.perform(post("/api/v1/ingest/sync")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Tenant-Id", TENANT_ID).header("X-User-Id", USER_ID)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isOk())
+                .andReturn();
+        String grId = objectMapper.readTree(r.getResponse().getContentAsString()).get("golden_record_id").asText();
+        clearInvocations(jpaAdapter);
+        goldenRecordLookup.findFullByIds(List.of(grId), "customer");
+        assertThat(redisTemplate.hasKey("gr_full_v4:" + grId)).isTrue();
+
+        eventPublisher.publish(new DomainEvent<>(
+                UUID.randomUUID().toString(), "golden_record", grId, "golden_record.orphaned", 1,
+                Map.of("goldenRecordId", grId, "entityType", "customer"),
+                new EventMetadata(TENANT_ID, USER_ID, UUID.randomUUID().toString(), Instant.now())));
+
+        Instant deadline = Instant.now().plus(Duration.ofSeconds(10));
+        while (Instant.now().isBefore(deadline) && Boolean.TRUE.equals(redisTemplate.hasKey("gr_full_v4:" + grId))) {
+            Thread.sleep(100);
+        }
+        assertThat(redisTemplate.hasKey("gr_full_v4:" + grId)).as("L2 key evicted by the listener").isFalse();
+    }
+```
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `cd src && mvn -q test -pl mdm-ingest-service -am -Dtest=IngestEventEmitterOrphanedTest -DfailIfNoTests=false`
+Expected: compilation FAIL — `emitGoldenRecordOrphaned` does not exist.
+Run: `cd src && mvn -q verify -pl mdm-app -am -Dit.test=CacheInvalidationNatsIT -Dtest=none -DfailIfNoTests=false`
+Expected: `orphanedEvent_evictsCache` FAILS — "L2 key evicted by the listener" (no subscription).
+
+- [ ] **Step 3: Minimal implementation**
+
+`IngestEventEmitter.java`, after `emitGoldenRecordUpdated`:
+
+```java
+    /**
+     * Emite {@code golden_record.orphaned} cuando la ficha pierde su ultimo miembro vigente y pasa a
+     * {@code orphaned} (DOM-MDM-SURVIVORSHIP-001 §3.2; WRK-SPEC-MDM-MEMBER-LEAVE-001 §1.2). Una ficha huerfana no
+     * propaga actualizaciones: este evento sustituye a {@code golden_record.updated} y lo usa
+     * {@code CacheInvalidationListener} para invalidarla en todos los pods.
+     *
+     * @param leftSource         sistema de origen del registro que salio
+     * @param leftSourceRecordId id del registro que salio
+     * @param pipelineRunId      run que movio el registro; se omite del payload si es {@code null}
+     */
+    public void emitGoldenRecordOrphaned(String goldenRecordId, String entityType, String leftSource,
+                                         String leftSourceRecordId, String pipelineRunId,
+                                         String source, String tenantId, String userId) {
+        Map<String, Object> payload = new java.util.HashMap<>();
+        payload.put("goldenRecordId", goldenRecordId);
+        payload.put("entityType", entityType);
+        payload.put("sourceRecord", Map.of("source", leftSource, "source_record_id", leftSourceRecordId));
+        if (pipelineRunId != null) payload.put("pipeline_run_id", pipelineRunId);
+        emit(AGGREGATE_TYPE_GOLDEN_RECORD, goldenRecordId, "golden_record.orphaned", payload, tenantId, userId, source);
+    }
+```
+
+`CacheInvalidationListener.java`:
+
+```java
+ *   <li>{@code mdm.*.golden_record.orphaned} — como updated: invalida GR en L2 + blocking keys en L1
+ *       (WRK-SPEC-MDM-MEMBER-LEAVE-001 §1.2)</li>
+```
+(added to the javadoc list after the `consolidated` item)
+
+```java
+    private static final String SUBJECT_GR_ORPHANED = "mdm.*.golden_record.orphaned";
+```
+(after `SUBJECT_GR_CONSOLIDATED`)
+
+```java
+            subscriptions.add(subscribe(dispatcher, SUBJECT_GR_ORPHANED, this::onGoldenRecordUpdated));
+```
+(after the `SUBJECT_GR_CONSOLIDATED` subscription at `:127`)
+
+- [ ] **Step 4: Run to verify they pass**
+
+Run the two commands of Step 2. Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/mdm-ingest-service/src/main/java/com/mdm/ingest/event/IngestEventEmitter.java \
+        src/mdm-ingest-service/src/test/java/com/mdm/ingest/event/IngestEventEmitterOrphanedTest.java \
+        src/mdm-app/src/main/java/com/mdm/app/cache/CacheInvalidationListener.java \
+        src/mdm-app/src/test/java/com/mdm/integration/CacheInvalidationNatsIT.java
+git commit -m "feat(WRK-TASK-MDM-MEMBER-LEAVE-001-003): evento golden_record.orphaned e invalidacion de cache"
+```
+
+## Acceptance Criteria
+
+- [ ] `emitGoldenRecordOrphaned` publica `golden_record.orphaned` (aggregate `golden_record`) con la identidad del registro que salió (WRK-SPEC §1.2).
+- [ ] `CacheInvalidationListener` evicta L2 y las blocking keys L1 con `golden_record.orphaned` (WRK-SPEC §1.2; ARCH-MDM-PERFORMANCE-001, invalidación por evento).
+
+## Test Plan
+
+`IngestEventEmitterOrphanedTest`; `CacheInvalidationNatsIT.orphanedEvent_evictsCache` (NATS + Valkey de la suite).
+---
+id: WRK-TASK-MDM-MEMBER-LEAVE-001-004
+type: spec
+layer: work-task
+scope: ephemeral
+status: draft
+confidence: low
+version: 0.1.0
+created: 2026-09-29
+updated: 2026-09-29
+owner: bruzos
+title: "PersistenceStepHandler aplica la regla de la ficha que pierde un miembro: recálculo, orphaned, pins y eventos tras el commit"
+parent: WRK-PLAN-MDM-MEMBER-LEAVE-001
+activates:
+  - DOM-MDM-PIPELINE-001@1.23.0
+  - DOM-MDM-SURVIVORSHIP-001@1.10.1
+  - DOM-MDM-LINEAGE-001@1.7.0
+  - ARCH-MDM-PERFORMANCE-001@1.8.1
+equips: []
+dependencies:
+  - id: WRK-PLAN-MDM-MEMBER-LEAVE-001
+    relation: implements
+sources:
+  - id: FRAG-MDM-MEMBER-LEAVE-001
+    resource: specs/_capture/FRAG-MDM-MEMBER-LEAVE-001-la-ficha-que-pierde-un-miembro/
+generated: { by: claude-code/claude-opus-5-5, at: 2026-09-29T11:30:00+02:00 }
+stale_after: 2026-12-28
+tags: [mdm, pipeline, persistence, task, work:manual-unification]
+---
+
+# WRK-TASK-MDM-MEMBER-LEAVE-001-004 — Persistence aplica la regla a la ficha que pierde el miembro
+
+## Objective
+
+Hoy `persistMembership`, tras `move`, solo limpia claves y evicta la caché local de la ficha L que pierde el miembro
+(FRAG-MDM-MEMBER-LEAVE-001, `PersistenceStepHandler.java:806-809@aacdae5`). Esta tarea aplica la regla §1 de la
+WRK-SPEC sobre la entidad L ya bloqueada: desactiva los pins del registro que sale, recalcula con
+`MemberSurvivorshipRecomputer` (002) o marca `orphaned`, guarda (sube `@Version`) y registra los eventos para después
+del commit de la transacción del intento.
+
+## Implementation Notes
+
+**Files:**
+- Modify: `src/mdm-ingest-service/src/main/java/com/mdm/ingest/pipeline/steps/PersistenceStepHandler.java` — campos y constructores (`:92-103`, `:134-160`, `:212-231`), `execute` (`:253-262`), `lockGoldenRecordsBeforeMove` (`:702-726`), `persistMembership` (firma `:750`, rama huérfana `:786-790`, bloque del movimiento `:802-810`), métodos privados nuevos junto a `cleanUpAfterLosingMember` (`:863-870`).
+- Test: `src/mdm-ingest-service/src/test/java/com/mdm/ingest/pipeline/steps/PersistenceStepHandlerTest.java` (tests nuevos junto a `forceRuleMove_locksBothRecordsInAscendingOrder_movesWithTheRule_andCleansTheRecordThatLosesIt`, `:1004`).
+
+**Interfaces:**
+- Consumes:
+  - 001: `SourcePinDeactivator.deactivatePinsOf(String tenantId, String goldenRecordId, SourceRecordIdentity member, String reason, String actor, Instant at)` → `List<DeactivatedPin(String field, String pinnedSourceRecordId)>`; `SourcePinDeactivator.REASON_MEMBER_LEFT`, `SourcePinDeactivator.ACTOR_PIPELINE`.
+  - 002: `MemberSurvivorshipRecomputer.recompute(Request(tenantId, entityType, goldenRecordId, survivorshipConfig, persistedLineage, evaluationInstant, pipelineRunId))` → `Recomputed(goldenData, fieldLineage, latestSourceReceivedAt, quality)` | `NoMembers()` | `NoVersions(int members)`.
+  - 003: `IngestEventEmitter.emitGoldenRecordOrphaned(String goldenRecordId, String entityType, String leftSource, String leftSourceRecordId, String pipelineRunId, String source, String tenantId, String userId)`.
+  - Existentes: `IngestEventEmitter.emitGoldenRecordUpdated(goldenRecordId, entityType, source, tenantId, userId)`, `emitGoldenRecordQualityChanged(goldenRecordId, entityType, previousScore, newScore, previousTier, newTier, pipelineRunId, source, tenantId, userId)`, `emitFieldOverrideAutoDeactivated(goldenRecordId, entityType, field, overrideType, deactivationReason, survivorGoldenRecordId, pinnedSourceRecordId, pipelineRunId, source, tenantId)`; `QualityScoreResolver.tierFor(tenantId, entityType, score)`.
+- Produces (used by 005): nuevo constructor de conveniencia de 13 argumentos para tests —
+  `(StagedRecordJpaRepository, GoldenRecordJpaRepository, SearchIndexRepository, ObjectMapper, Optional<GoldenRecordCacheService>, Optional<GraphStoreRepository>, QualityScoreResolver, IngestEventEmitter, Optional<ConsolidationOverrideMigrator>, Optional<SourceMembershipRepository>, Optional<MemberBlockingKeyGenerator>, Optional<MemberSurvivorshipRecomputer>, Optional<SourcePinDeactivator>)`.
+
+**Premises:**
+- `lockGoldenRecord` devuelve `Optional.empty()` si el repositorio devuelve `null` (`PersistenceStepHandler.java:846-847`: `return row != null ? row : Optional.empty();`): en los tests existentes de la rama FORCED L se trata como inexistente y no se escribe.
+- Cada intento de persistence corre en su propio `transactionTemplate.execute` (`PipelineOrchestrator.java:322`): una `TransactionSynchronization.afterCommit` registrada en un intento revertido no se ejecuta. Patrón existente: `ConsolidationOverrideMigrator.afterCommit` (`ConsolidationOverrideMigrator.java` final del fichero).
+- La rama huérfana de `persistMembership` reasigna `locked` (`PersistenceStepHandler.java:789-790`: `locked = new LinkedHashSet<>(locked); locked.add(previous);`): con el nuevo tipo pasa a `Map` (Step 3).
+- `persistLineageEdges` solo añade `PRODUCED` para la ficha escrita del contexto (`PersistenceStepHandler.java:893-897`); `LineageEdge(id, fromNodeType, fromNodeId, toNodeType, toNodeId, edgeType, tenantId, timestamp, properties)` (`LineageEdge.java:26-36`); `graphStore` puede ser `null` (`:879`).
+- Logback es el backend de SLF4J (Spring Boot); `ch.qos.logback.classic.Logger` + `ListAppender` sirven para asertar el WARN.
+- `GoldenRecordEntity` expone `setStatusEnum(GoldenRecordStatus)`, `setUpdatedAt(Instant)`, `setGoldenData(JsonNode)`, `setFieldLineage(JsonNode)`, `getFieldLineage()` → `JsonNode`, `setQualityScore(BigDecimal)`, `setLatestSourceReceivedAt(Instant)` (usados en `StewardshipService.java:440-462` y `PersistenceStepHandlerTest.java:1325`).
+
+- [ ] **Step 1: Write the failing tests**
+
+In `PersistenceStepHandlerTest`, add the mocks next to the existing ones (`:81-90`):
+
+```java
+    @Mock private MemberSurvivorshipRecomputer memberRecomputer;
+    @Mock private SourcePinDeactivator pinDeactivator;
+```
+
+and the imports `com.mdm.ingest.survivorship.MemberSurvivorshipRecomputer`, `com.mdm.core.repository.SourcePinDeactivator`,
+`com.mdm.core.domain.merge.FieldLineageEntry`, `com.mdm.ingest.quality.QualityScoreResolver.QualityScoreResult`,
+`java.math.BigDecimal`. Then, after the test at `:1004`, add:
+
+```java
+    // ── WRK-SPEC-MDM-MEMBER-LEAVE-001 §1: la ficha que pierde un miembro (L = Y) ──
+
+    private static final Instant L_LATEST = Instant.parse("2026-09-02T00:00:00Z");
+
+    private PersistenceStepHandler memberLeftHandler() {
+        return new PersistenceStepHandler(stagedRecordRepository, goldenRecordRepository, searchIndexRepository,
+                new ObjectMapper(), Optional.of(goldenRecordCacheService), Optional.of(graphStore),
+                qualityScoreResolver, ingestEventEmitter, Optional.of(overrideMigrator),
+                Optional.of(membershipRepository), Optional.of(memberKeyGenerator),
+                Optional.of(memberRecomputer), Optional.of(pinDeactivator));
+    }
+
+    /** L activa con score 0.9 y el lineage de "name" aportado por el registro que sale (REC = crm/rec-1). */
+    private GoldenRecordEntity losing(GoldenRecordStatus status) {
+        GoldenRecordEntity l = entity(Y, 3);
+        l.setStatusEnum(status);
+        l.setQualityScore(new BigDecimal("0.9000"));
+        l.setFieldLineage(new ObjectMapper().valueToTree(Map.of("name",
+                new FieldLineageEntry("before", "crm", "rec-1", "most_recent", null, 0.9, false, null, null))));
+        return l;
+    }
+
+    private PipelineContext forceRuleMoveOutOf(GoldenRecordEntity l) {
+        when(goldenRecordRepository.findById(S)).thenReturn(Optional.of(entity(S, 5)));
+        lenient().when(goldenRecordRepository.findByIdForUpdate(Y)).thenReturn(Optional.ofNullable(l));
+        lenient().when(qualityScoreResolver.tierFor(anyString(), anyString(), anyDouble())).thenReturn("medium");
+        PipelineContext ctx = updateContext(S, MatchOutcome.SINGLE_MATCH, candidates(S));
+        ctx.setMatchResponse(membershipResponse(S, new MembershipResolution(MembershipResolution.Kind.FORCED,
+                S.toString(), RULE_ID, Y.toString(), null)));
+        ctx.setExpectedGoldenRecordVersion(5);
+        ctx.setBlockingKeys(KEYS);
+        when(membershipRepository.findCurrent(REC)).thenReturn(Optional.of(span(REC, Y)));
+        lenient().when(membershipRepository.findCurrentMembers("tenant-1", Y.toString())).thenReturn(List.of());
+        return ctx;
+    }
+
+    private MemberSurvivorshipRecomputer.Recomputed recomputed(double score, String tier) {
+        return new MemberSurvivorshipRecomputer.Recomputed(Map.of("name", "after"),
+                Map.of("name", new FieldLineageEntry("after", "erp", "rec-9", "most_recent", null, 0.9, false, null,
+                        FieldLineageEntry.FieldLineagePrevious.of("before", "crm", L_LATEST))),
+                L_LATEST, new QualityScoreResult(score, tier));
+    }
+
+    private GoldenRecordEntity savedL() {
+        ArgumentCaptor<GoldenRecordEntity> saved = ArgumentCaptor.forClass(GoldenRecordEntity.class);
+        verify(goldenRecordRepository, atLeastOnce()).saveAndFlush(saved.capture());
+        return saved.getAllValues().stream().filter(e -> Y.equals(e.getId())).reduce((a, b) -> b).orElseThrow();
+    }
+
+    @Test
+    void memberLeft_activeWithMembers_isRecomputedAfterTheMove_savedAndNotifiedAsUpdated() {
+        GoldenRecordEntity l = losing(GoldenRecordStatus.ACTIVE);
+        PipelineContext ctx = forceRuleMoveOutOf(l);
+        when(memberRecomputer.recompute(any())).thenReturn(recomputed(0.6, "medium"));
+
+        memberLeftHandler().execute(ctx);
+
+        InOrder order = inOrder(membershipRepository, memberRecomputer);
+        order.verify(membershipRepository).move(eq(REC), eq(S.toString()), any(Instant.class),
+                eq(MembershipOperationKind.FORCE_RULE), eq(RULE_ID));
+        order.verify(memberRecomputer).recompute(any());
+        order.verify(membershipRepository).refreshSourceCounts(eq("tenant-1"), any());
+
+        ArgumentCaptor<MemberSurvivorshipRecomputer.Request> req =
+                ArgumentCaptor.forClass(MemberSurvivorshipRecomputer.Request.class);
+        verify(memberRecomputer).recompute(req.capture());
+        assertThat(req.getValue().tenantId()).isEqualTo("tenant-1");
+        assertThat(req.getValue().entityType()).isEqualTo("person");
+        assertThat(req.getValue().goldenRecordId()).isEqualTo(Y.toString());
+        assertThat(req.getValue().survivorshipConfig()).isSameAs(ctx.getSurvivorshipConfig());
+        assertThat(req.getValue().pipelineRunId()).isEqualTo(ctx.getPipelineRunId());
+        assertThat(req.getValue().persistedLineage().get("name").sourceRecordId()).isEqualTo("rec-1");
+
+        GoldenRecordEntity written = savedL();
+        assertThat(written.getGoldenData().get("name").asText()).isEqualTo("after");
+        assertThat(written.getFieldLineage().get("name").get("sourceRecordId").asText()).isEqualTo("rec-9");
+        assertThat(written.getQualityScore()).isEqualByComparingTo("0.6");
+        assertThat(written.getLatestSourceReceivedAt()).isEqualTo(L_LATEST);
+        assertThat(written.getStatus()).isEqualToIgnoringCase("active");
+        verify(ingestEventEmitter).emitGoldenRecordUpdated(eq(Y.toString()), eq("person"), any(), eq("tenant-1"), any());
+        verify(graphStore).addEdge(argThat(e -> e.edgeType() == LineageEdgeType.PRODUCED
+                && Y.toString().equals(e.toNodeId()) && "member_left".equals(e.properties().get("reason"))));
+        verify(ingestEventEmitter, never()).emitGoldenRecordOrphaned(any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void memberLeft_tierCrossing_emitsQualityChangedForL_withItsOwnScores() {
+        GoldenRecordEntity l = losing(GoldenRecordStatus.ACTIVE);
+        PipelineContext ctx = forceRuleMoveOutOf(l);
+        when(qualityScoreResolver.tierFor("tenant-1", "person", 0.9)).thenReturn("high");
+        when(memberRecomputer.recompute(any())).thenReturn(recomputed(0.6, "medium"));
+
+        memberLeftHandler().execute(ctx);
+
+        verify(ingestEventEmitter).emitGoldenRecordQualityChanged(eq(Y.toString()), eq("person"), eq(0.9), eq(0.6),
+                eq("high"), eq("medium"), eq(ctx.getPipelineRunId()), any(), eq("tenant-1"), any());
+    }
+
+    @Test
+    void memberLeft_withoutTierCrossing_emitsNoQualityChangedForL() {
+        GoldenRecordEntity l = losing(GoldenRecordStatus.ACTIVE);
+        PipelineContext ctx = forceRuleMoveOutOf(l);
+        when(qualityScoreResolver.tierFor("tenant-1", "person", 0.9)).thenReturn("medium");
+        when(memberRecomputer.recompute(any())).thenReturn(recomputed(0.6, "medium"));
+
+        memberLeftHandler().execute(ctx);
+
+        verify(ingestEventEmitter, never()).emitGoldenRecordQualityChanged(eq(Y.toString()), any(), anyDouble(),
+                anyDouble(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void memberLeft_lastMember_marksOrphaned_keepsData_andNotifiesOrphanedNotUpdated() {
+        GoldenRecordEntity l = losing(GoldenRecordStatus.ACTIVE);
+        PipelineContext ctx = forceRuleMoveOutOf(l);
+        when(memberRecomputer.recompute(any())).thenReturn(new MemberSurvivorshipRecomputer.NoMembers());
+
+        memberLeftHandler().execute(ctx);
+
+        GoldenRecordEntity written = savedL();
+        assertThat(written.getStatus()).isEqualToIgnoringCase("orphaned");
+        assertThat(written.getGoldenData().get("name").asText()).isEqualTo("before");
+        assertThat(written.getQualityScore()).isEqualByComparingTo("0.9");
+        verify(ingestEventEmitter).emitGoldenRecordOrphaned(Y.toString(), "person", "crm", "rec-1",
+                ctx.getPipelineRunId(), ctx.getSource(), "tenant-1", ctx.getUserId());
+        verify(ingestEventEmitter, never()).emitGoldenRecordUpdated(eq(Y.toString()), any(), any(), any(), any());
+        verify(graphStore).addEdge(argThat(e -> e.edgeType() == LineageEdgeType.PRODUCED
+                && Y.toString().equals(e.toNodeId()) && "member_left_orphaned".equals(e.properties().get("reason"))));
+    }
+
+    @Test
+    void memberLeft_membersWithoutVersions_doesNotWriteL_butDeactivatesPins_andWarns() {
+        GoldenRecordEntity l = losing(GoldenRecordStatus.ACTIVE);
+        PipelineContext ctx = forceRuleMoveOutOf(l);
+        when(memberRecomputer.recompute(any())).thenReturn(new MemberSurvivorshipRecomputer.NoVersions(1));
+        ch.qos.logback.classic.Logger logger =
+                (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(PersistenceStepHandler.class);
+        ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent> appender =
+                new ch.qos.logback.core.read.ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        try {
+            memberLeftHandler().execute(ctx);
+        } finally {
+            logger.detachAppender(appender);
+        }
+
+        assertThat(appender.list).anySatisfy(e -> {
+            assertThat(e.getLevel()).isEqualTo(ch.qos.logback.classic.Level.WARN);
+            assertThat(e.getFormattedMessage()).contains(Y.toString()).contains("keeps its data");
+        });
+        verify(graphStore, never()).addEdge(argThat(e -> Y.toString().equals(e.toNodeId())));
+
+        verify(goldenRecordRepository, never()).saveAndFlush(argThat(e -> Y.equals(e.getId())));
+        verify(pinDeactivator).deactivatePinsOf(eq("tenant-1"), eq(Y.toString()), eq(REC),
+                eq(SourcePinDeactivator.REASON_MEMBER_LEFT), eq(SourcePinDeactivator.ACTOR_PIPELINE), any());
+        verify(ingestEventEmitter, never()).emitGoldenRecordUpdated(eq(Y.toString()), any(), any(), any(), any());
+    }
+
+    @Test
+    void memberLeft_deactivatedPins_areNotifiedOneByOne() {
+        GoldenRecordEntity l = losing(GoldenRecordStatus.ACTIVE);
+        PipelineContext ctx = forceRuleMoveOutOf(l);
+        when(pinDeactivator.deactivatePinsOf(any(), any(), any(), any(), any(), any())).thenReturn(List.of(
+                new SourcePinDeactivator.DeactivatedPin("phone", "rec-1"),
+                new SourcePinDeactivator.DeactivatedPin("email", "rec-1")));
+        when(memberRecomputer.recompute(any())).thenReturn(recomputed(0.6, "medium"));
+
+        memberLeftHandler().execute(ctx);
+
+        for (String field : List.of("phone", "email")) {
+            verify(ingestEventEmitter).emitFieldOverrideAutoDeactivated(eq(Y.toString()), eq("person"), eq(field),
+                    eq("SOURCE_PIN"), eq("member_left"), isNull(), eq("rec-1"), eq(ctx.getPipelineRunId()), any(),
+                    eq("tenant-1"));
+        }
+    }
+
+    @Test
+    void memberLeft_notActiveOrMissing_isNotTouched() {
+        for (GoldenRecordEntity l : java.util.Arrays.asList(losing(GoldenRecordStatus.ABSORBED),
+                losing(GoldenRecordStatus.ORPHANED), losing(GoldenRecordStatus.DELETED), null)) {
+            reset(memberRecomputer, pinDeactivator, goldenRecordRepository, membershipRepository);
+            lenient().when(goldenRecordRepository.saveAndFlush(any(GoldenRecordEntity.class)))
+                    .thenAnswer(i -> i.getArgument(0));
+            PipelineContext ctx = forceRuleMoveOutOf(l);
+
+            memberLeftHandler().execute(ctx);
+
+            verifyNoInteractions(memberRecomputer, pinDeactivator);
+            verify(goldenRecordRepository, never()).saveAndFlush(argThat(e -> Y.equals(e.getId())));
+        }
+    }
+
+    @Test
+    void memberLeft_recomputeFailure_propagates() {
+        // Solo la propagacion: sin transaccion en un unitario, afterCommit corre en el acto. Que un intento revertido
+        // no publique nada lo prueba MemberLeaveIT (005) con un fallo inyectado DESPUES de la regla.
+        GoldenRecordEntity l = losing(GoldenRecordStatus.ACTIVE);
+        PipelineContext ctx = forceRuleMoveOutOf(l);
+        when(memberRecomputer.recompute(any())).thenThrow(new IllegalStateException("no active schema"));
+
+        assertThatThrownBy(() -> memberLeftHandler().execute(ctx)).isInstanceOf(IllegalStateException.class);
+        verify(goldenRecordRepository, never()).saveAndFlush(argThat(e -> Y.equals(e.getId())));
+    }
+```
+
+Add imports if missing: `com.mdm.core.repository.LineageEdgeType` (already imported by the handler; the test may need it), static `org.mockito.ArgumentMatchers.argThat`, `isNull`, `anyDouble`; `org.mockito.Mockito.reset`, `atLeastOnce`, `verifyNoInteractions`.
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `cd src && mvn -q test -pl mdm-ingest-service -am -Dtest=PersistenceStepHandlerTest -DfailIfNoTests=false`
+Expected: compilation FAIL — the 13-argument constructor with `Optional<MemberSurvivorshipRecomputer>` does not exist.
+
+- [ ] **Step 3: Minimal implementation**
+
+Fields (after `memberKeyGenerator`, `:103`):
+
+```java
+    private final MemberSurvivorshipRecomputer memberRecomputer; // null sin recomputer (tests): L no se recalcula
+    private final SourcePinDeactivator pinDeactivator;             // null sin puerto (tests)
+```
+
+Primary `@Autowired` constructor: append two parameters and assignments (document them in its javadoc):
+
+```java
+                                   Optional<MemberBlockingKeyGenerator> memberKeyGenerator,
+                                   Optional<MemberSurvivorshipRecomputer> memberRecomputer,
+                                   Optional<SourcePinDeactivator> pinDeactivator) {
+        ...
+        this.memberKeyGenerator = memberKeyGenerator.orElse(null);
+        this.memberRecomputer = memberRecomputer.orElse(null);
+        this.pinDeactivator = pinDeactivator.orElse(null);
+    }
+```
+
+The 11-argument test constructor (`:212-231`) now delegates to a new 13-argument one:
+
+```java
+    public PersistenceStepHandler(StagedRecordJpaRepository stagedRecordRepository,
+                                   GoldenRecordJpaRepository goldenRecordRepository,
+                                   SearchIndexRepository searchIndex,
+                                   ObjectMapper objectMapper,
+                                   Optional<GoldenRecordCacheService> goldenRecordCacheService,
+                                   Optional<GraphStoreRepository> graphStore,
+                                   QualityScoreResolver qualityScoreResolver,
+                                   IngestEventEmitter ingestEventEmitter,
+                                   Optional<ConsolidationOverrideMigrator> overrideMigrator,
+                                   Optional<SourceMembershipRepository> membershipRepository,
+                                   Optional<MemberBlockingKeyGenerator> memberKeyGenerator) {
+        this(stagedRecordRepository, goldenRecordRepository, searchIndex, objectMapper, goldenRecordCacheService,
+                graphStore, qualityScoreResolver, ingestEventEmitter, overrideMigrator, membershipRepository,
+                memberKeyGenerator, Optional.empty(), Optional.empty());
+    }
+
+    /**
+     * Constructor de conveniencia para tests de la ficha que pierde un miembro (WRK-SPEC-MDM-MEMBER-LEAVE-001): como
+     * el de 11 argumentos, mas el recomputer y el puerto de pins.
+     */
+    public PersistenceStepHandler(StagedRecordJpaRepository stagedRecordRepository,
+                                   GoldenRecordJpaRepository goldenRecordRepository,
+                                   SearchIndexRepository searchIndex,
+                                   ObjectMapper objectMapper,
+                                   Optional<GoldenRecordCacheService> goldenRecordCacheService,
+                                   Optional<GraphStoreRepository> graphStore,
+                                   QualityScoreResolver qualityScoreResolver,
+                                   IngestEventEmitter ingestEventEmitter,
+                                   Optional<ConsolidationOverrideMigrator> overrideMigrator,
+                                   Optional<SourceMembershipRepository> membershipRepository,
+                                   Optional<MemberBlockingKeyGenerator> memberKeyGenerator,
+                                   Optional<MemberSurvivorshipRecomputer> memberRecomputer,
+                                   Optional<SourcePinDeactivator> pinDeactivator) {
+        this(stagedRecordRepository, goldenRecordRepository, searchIndex, objectMapper,
+                goldenRecordCacheService, new GoldenRecordCacheEvictor(goldenRecordCacheService), graphStore,
+                new LatestSourceReceivedAtResolver(), qualityScoreResolver, ingestEventEmitter, overrideMigrator,
+                membershipRepository, memberKeyGenerator, memberRecomputer, pinDeactivator);
+    }
+```
+
+Keep the locked rows: `lockGoldenRecordsBeforeMove` returns `Map<String, Optional<GoldenRecordEntity>>` instead of `Set<String>`:
+
+```java
+    private Map<String, Optional<GoldenRecordEntity>> lockGoldenRecordsBeforeMove(PipelineContext ctx) {
+        if (withoutMembership(ctx) || !"update".equals(effectiveAction(ctx))) {
+            return Map.of();
+        }
+        ...                                   // unchanged; every "return Set.of();" becomes "return Map.of();"
+        Map<String, Optional<GoldenRecordEntity>> locked = new LinkedHashMap<>();
+        for (String id : ids) {
+            locked.put(id, lockGoldenRecord(ctx, id, ids));
+        }
+        return locked;
+    }
+```
+
+In `execute` change `Set<String> locked = …` to `Map<String, Optional<GoldenRecordEntity>> locked = …`, and in
+`persistMembership` the parameter to `Map<String, Optional<GoldenRecordEntity>> locked`. The orphan branch
+(`:786-790`) keeps the copy-on-write, now over the map — `previous` is missing/deleted/orphaned there, so it is recorded
+as "not an active row" and the rule below skips it:
+
+```java
+            } else if (linkedHere && isMissingOrOrphanUnderLock(ctx, previous, grId)) {
+                kind = PIPELINE_RUN;
+                orphan = true;
+                locked = new LinkedHashMap<>(locked);
+                locked.put(previous, Optional.empty()); // ya bloqueada por isMissingOrOrphanUnderLock; no activa
+                log.warn(...);                          // unchanged
+```
+
+The move block (`:802-810`):
+
+```java
+            if (kind != null) {
+                Optional<GoldenRecordEntity> losing = locked.containsKey(previous) ? locked.get(previous)
+                        : lockGoldenRecord(ctx, previous, List.of(grId, previous)); // antes de move/cleanUp/refresh
+                membershipRepository.move(id, grId, at, kind, operationId);
+                touched.add(previous);
+                cleanUpAfterLosingMember(ctx.getTenantId(), previous);  // regla de "ficha que pierde un miembro"
+                applyMemberLeftRule(ctx, id, losing);                    // WRK-SPEC-MDM-MEMBER-LEAVE-001 §1
+                cacheEvictor.evictAfterCommit(previous);
+            }
+```
+
+New private methods (after `cleanUpAfterLosingMember`), with imports `com.fasterxml.jackson.databind.JsonNode`,
+`com.mdm.core.domain.merge.FieldLineageEntry`, `com.mdm.core.repository.SourcePinDeactivator`,
+`com.mdm.ingest.survivorship.MemberSurvivorshipRecomputer`,
+`org.springframework.transaction.support.TransactionSynchronization`,
+`org.springframework.transaction.support.TransactionSynchronizationManager`:
+
+```java
+    /**
+     * Regla de la ficha que pierde un miembro (WRK-SPEC-MDM-MEMBER-LEAVE-001 §1): sobre la fila L ya bloqueada, si
+     * sigue {@code active}, desactiva los source pins del registro que sale y la recalcula con survivorship sobre
+     * sus miembros vigentes (o la marca {@code orphaned} si no le quedan; sin versiones en Silver, no se escribe).
+     * Guardar sube su {@code @Version}: un run concurrente que calculo un merge sobre L con los datos anteriores
+     * falla la guarda de ADR-020 (DOM-MDM-PIPELINE-001 §6.5). Los eventos se publican tras el commit del intento.
+     */
+    private void applyMemberLeftRule(PipelineContext ctx, SourceRecordIdentity left, Optional<GoldenRecordEntity> row) {
+        if (memberRecomputer == null || row.isEmpty() || !isActive(row.get())) {
+            return;
+        }
+        GoldenRecordEntity l = row.get();
+        String lId = l.getId().toString();
+        Instant now = Instant.now();
+        deactivatePinsOf(ctx, lId, left, now);
+        MemberSurvivorshipRecomputer.Outcome outcome = memberRecomputer.recompute(new MemberSurvivorshipRecomputer.Request(
+                ctx.getTenantId(), ctx.getEntityType(), lId, ctx.getSurvivorshipConfig(), persistedLineage(l), now,
+                ctx.getPipelineRunId()));
+        switch (outcome) {
+            case MemberSurvivorshipRecomputer.Recomputed r -> {
+                BigDecimal previousScore = l.getQualityScore();
+                l.setGoldenData(objectMapper.valueToTree(r.goldenData()));
+                l.setFieldLineage(objectMapper.valueToTree(r.fieldLineage()));
+                l.setLatestSourceReceivedAt(r.latestSourceReceivedAt());
+                l.setQualityScore(BigDecimal.valueOf(r.quality().score()));
+                l.setUpdatedAt(now);
+                goldenRecordRepository.saveAndFlush(l);
+                producedEdge(ctx, lId, "member_left", now);
+                afterCommit(() -> ingestEventEmitter.emitGoldenRecordUpdated(lId, ctx.getEntityType(),
+                        ctx.getSource(), ctx.getTenantId(), ctx.getUserId()));
+                tierChangeAfterCommit(ctx, lId, previousScore, r.quality());
+            }
+            case MemberSurvivorshipRecomputer.NoMembers n -> {
+                l.setStatusEnum(GoldenRecordStatus.ORPHANED);
+                l.setUpdatedAt(now);
+                goldenRecordRepository.saveAndFlush(l);
+                producedEdge(ctx, lId, "member_left_orphaned", now);
+                afterCommit(() -> ingestEventEmitter.emitGoldenRecordOrphaned(lId, ctx.getEntityType(), left.source(),
+                        left.sourceRecordId(), ctx.getPipelineRunId(), ctx.getSource(), ctx.getTenantId(),
+                        ctx.getUserId()));
+            }
+            case MemberSurvivorshipRecomputer.NoVersions nv ->
+                    log.warn("Golden record {} lost member {} and keeps its data: none of its {} current members has a "
+                            + "Silver version (tenant {})", lId, left.display(), nv.members(), ctx.getTenantId());
+        }
+    }
+
+    /**
+     * {@code PRODUCED} run → L: el run modifico L (DOM-MDM-LINEAGE-001 §3.2.5, "Update de golden record | Añade
+     * {@code PRODUCED}"). {@code action = updated}; {@code reason} distingue el recalculo del paso a {@code orphaned}.
+     */
+    private void producedEdge(PipelineContext ctx, String lId, String reason, Instant now) {
+        if (graphStore == null) {
+            return;
+        }
+        graphStore.addEdge(new LineageEdge(null, "PipelineRun", ctx.getPipelineRunId(), "GoldenRecord", lId,
+                LineageEdgeType.PRODUCED, ctx.getTenantId(), now, Map.of("action", "updated", "reason", reason)));
+    }
+
+    private static boolean isActive(GoldenRecordEntity gr) {
+        return gr.getStatus() == null || GoldenRecordStatus.ACTIVE.getValue().equalsIgnoreCase(gr.getStatus());
+    }
+
+    /** Pins de L sobre el registro que sale (§1.1), con {@code FieldOverrideAutoDeactivated} tras el commit. */
+    private void deactivatePinsOf(PipelineContext ctx, String lId, SourceRecordIdentity left, Instant now) {
+        if (pinDeactivator == null) {
+            return;
+        }
+        for (SourcePinDeactivator.DeactivatedPin pin : pinDeactivator.deactivatePinsOf(ctx.getTenantId(), lId, left,
+                SourcePinDeactivator.REASON_MEMBER_LEFT, SourcePinDeactivator.ACTOR_PIPELINE, now)) {
+            afterCommit(() -> ingestEventEmitter.emitFieldOverrideAutoDeactivated(lId, ctx.getEntityType(),
+                    pin.field(), "SOURCE_PIN", SourcePinDeactivator.REASON_MEMBER_LEFT, null,
+                    pin.pinnedSourceRecordId(), ctx.getPipelineRunId(), ctx.getSource(), ctx.getTenantId()));
+        }
+    }
+
+    /** Cruce de tier de L con su score anterior y el recalculado (DOM-MDM-SURVIVORSHIP-001 §3.7.3; nulo = 0.5). */
+    private void tierChangeAfterCommit(PipelineContext ctx, String lId, BigDecimal previousScore,
+                                       QualityScoreResult now) {
+        double previous = previousScore != null ? previousScore.doubleValue() : 0.5;
+        String previousTier = qualityScoreResolver.tierFor(ctx.getTenantId(), ctx.getEntityType(), previous);
+        if (previousTier.equals(now.tier())) {
+            return;
+        }
+        afterCommit(() -> {
+            ingestEventEmitter.emitGoldenRecordQualityChanged(lId, ctx.getEntityType(), previous, now.score(),
+                    previousTier, now.tier(), ctx.getPipelineRunId(), ctx.getSource(), ctx.getTenantId(),
+                    ctx.getUserId());
+            Metrics.counter("mdm_golden_record_quality_tier_changes_total",
+                    "entity_type", ctx.getEntityType(), "from_tier", previousTier, "to_tier", now.tier()).increment();
+        });
+    }
+
+    /** Lineage persistido de L, entrada a entrada: una entrada ilegible se descarta con WARN, el resto se conserva. */
+    private Map<String, FieldLineageEntry> persistedLineage(GoldenRecordEntity gr) {
+        Map<String, FieldLineageEntry> out = new LinkedHashMap<>();
+        JsonNode node = gr.getFieldLineage();
+        if (node == null || !node.isObject()) {
+            return out;
+        }
+        node.fields().forEachRemaining(f -> {
+            try {
+                out.put(f.getKey(), objectMapper.treeToValue(f.getValue(), FieldLineageEntry.class));
+            } catch (Exception e) {
+                log.warn("Unreadable field_lineage entry '{}' of golden record {}: {}", f.getKey(), gr.getId(),
+                        e.getMessage());
+            }
+        });
+        return out;
+    }
+
+    /** Tras el commit del intento (cada intento es su propia transaccion); sin transaccion, en el acto. */
+    private static void afterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { action.run(); }
+            });
+        } else {
+            action.run();
+        }
+    }
+```
+
+`SourceRecordIdentity.display()` (`SourceRecordIdentity.java:34`) is already used by `persistMembership` (`:799`);
+the class logger is `private static final Logger log` (`PersistenceStepHandler.java:90`).
+
+- [ ] **Step 4: Run to verify it passes**
+
+Run: `cd src && mvn -q test -pl mdm-ingest-service -am -Dtest=PersistenceStepHandlerTest -DfailIfNoTests=false`
+Expected: PASS — the 8 new tests and every existing one (in particular `forceRuleMove_locksBothRecordsInAscendingOrder_movesWithTheRule_andCleansTheRecordThatLosesIt`, which uses the 11-arg constructor: no recomputer, no change).
+Then: `cd src && mvn -q test -pl mdm-ingest-service -am` — PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/mdm-ingest-service/src/main/java/com/mdm/ingest/pipeline/steps/PersistenceStepHandler.java \
+        src/mdm-ingest-service/src/test/java/com/mdm/ingest/pipeline/steps/PersistenceStepHandlerTest.java
+git commit -m "feat(WRK-TASK-MDM-MEMBER-LEAVE-001-004): persistence recalcula la ficha que pierde un miembro"
+```
+
+## Acceptance Criteria
+
+- [ ] L activa con miembros: recalculada tras `move` y antes de `refreshSourceCounts`, con `golden_data`, `field_lineage`, score y frescura del recomputer; guardada; `golden_record.updated` para L (WRK-SPEC §1 fila 1, AC1, AC3; DOM-MDM-PIPELINE-001 §10.8.4 p.3).
+- [ ] Cruce de tier con el score anterior y nuevo de L → `GoldenRecordQualityChanged` para L; sin cruce, nada (WRK-SPEC §1.2, AC5; DOM-MDM-SURVIVORSHIP-001 §3.7.3).
+- [ ] Sin miembros → `orphaned`, datos conservados, `golden_record.orphaned` y no `golden_record.updated` (WRK-SPEC §1 fila 3, AC2, AC3; DOM-MDM-SURVIVORSHIP-001 §3.2).
+- [ ] En los dos casos que escriben L se añade `PRODUCED` run → L (`reason` `member_left` / `member_left_orphaned`) (DOM-MDM-LINEAGE-001 §3.2.5).
+- [ ] Sin versiones → L no se escribe, sin arista, pins desactivados, WARN con el id de L (WRK-SPEC §1 fila 2, AC6).
+- [ ] Pins del registro que sale desactivados con `FieldOverrideAutoDeactivated` por pin (WRK-SPEC §1.1, AC4; DOM-MDM-PIPELINE-001 §10.9.4 p.2).
+- [ ] L `absorbed`/`orphaned`/`deleted`/inexistente: ni recálculo ni pins ni escritura (WRK-SPEC §1 fila 4, AC6).
+- [ ] Un fallo del recálculo se propaga y L no se guarda (WRK-SPEC §4; la reversión y la ausencia de eventos se prueban en 005, AC7).
+- [ ] Los eventos de L se registran con `afterCommit` (desviación D1 del plan).
+- [ ] La regla no consulta `force_rules`: una superviviente de merge manual (`GOLDEN_TO_GOLDEN` activa) se recalcula igual (WRK-SPEC §1.3).
+
+## Test Plan
+
+Los 8 tests nuevos de `PersistenceStepHandlerTest` y la suite completa de `mdm-ingest-service`. El comportamiento
+transaccional real (rollback, reintento) se prueba en 005.
+---
+id: WRK-TASK-MDM-MEMBER-LEAVE-001-005
+type: spec
+layer: work-task
+scope: ephemeral
+status: draft
+confidence: low
+version: 0.1.0
+created: 2026-09-29
+updated: 2026-09-29
+owner: bruzos
+title: "ITs de extremo a extremo: ForceRule que saca un miembro, orphaned, pins, rollback y reintento, regresión de unmerge y paridad con stewardship"
+parent: WRK-PLAN-MDM-MEMBER-LEAVE-001
+activates:
+  - DOM-MDM-PIPELINE-001@1.23.0
+  - DOM-MDM-SURVIVORSHIP-001@1.10.1
+  - PROD-MDM-STEWARDSHIP-001@1.8.0
+equips: []
+dependencies:
+  - id: WRK-PLAN-MDM-MEMBER-LEAVE-001
+    relation: implements
+sources:
+  - id: FRAG-MDM-MEMBER-LEAVE-001
+    resource: specs/_capture/FRAG-MDM-MEMBER-LEAVE-001-la-ficha-que-pierde-un-miembro/
+generated: { by: claude-code/claude-opus-5-5, at: 2026-09-29T11:30:00+02:00 }
+stale_after: 2026-12-28
+tags: [mdm, pipeline, integration-test, task, work:manual-unification]
+---
+
+# WRK-TASK-MDM-MEMBER-LEAVE-001-005 — ITs de extremo a extremo
+
+## Objective
+
+Probar contra PostgreSQL (Testcontainers) y el pipeline real (`/api/v1/ingest/sync`) los criterios de aceptación de la
+WRK-SPEC que las unitarias no pueden cerrar: el recálculo y el `orphaned` de la ficha que pierde un miembro, los pins,
+la transaccionalidad de los eventos (rollback y reintento), la regresión del unmerge y la paridad del recomputer con
+el recálculo de stewardship. Termina con la comprobación de imports de AC10 y la suite completa.
+
+## Implementation Notes
+
+**Files:**
+- Create: `src/mdm-app/src/test/java/com/mdm/integration/MemberLeaveIT.java`
+- No production code (if a test fails, the fix belongs to the task that owns the code: 001–004).
+
+**Interfaces:**
+- Consumes: 002 `MemberSurvivorshipRecomputer` (bean; `recompute(Request)` → `Recomputed`); 003 event `golden_record.orphaned`; 004 behaviour of `PersistenceStepHandler`. Existing: `SchemaService.getActiveSchemaArtifacts(String entityType, String tenantId)` (`SchemaService.java:237`), `SchemaArtifactExtractor.extractSurvivorshipConfig(JsonNode)` (`SchemaArtifactExtractor.java:303`), `EventPublisher.publish(DomainEvent<?>)`.
+- Produces: nothing for other tasks.
+
+**Premises:**
+- Schema `src/mdm-app/src/test/resources/source-identity-supplier-schema.json`: properties `legal_name, tax_id, phone, email`; survivorship `default_rule: most_recent`, `email` → `source_priority [crm, erp_sap, web]` (desviación D3: el fixture usa `phone`).
+- The schema id `sch_{entity}_{version}` is global (`SourceIdentityPipelineIT.java:88-90`): this IT registers versions `2.0.0`/`2.0.1` so it does not overwrite the rows of `SourceIdentityPipelineIT` (`1.0.0`/`1.0.1`).
+- X1 (`crm`) and X2 (`erp_sap`) with the same `legal_name` + `tax_id` link to the same golden record; a `SOURCE_TO_GOLDEN` rule inserted by JDBC moves X2 on its next ingest (`SourceIdentityPipelineIT.forceRuleMovesLinkedRecord`, `:207-261`).
+- `refreshSourceCounts` runs after the member-left rule in `persistMembership` (`PersistenceStepHandler.java:815`, after the move block `:802-810` that 004 extends) and is a method of the `SourceMembershipRepository` bean (`SourceMembershipRepository.java:101`): a spy that throws there fails the attempt after L's events were registered.
+- `@MockitoSpyBean EventPublisher` is the existing pattern for asserting events in ITs (`MultiMatchConsolidationIT.java:68`).
+- Persistence retries on any non-optimistic exception up to `persistenceMaxRetries` and then goes to dead letter (`PipelineOrchestrator.java:347-360`); `OptimisticLockingFailureException` retrocedes to Merge (`:332-345`).
+
+- [ ] **Step 1: Write the IT**
+
+```java
+package com.mdm.integration;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.mdm.core.domain.events.DomainEvent;
+import com.mdm.core.domain.events.EventType;
+import com.mdm.core.domain.schema.SurvivorshipConfig;
+import com.mdm.core.repository.SourceMembershipRepository;
+import com.mdm.events.publisher.EventPublisher;
+import com.mdm.ingest.service.SchemaArtifactExtractor;
+import com.mdm.ingest.survivorship.MemberSurvivorshipRecomputer;
+import com.mdm.schema.service.SchemaService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
+import org.springframework.test.web.servlet.MvcResult;
+
+import java.io.InputStream;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * La ficha que pierde un miembro (WRK-SPEC-MDM-MEMBER-LEAVE-001; RFC-PIPE-039): el pipeline la recalcula con
+ * survivorship sobre sus miembros vigentes o la marca {@code orphaned}, desactiva los pins del registro que sale y lo
+ * notifica solo tras el commit.
+ */
+@DisplayName("Member leave — the golden record that loses a member is recomputed or orphaned")
+class MemberLeaveIT extends BaseIntegrationTest {
+
+    private static final String T1 = "ml-tenant-1";
+    private static final String T2 = "ml-tenant-2";
+    private static final String ENTITY = "supplier";
+
+    @Autowired private JdbcTemplate jdbc;
+    @Autowired private SchemaService schemaService;
+    @Autowired private SchemaArtifactExtractor schemaArtifactExtractor;
+    @MockitoSpyBean private EventPublisher eventPublisher;
+    @MockitoSpyBean private MemberSurvivorshipRecomputer recomputer;
+    @MockitoSpyBean private SourceMembershipRepository membership;
+
+    private JsonNode schema;
+
+    private static final Map<String, Object> X1 = Map.of("legal_name", "Lima Logistica", "tax_id", "TL-1",
+            "phone", "+34 611 000 001", "email", "x1@lima.es");
+    private static final Map<String, Object> X2 = Map.of("legal_name", "Lima Logistica", "tax_id", "TL-1",
+            "phone", "+34 611 000 002", "email", "x2@lima.es");
+    private static final Map<String, Object> X2_TO_F = Map.of("legal_name", "Foxtrot Frio", "tax_id", "TF-1",
+            "phone", "+34 622 000 002", "email", "x2new@foxtrot.es");
+    private static final Map<String, Object> Y = Map.of("legal_name", "Foxtrot Frio", "tax_id", "TF-1",
+            "phone", "+34 622 000 001", "email", "y@foxtrot.es");
+
+    @BeforeEach
+    void setUp() throws Exception {
+        for (String t : List.of(T1, T2)) {
+            jdbc.update("DELETE FROM mdm_gold.blocking_key_entries WHERE tenant_id = ?", t);
+            jdbc.update("DELETE FROM mdm_gold.source_record_xref WHERE tenant_id = ?", t);
+            jdbc.update("DELETE FROM mdm_gold.suppression_rules WHERE tenant_id = ?", t);
+            jdbc.update("DELETE FROM mdm_gold.force_rules WHERE tenant_id = ?", t);
+            jdbc.update("DELETE FROM mdm_gold.field_override_rules WHERE tenant_id = ?", t);
+            jdbc.update("DELETE FROM mdm_gold.record_matches WHERE tenant_id = ?", t);
+            jdbc.update("DELETE FROM mdm_lineage.lineage_edges WHERE tenant_id = ?", t);
+            jdbc.update("DELETE FROM mdm_gold.pipeline_runs WHERE tenant_id = ?", t);
+            jdbc.update("DELETE FROM mdm_silver.staged_records WHERE tenant_id = ?", t);
+            jdbc.update("DELETE FROM mdm_gold.golden_records WHERE tenant_id = ?", t);
+            jdbc.update("DELETE FROM mdm_gold.entity_schemas WHERE tenant_id = ?", t);
+        }
+        evictAllCaches();
+        try (InputStream is = getClass().getResourceAsStream("/source-identity-supplier-schema.json")) {
+            schema = objectMapper.readTree(is);
+        }
+        registerSchema(T1, "2.0.0");
+        registerSchema(T2, "2.0.1");
+        clearInvocations(eventPublisher, recomputer, membership);
+    }
+
+    /** L = {X1, X2} con X2 ganando phone (most_recent); F = {Y}; ForceRule X2 → F. Devuelve {l, f}. */
+    private String[] linkedPairAndRuleToF() throws Exception {
+        String l = ingest(T1, "crm", "X1", X1).path("golden_record_id").asText();
+        Thread.sleep(20);
+        assertThat(ingest(T1, "erp_sap", "X2", X2).path("golden_record_id").asText()).isEqualTo(l);
+        String f = ingest(T1, "crm", "Y", Y).path("golden_record_id").asText();
+        assertThat(f).isNotEqualTo(l);
+        assertThat(lineage(l).path("phone").path("source_record_id").asText()).isEqualTo("X2");
+        insertForceRule(T1, "erp_sap", "X2", f);
+        clearInvocations(eventPublisher, recomputer, membership);
+        return new String[] {l, f};
+    }
+
+    // AC1, AC3 (updated)
+    @Test
+    void forceRuleMove_recomputesTheGoldenRecordThatLosesTheMember() throws Exception {
+        String[] lf = linkedPairAndRuleToF();
+        String l = lf[0];
+        String f = lf[1];
+        String phoneBefore = goldenData(l).path("phone").asText();
+        int versionBefore = version(l);
+        String control = ingest(T2, "crm", "X1", X1).path("golden_record_id").asText();
+        clearInvocations(eventPublisher);
+
+        assertThat(ingest(T1, "erp_sap", "X2", X2_TO_F).path("golden_record_id").asText()).isEqualTo(f);
+
+        assertThat(goldenData(l)).isEqualTo(goldenData(control));
+        JsonNode lineage = lineage(l);
+        for (Iterator<Map.Entry<String, JsonNode>> it = lineage.fields(); it.hasNext(); ) {
+            JsonNode e = it.next().getValue();
+            assertThat(e.path("source").asText() + "/" + e.path("source_record_id").asText())
+                    .isNotEqualTo("erp_sap/X2");
+        }
+        assertThat(lineage.path("phone").path("previous").path("value").asText()).isEqualTo(phoneBefore);
+        assertThat(lineage.path("phone").path("previous").path("source").asText()).isEqualTo("erp_sap");
+        // ±0.0010: la frescura depende del instante de evaluacion (DOM-MDM-SURVIVORSHIP-001 §3.7.1.1, tolerancia documentada)
+        assertThat(qualityScore(l)).isCloseTo(qualityScore(control), org.assertj.core.data.Offset.offset(new java.math.BigDecimal("0.0010")));
+        assertThat(latestSourceReceivedAt(l)).isEqualTo(receivedAtOf(T1, "crm", "X1"));
+        assertThat(version(l)).isEqualTo(versionBefore + 1);
+        assertThat(eventsFor(l, "golden_record.updated")).isEqualTo(1);
+        assertThat(eventsFor(f, "golden_record.updated")).isEqualTo(1);
+    }
+
+    // AC2, AC3 (orphaned)
+    @Test
+    void forceRuleMove_ofTheLastMember_orphansTheGoldenRecord() throws Exception {
+        String l = ingest(T1, "erp_sap", "X2", X2).path("golden_record_id").asText();
+        String f = ingest(T1, "crm", "Y", Y).path("golden_record_id").asText();
+        insertForceRule(T1, "erp_sap", "X2", f);
+        JsonNode dataBefore = goldenData(l);
+        int versionBefore = version(l);
+        clearInvocations(eventPublisher);
+
+        assertThat(ingest(T1, "erp_sap", "X2", X2_TO_F).path("golden_record_id").asText()).isEqualTo(f);
+
+        assertThat(status(l)).isEqualTo("orphaned");
+        assertThat(sourceCount(l)).isZero();
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM mdm_gold.blocking_key_entries WHERE golden_record_id = ?::uuid",
+                Long.class, l)).isZero();
+        assertThat(goldenData(l)).isEqualTo(dataBefore);
+        assertThat(version(l)).isEqualTo(versionBefore + 1);
+        assertThat(eventsFor(l, "golden_record.orphaned")).isEqualTo(1);
+        assertThat(eventsFor(l, "golden_record.updated")).isZero();
+    }
+
+    // AC4
+    @Test
+    void forceRuleMove_deactivatesThePinsOfTheRecordThatLeft_andKeepsValueOverrides() throws Exception {
+        String[] lf = linkedPairAndRuleToF();
+        String l = lf[0];
+        UUID full = override(l, "phone", "SOURCE_PIN", "erp_sap", "X2", null);
+        UUID legacy = override(l, "email", "SOURCE_PIN", null, "X2", null);
+        UUID value = override(l, "legal_name", "VALUE_OVERRIDE", null, null, "\"Lima Override\"");
+        evictAllCaches();
+        clearInvocations(eventPublisher);
+
+        ingest(T1, "erp_sap", "X2", X2_TO_F);
+
+        for (UUID id : List.of(full, legacy)) {
+            Map<String, Object> row = jdbc.queryForMap("SELECT * FROM mdm_gold.field_override_rules WHERE id = ?", id);
+            assertThat(row.get("active")).isEqualTo(false);
+            assertThat(row.get("deactivation_reason")).isEqualTo("member_left");
+            assertThat(row.get("deactivated_by")).isEqualTo("system:pipeline");
+        }
+        assertThat(jdbc.queryForObject("SELECT active FROM mdm_gold.field_override_rules WHERE id = ?",
+                Boolean.class, value)).isTrue();
+        assertThat(goldenData(l).path("legal_name").asText()).isEqualTo("Lima Override");
+        assertThat(eventsFor(l, EventType.FIELD_OVERRIDE_AUTO_DEACTIVATED.getValue())).isEqualTo(2);
+    }
+
+    // AC7 (rollback)
+    @Test
+    void recomputeFailure_rollsBackTheWholeStep_andPublishesNothingForTheLosingRecord() throws Exception {
+        String[] lf = linkedPairAndRuleToF();
+        String l = lf[0];
+        String f = lf[1];
+        JsonNode dataBefore = goldenData(l);
+        int versionBefore = version(l);
+        List<Map<String, Object>> lKeysBefore = keysOfGoldenRecord(l);
+        JsonNode fDataBefore = goldenData(f);
+        int fVersionBefore = version(f);
+        int fSourceCount = sourceCount(f);
+        doThrow(new IllegalStateException("injected")).when(recomputer).recompute(any());
+
+        JsonNode run = ingestRaw(T1, "erp_sap", "X2", X2_TO_F);
+
+        assertThat(run.path("status").asText()).isNotEqualTo("completed");
+        assertThat(goldenData(l)).isEqualTo(dataBefore);
+        assertThat(version(l)).isEqualTo(versionBefore);
+        assertThat(keysOfGoldenRecord(l)).containsExactlyInAnyOrderElementsOf(lKeysBefore);
+        assertThat(currentSpanOf(T1, "erp_sap", "X2")).isEqualTo(l);
+        assertThat(goldenData(f)).isEqualTo(fDataBefore);
+        assertThat(version(f)).isEqualTo(fVersionBefore);
+        assertThat(sourceCount(f)).isEqualTo(fSourceCount);
+        assertThat(eventsFor(l, "golden_record.updated")).isZero();
+        assertThat(eventsFor(l, "golden_record.orphaned")).isZero();
+    }
+
+    // AC3 + AC7: the failure is injected AFTER the rule ran on L (refreshSourceCounts is the next write of the
+    // step), so attempt 1 has already registered L's events. Only if they are deferred to the commit does exactly
+    // one golden_record.updated reach the bus; inline emission would publish two.
+    @Test
+    void conflictAfterTheRule_onFirstAttempt_publishesTheLosingRecordUpdateOnce() throws Exception {
+        String[] lf = linkedPairAndRuleToF();
+        String l = lf[0];
+        doThrow(new OptimisticLockingFailureException("injected")).doCallRealMethod()
+                .when(membership).refreshSourceCounts(any(), any());
+
+        ingest(T1, "erp_sap", "X2", X2_TO_F);
+
+        verify(recomputer, times(2)).recompute(any());
+        assertThat(eventsFor(l, "golden_record.updated")).isEqualTo(1);
+        assertThat(lineage(l).path("phone").path("source_record_id").asText()).isEqualTo("X1");
+    }
+
+    // AC8
+    @Test
+    void unmerge_leavesNoLineageOnTheSeparatedRecord() throws Exception {
+        String l = ingest(T1, "crm", "X1", X1).path("golden_record_id").asText();
+        Thread.sleep(20);
+        assertThat(ingest(T1, "erp_sap", "X2", X2).path("golden_record_id").asText()).isEqualTo(l);
+
+        unmerge(T1, l, List.of(Map.of("source", "erp_sap", "source_record_id", "X2")));
+
+        for (Iterator<Map.Entry<String, JsonNode>> it = lineage(l).fields(); it.hasNext(); ) {
+            JsonNode e = it.next().getValue();
+            assertThat(e.path("source").asText() + "/" + e.path("source_record_id").asText())
+                    .isNotEqualTo("erp_sap/X2");
+        }
+    }
+
+    // AC9
+    @Test
+    void recomputer_matchesTheStewardshipRecomputeOfTheSameMembers() throws Exception {
+        String l = ingest(T1, "crm", "X1", X1).path("golden_record_id").asText();
+        Thread.sleep(20);
+        assertThat(ingest(T1, "erp_sap", "X2", X2).path("golden_record_id").asText()).isEqualTo(l);
+        Thread.sleep(20);
+        assertThat(ingest(T1, "web", "X3", Map.of("legal_name", "Lima Logistica", "tax_id", "TL-1",
+                "phone", "+34 611 000 003", "email", "x3@lima.es")).path("golden_record_id").asText()).isEqualTo(l);
+        unmerge(T1, l, List.of(Map.of("source", "web", "source_record_id", "X3")));
+        SurvivorshipConfig config = schemaArtifactExtractor.extractSurvivorshipConfig(
+                schemaService.getActiveSchemaArtifacts(ENTITY, T1));
+
+        var outcome = (MemberSurvivorshipRecomputer.Recomputed) recomputer.recompute(
+                new MemberSurvivorshipRecomputer.Request(T1, ENTITY, l, config, Map.of(), Instant.now(), "parity"));
+
+        assertThat(objectMapper.valueToTree(outcome.goldenData())).isEqualTo(goldenData(l));
+        JsonNode persisted = lineage(l);
+        JsonNode computed = objectMapper.valueToTree(outcome.fieldLineage());
+        assertThat(computed.size()).isEqualTo(persisted.size());
+        for (Iterator<String> it = persisted.fieldNames(); it.hasNext(); ) {
+            String field = it.next();
+            for (String key : List.of("value", "source", "source_record_id", "rule_applied")) {
+                assertThat(computed.path(field).path(key)).as(field + "." + key)
+                        .isEqualTo(persisted.path(field).path(key));
+            }
+        }
+    }
+
+    // ==================== helpers ====================
+
+    private void registerSchema(String tenant, String version) throws Exception {
+        JsonNode versioned = schema.deepCopy();
+        ((ObjectNode) versioned.get("x-mdm")).put("version", version);
+        mockMvc.perform(post("/api/v1/schemas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", USER_ID)
+                        .content(objectMapper.writeValueAsString(Map.of("schema", versioned, "auto_activate", true))))
+                .andExpect(status().isCreated());
+    }
+
+    private JsonNode ingestRaw(String tenant, String source, String srid, Map<String, Object> data) throws Exception {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("entity_type", ENTITY);
+        body.put("source", source);
+        body.put("source_record_id", srid);
+        body.put("data", data);
+        MvcResult r = mockMvc.perform(post("/api/v1/ingest/sync")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", USER_ID)
+                        .content(objectMapper.writeValueAsString(body)))
+                .andReturn();
+        return objectMapper.readTree(r.getResponse().getContentAsString());
+    }
+
+    private JsonNode ingest(String tenant, String source, String srid, Map<String, Object> data) throws Exception {
+        JsonNode json = ingestRaw(tenant, source, srid, data);
+        assertThat(json.path("status").asText()).as("ingest %s/%s in %s: %s", source, srid, tenant, json)
+                .isEqualTo("completed");
+        return json;
+    }
+
+    private void unmerge(String tenant, String gr, List<Object> toSeparate) throws Exception {
+        MvcResult r = mockMvc.perform(post("/api/v1/stewardship/unmerge")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Tenant-Id", tenant).header("X-User-Id", USER_ID)
+                        .content(objectMapper.writeValueAsString(Map.of("golden_record_id", gr,
+                                "source_records_to_separate", toSeparate, "reason", "wrong merge"))))
+                .andReturn();
+        assertThat(r.getResponse().getStatus()).as(r.getResponse().getContentAsString()).isEqualTo(200);
+    }
+
+    private void insertForceRule(String tenant, String source, String srid, String goldenRecordId) {
+        jdbc.update("""
+                INSERT INTO mdm_gold.force_rules
+                    (tenant_id, entity_type, rule_type, source_record_id, source, golden_record_id, active, created_by)
+                VALUES (?, ?, 'SOURCE_TO_GOLDEN', ?, ?, CAST(? AS uuid), true, 'test')""",
+                tenant, ENTITY, srid, source, goldenRecordId);
+        evictAllCaches();
+    }
+
+    private UUID override(String gr, String field, String type, String pinnedSource, String pinnedSrid,
+                          String valueJson) {
+        UUID id = UUID.randomUUID();
+        jdbc.update("""
+                INSERT INTO mdm_gold.field_override_rules
+                    (id, tenant_id, golden_record_id, entity_type, field, override_type, value, pinned_source,
+                     pinned_source_record_id, active, created_by, created_at)
+                VALUES (?, ?, ?::uuid, ?, ?, ?, ?::jsonb, ?, ?, true, 'test', now())""",
+                id, T1, gr, ENTITY, field, type, valueJson, pinnedSource, pinnedSrid);
+        return id;
+    }
+
+    @SuppressWarnings("rawtypes")
+    private long eventsFor(String aggregateId, String eventType) {
+        ArgumentCaptor<DomainEvent> captor = ArgumentCaptor.forClass(DomainEvent.class);
+        verify(eventPublisher, atLeast(0)).publish(captor.capture());
+        List<DomainEvent> all = new ArrayList<>(captor.getAllValues());
+        return all.stream().filter(e -> aggregateId.equals(e.aggregateId()) && eventType.equals(e.eventType())).count();
+    }
+
+    private JsonNode goldenData(String gr) throws Exception {
+        return objectMapper.readTree(jdbc.queryForObject(
+                "SELECT golden_data::text FROM mdm_gold.golden_records WHERE id = ?::uuid", String.class, gr));
+    }
+
+    private JsonNode lineage(String gr) throws Exception {
+        return objectMapper.readTree(jdbc.queryForObject(
+                "SELECT field_lineage::text FROM mdm_gold.golden_records WHERE id = ?::uuid", String.class, gr));
+    }
+
+    private java.math.BigDecimal qualityScore(String gr) {
+        return jdbc.queryForObject("SELECT quality_score FROM mdm_gold.golden_records WHERE id = ?::uuid",
+                java.math.BigDecimal.class, gr);
+    }
+
+    private Object latestSourceReceivedAt(String gr) {
+        return jdbc.queryForObject("SELECT latest_source_received_at FROM mdm_gold.golden_records WHERE id = ?::uuid",
+                Object.class, gr);
+    }
+
+    private Object receivedAtOf(String tenant, String source, String srid) {
+        return jdbc.queryForObject("""
+                SELECT max(received_at) FROM mdm_silver.staged_records
+                WHERE tenant_id = ? AND entity_type = ? AND source = ? AND source_record_id = ?""",
+                Object.class, tenant, ENTITY, source, srid);
+    }
+
+    private int version(String gr) {
+        return jdbc.queryForObject("SELECT version FROM mdm_gold.golden_records WHERE id = ?::uuid", Integer.class, gr);
+    }
+
+    private String status(String gr) {
+        return jdbc.queryForObject("SELECT status FROM mdm_gold.golden_records WHERE id = ?::uuid", String.class, gr);
+    }
+
+    private int sourceCount(String gr) {
+        return jdbc.queryForObject("SELECT source_count FROM mdm_gold.golden_records WHERE id = ?::uuid",
+                Integer.class, gr);
+    }
+
+    private List<Map<String, Object>> keysOfGoldenRecord(String gr) {
+        return jdbc.queryForList("""
+                SELECT tenant_id, source, source_record_id, key_name, key_value FROM mdm_gold.blocking_key_entries
+                WHERE golden_record_id = ?::uuid""", gr);
+    }
+
+    private String currentSpanOf(String tenant, String source, String srid) {
+        return jdbc.queryForObject("""
+                SELECT golden_record_id::text FROM mdm_gold.source_record_xref
+                WHERE tenant_id = ? AND entity_type = ? AND source = ? AND source_record_id = ? AND valid_to IS NULL""",
+                String.class, tenant, ENTITY, source, srid);
+    }
+}
+```
+
+Verified: `EventType.FIELD_OVERRIDE_AUTO_DEACTIVATED` = `"FieldOverrideAutoDeactivated"` (`EventType.java:30`), the
+`event_type` that `IngestEventEmitter.emitFieldOverrideAutoDeactivated` publishes; `UnmergeRequestDto.sourceRecordsToSeparate`
+is a `List<SourceRecordRefDto>` that accepts a plain id or `{"source", "source_record_id"}` (`UnmergeRequestDto.java:14-22`).
+
+- [ ] **Step 2: Run it**
+
+Run: `cd src && mvn -q verify -pl mdm-app -am -Dit.test=MemberLeaveIT -Dtest=none -DfailIfNoTests=false`
+Expected: PASS (7 tests) with 001–004 merged. To confirm the ITs discriminate:
+1. Temporarily comment out the `applyMemberLeftRule(ctx, id, losing);` line in `PersistenceStepHandler` and re-run:
+   AC1, AC2, AC4, the rollback test (it expects `recompute` to be reached) and `conflictAfterTheRule…` must FAIL.
+2. Temporarily make `PersistenceStepHandler.afterCommit` run the action inline (`action.run();` only) and re-run:
+   `conflictAfterTheRule_onFirstAttempt_publishesTheLosingRecordUpdateOnce` must FAIL (2 events). Restore both.
+
+- [ ] **Step 3: AC10 — no JPA in the new classes outside mdm-persistence**
+
+Run:
+```bash
+grep -nE "jakarta\.persistence|com\.mdm\.persistence" \
+  src/mdm-core/src/main/java/com/mdm/core/repository/SourcePinDeactivator.java \
+  src/mdm-core/src/main/java/com/mdm/core/repository/SourceRecordVersionReader.java \
+  src/mdm-ingest-service/src/main/java/com/mdm/ingest/survivorship/MemberSurvivorshipRecomputer.java
+```
+Expected: no output (exit code 1).
+
+- [ ] **Step 4: Full suite and coverage**
+
+Run: `cd src && mvn -q verify`
+Expected: BUILD SUCCESS — every existing test green, in particular `SourceIdentityPipelineIT`, `SourceIdentityRaceIT`,
+`ConcurrentIngestIT`, `StewardshipFlowsIT`, `StewardshipMembershipIT`, `StewardshipQualityScoreIT`,
+`AdminReSurvivorshipIT`, `PipelineQualityTierChangeIT`.
+
+Coverage (JaCoCo is only in `<pluginManagement>` of `src/pom.xml:159-225`; no module binds it, so invoke it
+explicitly):
+`cd src && mvn -q -pl mdm-ingest-service -am org.jacoco:jacoco-maven-plugin:prepare-agent test org.jacoco:jacoco-maven-plugin:report`
+Expected: in `src/mdm-ingest-service/target/site/jacoco/com.mdm.ingest.survivorship/MemberSurvivorshipRecomputer.html`
+line coverage ≥ 80 %. The two persistence adapters are exercised only by `MemberLeavePortsIT` (mdm-app), which covers
+every branch of their new code (empty member list; full-identity, legacy, other-source, other-record and value-override
+rows); record that in the task's closing note instead of a JaCoCo number.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/mdm-app/src/test/java/com/mdm/integration/MemberLeaveIT.java
+git commit -m "test(WRK-TASK-MDM-MEMBER-LEAVE-001-005): ITs de la ficha que pierde un miembro"
+```
+
+## Acceptance Criteria
+
+- [ ] AC1: L recalculada = ficha de control con X1 solo (datos; score ±0.0010), sin lineage de `erp_sap/X2`, `previous` del teléfono de X2, frescura = `received_at` de X1, versión +1.
+- [ ] AC2: último miembro → `orphaned`, `source_count = 0`, sin claves, datos intactos, versión +1.
+- [ ] AC3: un `golden_record.updated` para L y para F en AC1; `golden_record.orphaned` y ningún `golden_record.updated` para L en AC2.
+- [ ] AC4: pins completo y legado desactivados (`member_left`, `system:pipeline`, dos `FieldOverrideAutoDeactivated`); el value override sigue en `golden_data`.
+- [ ] AC7: fallo del recálculo → nada cambia (datos, versión y claves de L; tramo; datos, versión y `source_count` de F) y nada se publica para L.
+- [ ] AC3/AC7: con un conflicto inyectado después de la regla en el primer intento, un solo `golden_record.updated` para L (los eventos esperan al commit).
+- [ ] AC8: tras el unmerge, el lineage de L no apunta a `erp_sap/X2`.
+- [ ] AC9: recomputer y unmerge dan el mismo `golden_data` y los mismos `value`/`source`/`source_record_id`/`rule_applied`.
+- [ ] AC10: grep sin resultados; `mvn verify` en verde; cobertura ≥ 80 % en las clases nuevas.
+
+## Test Plan
+
+`MemberLeaveIT` (7 tests) con la prueba de discriminación del Step 2; suite completa (`mvn verify`).
