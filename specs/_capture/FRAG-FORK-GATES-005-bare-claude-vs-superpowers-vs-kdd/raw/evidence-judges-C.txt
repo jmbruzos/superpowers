@@ -1,0 +1,2 @@
+C1 claims=87 TRUE=84 FALSE=2 UNVERIFIABLE=1 design-changing-FALSE=0 violations=9 tasks-without-runnable-test=0 order-valid=yes
+C2 claims=46 TRUE=41 FALSE=4 UNVERIFIABLE=1 design-changing-FALSE=0 violations=5 tasks-without-runnable-test=0 order-valid=yes

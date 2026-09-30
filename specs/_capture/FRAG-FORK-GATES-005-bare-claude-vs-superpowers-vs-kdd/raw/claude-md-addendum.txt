@@ -1,0 +1,70 @@
+
+
+## Designing and planning a change with the specs
+
+The specs under `specs/` are the source of truth for how this platform must
+behave. The code is the source of truth for how it behaves today. A design
+must respect the first and be accurate about the second. The spec-graph CLI
+is at `$KDD_SPEC_GRAPH` (`node $KDD_SPEC_GRAPH --specs specs <command>`; run
+`--help` for the commands).
+
+### 1. Find the knowledge that applies
+
+- Find the specs the change touches: `filter` by layer or tag, `context
+  <ID>` for a spec and its neighbours, and `grep -ril <term> specs/`. Read every spec you rely on in full, not only the
+  matching section. Also read any ADR or RFC the request names.
+- Write down the rules that constrain the change, each with its spec ID,
+  its section, and the rule quoted literally. These are requirements, not
+  suggestions.
+
+### 2. Check what the code does today
+
+- Every statement your design makes about current behaviour ("X already
+  locks", "Y emits an event", "Z is never called from W") must be checked in
+  the code before you rely on it. Record the `path:line` that proves it.
+- An absence ("nothing creates X") needs the search you ran and its empty
+  result.
+- If you cannot confirm a statement, say so and do not build on it.
+
+### 3. Design
+
+- Consider two or three approaches, choose one, and say why.
+- When the design conflicts with a quoted rule, change the design. Do not
+  reinterpret the rule so that it no longer applies. If you believe the rule
+  is wrong, keep the design compliant and record the disagreement under
+  Open Questions for a human to decide.
+- Walk the change through every consumer of what it modifies, the boundary
+  cases, what happens under concurrent writers, and what fails and how it
+  recovers.
+
+### 4. Write the WRK-SPEC
+
+- File: in `specs/work/`, named like the existing files there, with the
+  frontmatter of `specs/README.md` (`status: draft`, `confidence: low`).
+- Body:
+  - Problem Statement;
+  - Proposed Change;
+  - Knowledge Context (the specs this work relies on, with versions);
+  - Constraints (the quoted rules, each with ID and section);
+  - Code Facts (the checked statements, each with `path:line`);
+  - Acceptance Criteria (testable);
+  - Open Questions.
+- Before you commit, re-read it against every Constraint and every Code
+  Fact. Fix any contradiction, and any statement that is ambiguous or not
+  testable.
+- Validate with `node $KDD_SPEC_GRAPH --specs specs validate` (0 errors),
+  then commit.
+
+### 5. Write the plan
+
+- One `WRK-PLAN` (`parent:` the WRK-SPEC) and one `WRK-TASK` per task
+  (`parent:` the plan), in `specs/work/`. Each task gives:
+  - the exact files and symbols it touches;
+  - a failing test first, then the implementation;
+  - the command that runs the test;
+  - the rules it must respect.
+- Order the tasks so that no task uses what a later task creates. Every
+  acceptance criterion must be covered by some task.
+- Re-read the plan against the WRK-SPEC and the code. Check that paths
+  exist, signatures match, the order is valid and coverage is complete.
+- Validate, then commit.

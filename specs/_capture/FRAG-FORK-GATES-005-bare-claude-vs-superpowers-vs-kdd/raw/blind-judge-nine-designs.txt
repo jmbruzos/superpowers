@@ -1,0 +1,12 @@
+Blind H1-H10, nine designs, one pass (2026-09-30). Key: N1=K2 N2=U1 N3=K1 N4=U2 N5=K3 (FRAG-003), N6=K4 N7=K5 (FRAG-004), N8=C1 N9=C2 (key.txt).
+design run  H1 H2 H3 H4 H5 H6 H7 H8 H9 H10 C
+N1 K2(0.3.0) W W W W C C C C C N 5
+N2 U1        W W C C C C C C C W 7
+N3 K1(0.3.0) W C C C C C C C C C 9
+N4 U2        W W C C C N N C C W 5
+N5 K3(0.3.0) W W W C C C C C C W 6
+N6 K4(0.4.0) C C C C C W C C C C 9
+N7 K5(0.4.0) C C C C C C C C C W 9
+N8 C1(bare)  C W C C C C C C C N 8
+N9 C2(bare)  C W C C C C C C C W 8
+Previous 7-design pass: U1 7, U2 6, K1 9, K2 5, K3 6, K4 8, K5 9.

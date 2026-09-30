@@ -5,9 +5,9 @@ layer: documentation
 scope: persistent
 status: draft
 confidence: low
-version: 0.3.0
+version: 0.4.0
 created: 2026-09-28
-updated: 2026-09-29
+updated: 2026-09-30
 owner: jmbruzos
 domain: kdd-superpowers
 subdomain: Quality gates
@@ -31,6 +31,9 @@ sources:
   - id: FRAG-FORK-GATES-004
     resource: specs/_capture/FRAG-FORK-GATES-004-gates-hold-findings-quality/
     title: kdd-superpowers 0.4.0 on the same design + plan, blind hard points over all seven runs
+  - id: FRAG-FORK-GATES-005
+    resource: specs/_capture/FRAG-FORK-GATES-005-bare-claude-vs-superpowers-vs-kdd/
+    title: Bare Claude with a spec-workflow CLAUDE.md as a third arm, blind hard points over nine designs
   - id: WRK-SPEC-FORK-GATES-002
     resource: specs/work/WRK-SPEC-FORK-GATES-002-gates-hold-their-findings.md
     title: The work that made dispatched gates synchronous, required a permitting quote to reject a spec-rule finding, and had the verifier check unlisted claims
@@ -43,11 +46,13 @@ dependencies:
     relation: distilled-from
   - id: FRAG-FORK-GATES-004
     relation: distilled-from
+  - id: FRAG-FORK-GATES-005
+    relation: distilled-from
   - id: DOC-FORK-TOKENS-001
     relation: relates-to
 generated:
   by: claude-code/claude-opus-5-5
-  at: 2026-09-29T21:30:00Z
+  at: 2026-09-30T09:30:00Z
 stale_after: 2027-03-27T12:00:00Z
 tags: [kdd, fork, gates, adversarial, quality, measurement]
 ---
@@ -257,6 +262,43 @@ brownfield work of 4-13 tasks; the after samples are headless fixtures.
   The H1 result is consistent; the size of the overall gain is not
   established.
 
+### Against bare Claude with a spec CLAUDE.md (FRAG-FORK-GATES-005)
+
+- **Setup:**
+  - Same task and judges as above, with a third arm: Claude Code with no
+    plugin.
+  - That arm reads mdm-platform's CLAUDE.md plus a generic spec-workflow
+    addendum: quote the rules, check claims against code with `path:line`,
+    change the design rather than reinterpret a rule, then write the
+    WRK-SPEC and the plan.
+  - Two runs. One blind pass over all nine designs.
+- **Results:**
+
+  | Arm | Hard points (of 10) | H1 right | H2 right | False claims about code | Mean cost |
+  |---|---|---|---|---|---|
+  | superpowers 6.3.0 | 7, 5 | 0/2 | 0/2 | 10/110 (9.1 %) | $7.10 |
+  | bare Claude + CLAUDE.md | 8, 8 | 2/2 | 0/2 | 6/133 (4.5 %) | $21.28 |
+  | kdd-superpowers 0.4.0 | 9, 9 | 2/2 | 2/2 | 3/117 (2.6 %) | $18.68 |
+
+  H2 asks that field lineage stops pointing at the departed record without
+  losing the real prior `previous`.
+- **Much of the gain comes from the method, and the repository teaches it.**
+  - Neither bare run was told to red-team its work. Both still ran
+    adversarial reviews of the spec and of the plan, and recorded the
+    rulings, copying mdm-platform's existing work artifacts.
+  - Under the pre-registered rule (within 1 point), bare Claude is
+    comparable to 0.4.0 on hard points, and its false claims do not differ
+    from 0.4.0's.
+  - It costs as much or more, and varies more from run to run.
+- **What 0.4.0 still adds on this task:**
+  - H2;
+  - fewer false claims, though the difference is below the threshold;
+  - steadier cost;
+  - what the study does not score: pinned activation, verified premises,
+    rulings held to a permitting quote, and consolidation.
+- **The comparison says little about a repository without KDD history.**
+  There, the plugin is the only source of the method. That arm is untested.
+
 ### Reading an attack table
 
 - **Many `code-reality` rows:** the author did not verify premises. Look at
@@ -291,4 +333,5 @@ Draft, `confidence: low`:
 - The after samples are three headless fixture runs and one A/B on a real
   design, with 2 runs per side.
 - The quality comparison is one task with 2–3 runs per arm, scored by one
-  blind judge.
+  blind judge. The bare-Claude arm ran only in a repository that already
+  carries KDD work artifacts.
