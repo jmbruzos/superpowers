@@ -3,7 +3,7 @@ id: WRK-PLAN-FORK-MODS-001
 type: spec
 layer: work-plan
 scope: ephemeral
-status: completed
+status: archived
 confidence: low
 version: 0.1.0
 created: 2026-10-05
@@ -108,7 +108,10 @@ Persisted from the SDD ledger `.kdd/sdd/WRK-PLAN-FORK-MODS-001/progress.md` (wor
 - Attack: AC4 "refresh only after the tool resolved" unguarded (mutation passes) — Ruling: accepted → test in fix wave.
 - Attack: AC2 header contract — toolkit JSON that is not an array crashes kdd-status (exit 1) — Ruling: accepted → Array.isArray guard in fix wave.
 
-### Capture candidates (pending)
+- Attack (A6, FRAG-FORK-LEDGER-001: 15 attempted, 9 BROKEN): done-by-ledger contradicts SDD:480-482 ("A task whose file still says `active` is not complete, whatever the ledger says"); identity is compared by plan file in SDD:148-153, by plan ID in kdd-status-lib.mjs:21; "Task <n>" = position vs id suffix not settled by SDD:592/618; `<repo-root>` is the worktree holding the plan (sdd-workspace:39), so kdd-status run from the main checkout misses a worktree's ledger; inventory of line forms incomplete (`Capture candidate:`, `Attack: … — Ruling:`, pre-flight table, ledger notes); absence outdated (kdd-status now reads the ledger) — Ruling: FRAG stays `ingested`; DOC-FORK-LEDGER-001 distils only the RESISTED contract and lists the contradictions under *Known inconsistencies* as open work, not as rules.
+- Attack (A6, FRAG-FORK-MODS-001: 17 attempted, 7 BROKEN): ui.test.ts:4 anchors split by a backtick lose `$.command.run`; the d.ts line it cites (:14343) is the EngineNoun mapping, CommandRunInput is :1710; `$` rule is narrower than stated — empirically (`claude plugin validate` on copies) `$` may only be passed by name to a function declaration (or const bound to one) at the top of the same file, never across an import, never as a value; state references must be inline literals or atom/derive/memberOf/literal consts of the same file (atoms not required); `turn.complete` per subagent rests on d.ts :12647-12653, not :362-363 (fires once per run of a subagent loop); `agentId` on `$.tool.call` is dropped by the engine (d.ts :12077-12081) though the test kit carries it, so the main-loop-only test does not prove production behaviour; byId defined at kdd-status-lib.mjs:12 — Ruling: FRAG stays `ingested`; DOC-FORK-MODS-001 distils the RESISTED claims in the adversary's empirically confirmed wording and marks the `agentId` claim as contradicted.
+
+### Capture candidates (captured as FRAG-FORK-MODS-001, 2026-10-05)
 - `mods/kdd-work/hooks/register.tsx:9-10@51419f7` — engine rule: state atoms must be consts of the file that uses them (final review).
 - `mods/kdd-work/hooks/register.test.ts:78@51419f7` — `agentId` is on the hook's `e` (AgentLoop), not in `$.tool.call`'s declared input (final review).
 - `mods/kdd-work/hooks/ui.test.ts:3-6@9c60ae7` — test kit `$.command.run` takes the full CommandRunInput (task 003 review).
