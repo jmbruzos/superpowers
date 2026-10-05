@@ -1,5 +1,5 @@
 import { expect, mock, test } from 'claude-code/testing'
-import type { On } from 'claude-code'
+import type { FsEntry, On } from 'claude-code'
 
 import type { KddStatus } from '../types'
 
@@ -14,7 +14,14 @@ const STATUS: KddStatus = {
 
 type Write = { key: string; value: unknown }
 
-function world(on: On, opts: { root?: string | null; fail?: boolean } = {}) {
+type Opts = {
+  root?: string | null
+  fail?: boolean
+  exists?: (path: string) => boolean
+  list?: Pick<FsEntry, 'name' | 'kind'>[]
+}
+
+function world(on: On, opts: Opts = {}) {
   const clock = mock.clock(on)
   const env: Record<string, string> = { HOME: '/home/u' }
   if (opts.root !== null) env.KDD_SUPERPOWERS_ROOT = opts.root ?? '/main'
@@ -26,8 +33,8 @@ function world(on: On, opts: { root?: string | null; fail?: boolean } = {}) {
     writes.push({ key: e.key, value: e.value })
     return next(e)
   })
-  on('fs.exists', (_$, e) => ({ value: e.path === SCRIPT }))
-  on('fs.list', () => ({ value: [] }))
+  on('fs.exists', (_$, e) => ({ value: (opts.exists ?? (p => p === SCRIPT))(e.path) }))
+  on('fs.list', () => ({ value: (opts.list ?? []).map(entry => ({ size: 0, mtimeMs: 0, isLink: false, ...entry })) }))
   on('session.cwd', () => ({ value: '/proj' }))
   on('process.run', (_$, e) => {
     runs.push([...e.argv])
@@ -90,4 +97,53 @@ test('without the main plugin the status line says so and nothing runs', async (
   await w.clock.advance(300)
   expect(w.runs.length).toBe(0)
   expect(w.lines.at(-1)).toBe('kdd-work: kdd-superpowers not found')
+})
+
+const SUFFIX = 'skills/kdd-conventions/scripts/kdd-status'
+
+test('working copy: no env root, the script two levels above the plugin root', async ($, on) => {
+  const probed: string[] = []
+  const w = world(on, {
+    root: null,
+    exists: p => {
+      probed.push(p)
+      return p.endsWith(`/${SUFFIX}`) && !p.startsWith('/home/u')
+    },
+  })
+  await $.tool.call({ tool: 'Bash', command: 'cat specs/a' })
+  await w.clock.advance(300)
+  // fs.exists sees the path normalised (the repo root); process.run gets `<plugin root>/../../<script>` as written.
+  expect(probed[0]).toMatch(new RegExp(`/${SUFFIX}$`))
+  expect(probed[0]).not.toContain('/mods/')
+  expect(w.runs.length).toBe(1)
+  expect(w.runs[0]?.[1]).toMatch(new RegExp(`/mods/kdd-work/\\.\\./\\.\\./${SUFFIX}$`))
+  expect(w.lines.at(-1)).toBe('WRK-TASK-A-001-002 · 1/3')
+})
+
+test('cache: the newest installed version wins by number, not by text', async ($, on) => {
+  const cache = '/home/u/.claude/plugins/cache/kdd-superpowers/kdd-superpowers'
+  const w = world(on, {
+    root: null,
+    exists: p => p === cache || p === `${cache}/1.9.0/${SUFFIX}` || p === `${cache}/1.10.0/${SUFFIX}`,
+    list: [
+      { name: '1.9.0', kind: 'dir' },
+      { name: '1.10.0', kind: 'dir' },
+      { name: 'latest', kind: 'dir' },
+      { name: '2.0.0', kind: 'file' },
+    ],
+  })
+  await $.tool.call({ tool: 'Bash', command: 'cat specs/a' })
+  await w.clock.advance(300)
+  expect(w.runs).toEqual([['node', `${cache}/1.10.0/${SUFFIX}`, '--json']])
+})
+
+test('a skill.prompt for a kdd-superpowers skill is recorded; another plugin is not', async ($, on) => {
+  const w = world(on)
+  on('skill.prompt', () => ({ text: 'prompt' }))
+  await $.tool.call({ tool: 'Bash', command: 'cat specs/a' })
+  await w.clock.advance(300)
+  await $.skill.prompt({ skill: 'kdd-superpowers:brainstorming', text: 'x' })
+  expect(w.lines.at(-1)).toBe('WRK-TASK-A-001-002 · 1/3 · brainstorming')
+  await $.skill.prompt({ skill: 'other:thing', text: 'x' })
+  expect(w.lines.at(-1)).toBe('WRK-TASK-A-001-002 · 1/3 · brainstorming')
 })

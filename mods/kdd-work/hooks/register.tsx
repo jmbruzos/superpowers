@@ -5,11 +5,13 @@ import type { KddStatus } from '../types'
 import { SKILL_PREFIX, statusLine, touchesWork } from './format'
 
 // The engine's scan reads state references only when they are consts of this file, so the atoms
-// are declared here as well as in ./state.ts (same plugin/key, same initial value).
+// are declared here, all five of the PluginState['kdd-work'] contract (types/index.d.ts).
 const status = atom({ plugin: 'kdd-work', key: 'status' } as const, null)
 const stale = atom({ plugin: 'kdd-work', key: 'stale' } as const, null)
 const skill = atom({ plugin: 'kdd-work', key: 'skill' } as const, null)
 const mainRoot = atom({ plugin: 'kdd-work', key: 'mainRoot' } as const, null)
+// Read by the band (task 003); declared with the others so the contract and the atoms stay together.
+const bandDismissed = atom({ plugin: 'kdd-work', key: 'bandDismissed' } as const, false)
 
 const SCRIPT = 'skills/kdd-conventions/scripts/kdd-status'
 const CACHE = '.claude/plugins/cache/kdd-superpowers/kdd-superpowers'
