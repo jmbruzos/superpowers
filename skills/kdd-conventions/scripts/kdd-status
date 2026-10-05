@@ -1,0 +1,50 @@
+#!/usr/bin/env node
+// kdd-status — the state of open KDD work as JSON (WRK-SPEC-FORK-MODS-001).
+//
+// Usage: kdd-status [--specs DIR] [--json]
+// Root: `git rev-parse --show-toplevel` from the cwd, or the cwd outside git; specs default to <root>/specs.
+// Spec data only through kdd-cli (`filter --layer … --format json`); the only file read here is each
+// plan's SDD ledger, <root>/.kdd/sdd/<WRK-PLAN-ID>/progress.md.
+// Always prints one JSON object and exits 0 (errors are `error` + `message`), except exit 2 on usage.
+import { spawnSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { computeStatus, emptyStatus } from './kdd-status-lib.mjs';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const KDD_CLI = resolve(here, '../../using-superpowers/scripts/kdd-cli');
+
+const args = process.argv.slice(2);
+let specsArg = null;
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--json') continue;
+  if (args[i] === '--specs' && args[i + 1]) { specsArg = args[++i]; continue; }
+  console.error('usage: kdd-status [--specs DIR] [--json]');
+  process.exit(2);
+}
+
+const git = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+const root = git.status === 0 ? git.stdout.trim() : process.cwd();
+const specs = specsArg ? resolve(specsArg) : join(root, 'specs');
+const emit = value => { process.stdout.write(JSON.stringify(value, null, 2) + '\n'); process.exit(0); };
+
+if (!existsSync(specs)) emit({ ...emptyStatus(root), error: 'no-specs', message: 'no specs/ in this project' });
+
+const nodes = [];
+for (const layer of ['work-spec', 'work-plan', 'work-task']) {
+  const r = spawnSync(KDD_CLI, ['--specs', specs, 'filter', '--layer', layer, '--format', 'json'],
+    { encoding: 'utf8', cwd: root, maxBuffer: 256 * 1024 * 1024 });
+  if (r.status === 3) emit({ ...emptyStatus(root), error: 'toolkit-not-found', message: (r.stderr || '').trim() });
+  let list;
+  try { if (r.status !== 0) throw new Error(`exit ${r.status}`); list = JSON.parse(r.stdout); }
+  catch (err) { emit({ ...emptyStatus(root), error: 'kdd-cli-failed', message: ((r.stderr || '').trim() || String(err.message)) }); }
+  for (const n of list) nodes.push({ id: n.id, layer: n.layer, status: n.status, title: n.title, parent: n.parent ?? null });
+}
+
+const ledgerOf = planId => {
+  const file = join(root, '.kdd', 'sdd', planId, 'progress.md');
+  return existsSync(file) ? readFileSync(file, 'utf8') : null;
+};
+
+emit(computeStatus(root, nodes, ledgerOf));
