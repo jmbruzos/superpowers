@@ -3,7 +3,7 @@ id: WRK-TASK-FORK-MODS-001-001
 type: spec
 layer: work-task
 scope: ephemeral
-status: active
+status: completed
 confidence: low
 version: 0.1.0
 created: 2026-10-05
