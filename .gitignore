@@ -12,6 +12,9 @@ triage/
 # plugin, so the whole directory is ignored here.
 evals/
 
+# kdd-work mod: types the Claude Code engine lays when it loads the mod
+mods/kdd-work/.claude-plugin/types/
+
 # Python
 __pycache__/
 *.pyc

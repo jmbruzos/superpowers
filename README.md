@@ -33,6 +33,14 @@ they would fight:
 Install the toolkit from its own marketplace (`/plugin install kdd`), or point
 `KDD_SPEC_GRAPH` at a `spec-graph.mjs` checkout.
 
+Optionally, install the `kdd-work` mod from the same marketplace
+(`/plugin install kdd-work`): it shows the open work in the status line and in
+a `/kdd-work` pane, and keeps a band above the prompt while a completed
+WRK-SPEC waits for consolidation (`/kdd-work dismiss` hides it). It needs a
+Claude Code build with function hooks. To try it from a checkout:
+`claude --plugin-dir mods/kdd-work` (set `KDD_SUPERPOWERS_ROOT` to the
+checkout when kdd-superpowers is not installed).
+
 ## How it works
 
 At session start the bootstrap injects the `using-superpowers` skill plus a
@@ -96,6 +104,9 @@ The full design is the work spec that produced this plugin:
 | `requesting-code-review` / `receiving-code-review` | three review modes; knowledge compliance; capture candidates |
 | `finishing-a-development-branch` | knowledge integrity, execution log, consolidation; gate A6 |
 | `test-driven-development`, `systematic-debugging`, `verification-before-completion`, `using-git-worktrees`, `dispatching-parallel-agents`, `writing-skills` | as upstream (verification lists the KDD evidence) |
+
+Outside `skills/`: `mods/kdd-work/` — the optional mod above, fed by
+`skills/kdd-conventions/scripts/kdd-status`.
 
 ## Testing
 

@@ -13,6 +13,15 @@
       "author": {
         "name": "NFQ Advisory"
       }
+    },
+    {
+      "name": "kdd-work",
+      "description": "Optional Claude Code mod for kdd-superpowers: open KDD work in a pane and the status line, and a band while consolidation is pending.",
+      "version": "0.1.0",
+      "source": "./mods/kdd-work",
+      "author": {
+        "name": "NFQ Advisory"
+      }
     }
   ]
 }

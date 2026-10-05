@@ -1,5 +1,24 @@
 # Release notes
 
+## Unreleased — kdd-work mod
+
+Implements WRK-SPEC-FORK-MODS-001:
+- **`kdd-status`** (`skills/kdd-conventions/scripts/`): the state of open work as
+  JSON — open WRK-SPECs with their plans and tasks, progress read from the SDD
+  ledger (`Task <id|n>: complete`, FRAG-FORK-LEDGER-001), the phase
+  (`spec-review`, `planning`, `executing`, `finishing`,
+  `consolidation-pending`), the focus and pending consolidation. Spec data only
+  through `kdd-cli`.
+- **`kdd-work`** (`mods/kdd-work/`, second marketplace entry, version 0.1.0): an
+  optional Claude Code mod (function hooks). Status line
+  `<task> · <done>/<total> · <skill>`, `/kdd-work` pane with the spec → plan →
+  tasks tree and the ledger's latest rulings and knowledge gaps, and a band
+  `Consolidation pending: <id> — run kdd:spec-consolidate <id>` that
+  `/kdd-work dismiss` hides for the session. Needs a Claude Code build with
+  function hooks; the main plugin does not depend on it.
+- `test-invariants.sh` also scans `mods/` and `*.ts`/`*.tsx`, and checks the
+  `kdd-work` versions match.
+
 ## 0.4.0 — gates hold their findings
 
 Implements WRK-SPEC-FORK-GATES-002, from the superpowers-vs-kdd-superpowers
