@@ -2,7 +2,9 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
 import type { KddStatus } from '../types'
-import { SKILL_PREFIX, statusLine, touchesWork } from './format'
+import { bandFor, paneLines, SKILL_PREFIX, statusLine, touchesWork } from './format'
+
+const PANE = 'kdd-work'
 
 // The engine's scan reads state references only when they are consts of this file, so the atoms
 // are declared here, all five of the PluginState['kdd-work'] contract (types/index.d.ts).
@@ -10,7 +12,7 @@ const status = atom({ plugin: 'kdd-work', key: 'status' } as const, null)
 const stale = atom({ plugin: 'kdd-work', key: 'stale' } as const, null)
 const skill = atom({ plugin: 'kdd-work', key: 'skill' } as const, null)
 const mainRoot = atom({ plugin: 'kdd-work', key: 'mainRoot' } as const, null)
-// Read by the band (task 003); declared with the others so the contract and the atoms stay together.
+// Set by `/kdd-work dismiss`, read by the band.
 const bandDismissed = atom({ plugin: 'kdd-work', key: 'bandDismissed' } as const, false)
 
 const SCRIPT = 'skills/kdd-conventions/scripts/kdd-status'
@@ -90,6 +92,10 @@ function schedule($: EngineInterface): void {
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
+    await $.command.register({
+      name: 'kdd-work',
+      description: 'Show open KDD work in a pane; "/kdd-work dismiss" hides the consolidation band for this session',
+    })
     schedule($)
     return next(e)
   })
@@ -114,5 +120,39 @@ export const register: Register = on => {
     const target = e.tool === 'Bash' ? e.command : e.tool === 'Write' || e.tool === 'Edit' ? e.file_path : undefined
     if (touchesWork(target)) schedule($)
     return ran
+  })
+
+  on('command.run', { command: 'kdd-work' }, async ($, e) => {
+    if (e.args.trim() === 'dismiss') {
+      await update($, bandDismissed, () => true)
+      return { text: 'Consolidation band hidden for this session.' }
+    }
+    await $.ui.open({ id: PANE, title: 'KDD work' })
+    return { text: 'KDD work pane opened.' }
+  })
+
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
+    const { Box, Text } = $.ui.resolve(e)
+    const lines = paneLines(await read($, status), await read($, stale), await read($, mainRoot))
+    return (
+      <Box flexDirection="column">
+        {lines.map(line => (
+          <Text dimColor={line.dim === true} bold={line.bold === true}>
+            {line.text}
+          </Text>
+        ))}
+      </Box>
+    )
+  })
+
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    const text = bandFor(await read($, status), await read($, bandDismissed))
+    if (text === null || e.props.hasSurvey) return next(e)
+    const { Box, Text } = $.ui.resolve(e)
+    return (
+      <Box>
+        <Text bold>{text}</Text>
+      </Box>
+    )
   })
 }

@@ -25,6 +25,46 @@ export function bandText(status: KddStatus | null): string | null {
   return `Consolidation pending: ${items.join(', ')}`
 }
 
+export type PaneLine = { text: string; dim?: boolean; bold?: boolean }
+
+const MARK = { done: '✓', 'in-progress': '▶', pending: '·' } as const
+
+export function paneLines(status: KddStatus | null, stale: string | null, mainRoot: string | null): PaneLine[] {
+  if (mainRoot === null) {
+    return [
+      { text: 'kdd-superpowers not found', bold: true },
+      { text: 'Set KDD_SUPERPOWERS_ROOT to the kdd-superpowers plugin folder, or install kdd-superpowers.', dim: true },
+    ]
+  }
+  if (status === null) return [{ text: stale !== null ? `stale: ${stale}` : 'Loading…', dim: true }]
+  const out: PaneLine[] = [{ text: `reading ${status.root}`, dim: true }]
+  if (stale !== null) out.push({ text: `stale: ${stale}`, dim: true })
+  if (status.error !== undefined) {
+    out.push({ text: status.message ?? status.error })
+    return out
+  }
+  if (status.open_work.length === 0) {
+    out.push({ text: 'No open work.', dim: true })
+    return out
+  }
+  for (const spec of status.open_work) {
+    out.push({ text: `${spec.id} · ${spec.phase}`, bold: true })
+    for (const plan of spec.plans) {
+      const mismatch = plan.ledger === 'mismatch' ? ' · ledger mismatch' : ''
+      out.push({ text: `  ${plan.id} · ${plan.done}/${plan.total}${mismatch}` })
+      for (const task of plan.tasks) {
+        out.push({ text: `    ${MARK[task.state]} ${task.id} ${task.title}`, dim: task.state === 'done' })
+      }
+      for (const line of plan.ledger_tail) out.push({ text: `    ${line}`, dim: true })
+    }
+  }
+  return out
+}
+
+export function bandFor(status: KddStatus | null, dismissed: boolean): string | null {
+  return dismissed ? null : bandText(status)
+}
+
 export function touchesWork(text: string | undefined): boolean {
   return text !== undefined && (text.includes('specs/') || text.includes('.kdd/'))
 }
