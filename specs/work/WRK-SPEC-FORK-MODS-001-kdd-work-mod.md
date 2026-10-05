@@ -3,7 +3,7 @@ id: WRK-SPEC-FORK-MODS-001
 type: spec
 layer: work-spec
 scope: ephemeral
-status: active
+status: completed
 confidence: low
 version: 0.1.0
 created: 2026-10-05
@@ -26,6 +26,8 @@ generated:
 verified:
   - by: human:jmbruzos
     at: 2026-10-05T12:52:30+02:00
+  - by: human:jmbruzos
+    at: 2026-10-05T17:03:02+02:00
 stale_after: 2027-01-03T12:50:00+01:00
 tags: [fork, mods, ui, ledger]
 ---

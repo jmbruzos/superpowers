@@ -3,7 +3,7 @@ id: WRK-PLAN-FORK-MODS-001
 type: spec
 layer: work-plan
 scope: ephemeral
-status: active
+status: completed
 confidence: low
 version: 0.1.0
 created: 2026-10-05
@@ -83,5 +83,46 @@ tags: [fork, mods, plan]
 - Claude Code build with function hooks (2.1.289 used to write this plan); `claude` and `tsc` on PATH for tasks 002–004 (`npx -y -p typescript tsc` when `tsc` is not installed).
 
 ## Execution Log
+
+Persisted from the SDD ledger `.kdd/sdd/WRK-PLAN-FORK-MODS-001/progress.md` (worktree `.claude/worktrees/kdd-work-mod`, branch `feat/kdd-work-mod`, merged fast-forward into main at b4c0de5). Tasks: 001 cc1cfe9 · 002 8fbb2e4..1b156ae (1 fix round) · 003 9c60ae7 · 004 7f92a7f · final-review fix wave b4c0de5.
+
+### Rulings
+- Ruling: proceed with test-transition.sh red as a known pre-existing failure, approved by human partner — any change in its failure count is a regression — costs: a real regression in transition could hide behind the known red.
+- Ruling: in this worktree "no failure beyond the two pre-existing ones" (spec AC5, task 004 Steps 2/4/6) means test-invariants.sh fully green — the two failures came from the untracked docs/superpowers/ in the main checkout only — costs: none if wrong; stricter bar.
+- Ruling: state.ts is dropped from the plan's Produces block — the engine requires atoms to be consts in the file that reads/writes them, so a shared atoms module cannot exist; task 003 declares/uses the atoms inside register.tsx — costs if wrong: task 003 must re-split later.
+- Ruling: WRK-TASK-FORK-MODS-001-004 is completed on Steps 1–7; its live checks (Steps 8–9, spec AC6) are run by the human partner before the WRK-PLAN is set to completed — they need an interactive session — costs if wrong: a broken live behaviour (ui.render hooks, session.start/turn.complete triggers) is found after the task closed and reopens the plan.
+- Ruling: focus ranking across two open specs unguarded → test in fix wave (Important #3).
+- Ruling: fix wave also takes Minor #5 (clear `status` when the main root is not found, spec "no band"), #6 (status line empty on a status error, spec "status line … empty"), plugin.json `author` — one line each — costs: none.
+- Ruling: Minor #7 (working-copy test depends on /mods/ path), #8 (refresh cost, turn.complete per subagent loop) stay deferred — costs: brittle test in an unusual checkout; ~360 ms per subagent turn.
+- Ruling: `e.args.trim()` deferred minor dropped — CommandRunInput.args is declared `string` ("" when none), claude-code.d.ts:1715-1720.
+- Ruling: WRK-PLAN-FORK-MODS-001 set to completed without the live check (spec AC6, task 004 Steps 8–9) — human partner's explicit decision ("pásalo todo a complete") after merge to main — costs if wrong: a ui.render or session.start/turn.complete defect surfaces in use and needs a follow-up WRK-SPEC.
+
+### Knowledge gaps
+- Knowledge gap: mod API (early access) constraints not in any spec — static scan rules for `$` and atoms, test-kit op answer shapes; authority is claude-code.d.ts/engine, not versioned here (spec gap (2)).
+- Knowledge gap: `turn.complete` fires for every agent loop, carrying `agentId` (claude-code.d.ts:363) — not stated in the spec's Data flow; adds to the mod-API gap.
+
+### Attacks broken and adjudicated
+- WRK-SPEC-FORK-MODS-001 gate A1: 17 attempted, 16 BROKEN — 14 accepted, 2 rejected; full table under the WRK-SPEC's `## Adversarial Review`.
+- WRK-PLAN gate A2: not triggered (4 tasks, no low-confidence activation, no security/money logic).
+- Attack: AC6 status line "shows this WRK-SPEC's focus" — Ruling: accepted as a spec-text defect, not code — with all MODS-001 tasks done both open specs rank `finishing` and the id tie-break picks WRK-SPEC-FORK-CORE-001, which is the spec's own focus rule; the WRK-SPEC (human-verified) is not edited mid-plan; the live check expects `WRK-SPEC-FORK-CORE-001 · finishing` — costs if wrong: the human partner wanted the newest work to win ties; then the tie-break rule changes in a follow-up.
+- Attack: AC4 "refresh only after the tool resolved" unguarded (mutation passes) — Ruling: accepted → test in fix wave.
+- Attack: AC2 header contract — toolkit JSON that is not an array crashes kdd-status (exit 1) — Ruling: accepted → Array.isArray guard in fix wave.
+
+### Capture candidates (pending)
+- `mods/kdd-work/hooks/register.tsx:9-10@51419f7` — engine rule: state atoms must be consts of the file that uses them (final review).
+- `mods/kdd-work/hooks/register.test.ts:78@51419f7` — `agentId` is on the hook's `e` (AgentLoop), not in `$.tool.call`'s declared input (final review).
+- `mods/kdd-work/hooks/ui.test.ts:3-6@9c60ae7` — test kit `$.command.run` takes the full CommandRunInput (task 003 review).
+- `skills/kdd-conventions/scripts/kdd-status-lib.mjs:21@51419f7` — ledger identity contract now in code; input to distil FRAG-FORK-LEDGER-001 (final review).
+- `skills/kdd-conventions/scripts/kdd-status-lib.mjs:78@51419f7` — focus tie-break by id within a phase rank (final review).
+
+### Parked / deferred
+- Task WRK-TASK-FORK-MODS-001-001: minor (deferred): implementer report misstates line counts / line refs and records no actual RED run ("would have failed") — TDD evidence is narrative only.
+- Task WRK-TASK-FORK-MODS-001-001: minor (deferred): test group comments dropped from test-kdd-status.sh (readability).
+- Task WRK-TASK-FORK-MODS-001-001: minor (deferred): group 20 read check counts readFileSync/readdirSync only (plan-mandated).
+- Task WRK-TASK-FORK-MODS-001-001: minor (deferred): untested branches — archived task/plan as done, draft plan with a ledger (no current task), active plan all-done by ledger; no test pins identity line without path, nor `complete (… <K> parked)` form.
+- Task WRK-TASK-FORK-MODS-001-002: minor (deferred): concurrent refresh — a slow earlier run can overwrite a newer result (no in-flight guard), register.tsx:329-335.
+- Task WRK-TASK-FORK-MODS-001-002: minor (deferred): `status!.phase` non-null assertion in format.ts; plugin.json has no author (validate warning); `.kdd/` branch of touchesWork untested at hook level.
+- Task WRK-TASK-FORK-MODS-001-003: minor (deferred): pane lines.map children without `key` (register.tsx:263-267, plan-mandated code); `e.args.trim()` throws if args undefined (register.tsx:250) — `(e.args ?? '').trim()`; ui.render hooks untested (live check in 004); ui.test world() stubs uncommented, pane-open branch does not assert bandDismissed untouched.
+- Task WRK-TASK-FORK-MODS-001-004: minor (deferred): marketplace entry without category/homepage; invariant §5 hides node errors (`got: ` without cause); commit 7f92a7f attribution says Claude Haiku 4.5.
 
 ## Adversarial Review
