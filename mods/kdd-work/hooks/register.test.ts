@@ -19,6 +19,7 @@ type Opts = {
   fail?: boolean
   exists?: (path: string) => boolean
   list?: Pick<FsEntry, 'name' | 'kind'>[]
+  toolCall?: () => Promise<{ result: { text: string } }>
 }
 
 function world(on: On, opts: Opts = {}) {
@@ -48,7 +49,7 @@ function world(on: On, opts: Opts = {}) {
     lines.push(e.text)
     return { value: undefined }
   })
-  on('tool.call', () => ({ result: { text: 'ok' } }))
+  on('tool.call', opts.toolCall ?? (() => ({ result: { text: 'ok' } })))
   return { clock, runs, lines, writes }
 }
 
@@ -97,6 +98,24 @@ test('without the main plugin the status line says so and nothing runs', async (
   await w.clock.advance(300)
   expect(w.runs.length).toBe(0)
   expect(w.lines.at(-1)).toBe('kdd-work: kdd-superpowers not found')
+  expect(w.writes.filter(x => x.key === 'status').at(-1)).toEqual({ key: 'status', value: null })
+})
+
+test('refresh is scheduled only after the tool resolved', async ($, on) => {
+  let resolved = false
+  const slow = async () => {
+    await w.clock.advance(1000)
+    resolved = true
+    return { result: { text: 'ok' } }
+  }
+  const w = world(on, { toolCall: slow })
+  await $.tool.call({ tool: 'Bash', command: 'cat specs/work/x.md' })
+  expect(resolved).toBe(true)
+  expect(w.runs.length).toBe(0)
+  await w.clock.advance(299)
+  expect(w.runs.length).toBe(0)
+  await w.clock.advance(1)
+  expect(w.runs.length).toBe(1)
 })
 
 const SUFFIX = 'skills/kdd-conventions/scripts/kdd-status'

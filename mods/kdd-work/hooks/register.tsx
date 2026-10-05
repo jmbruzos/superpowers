@@ -62,6 +62,7 @@ async function refresh($: EngineInterface): Promise<void> {
   const root = await locateMainRoot($)
   await update($, mainRoot, () => root)
   if (root === null) {
+    await update($, status, () => null)
     $.ui.status('kdd-work: kdd-superpowers not found')
     return
   }

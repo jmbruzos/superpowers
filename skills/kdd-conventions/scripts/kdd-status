@@ -37,7 +37,8 @@ for (const layer of ['work-spec', 'work-plan', 'work-task']) {
     { encoding: 'utf8', cwd: root, maxBuffer: 256 * 1024 * 1024 });
   if (r.status === 3) emit({ ...emptyStatus(root), error: 'toolkit-not-found', message: (r.stderr || '').trim() });
   let list;
-  try { if (r.status !== 0) throw new Error(`exit ${r.status}`); list = JSON.parse(r.stdout); }
+  try { if (r.status !== 0) throw new Error(`exit ${r.status}`); list = JSON.parse(r.stdout);
+    if (!Array.isArray(list)) throw new Error('kdd-cli: expected a JSON array'); }
   catch (err) { emit({ ...emptyStatus(root), error: 'kdd-cli-failed', message: ((r.stderr || '').trim() || String(err.message)) }); }
   for (const n of list) nodes.push({ id: n.id, layer: n.layer, status: n.status, title: n.title, parent: n.parent ?? null });
 }

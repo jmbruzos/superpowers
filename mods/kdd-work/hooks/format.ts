@@ -8,6 +8,7 @@ function skillLabel(skill: string | null): string | null {
 
 // `<task> · <done>/<total>` or `<spec> · <phase>`, then ` · <skill>` (WRK-SPEC-FORK-MODS-001, Components).
 export function statusLine(status: KddStatus | null, skill: string | null): string | undefined {
+  if (status !== null && status.error !== undefined) return undefined
   const parts: string[] = []
   const focus = status !== null && status.error === undefined ? status.focus : null
   if (focus !== null) {

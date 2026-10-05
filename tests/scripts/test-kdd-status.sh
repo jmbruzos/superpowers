@@ -113,6 +113,18 @@ fresh; out="$(cd "$repo" && KDD_SPEC_GRAPH="$stubdir/stub.mjs" "$KDD_STATUS" --j
 check "stub toolkit: its spec is the open work" 'd.open_work.map(s=>s.id).join(",")' 'WRK-SPEC-STUB-001'
 check "stub toolkit: planning" 'd.phase' 'planning'
 
+cat > "$stubdir/obj.mjs" << 'EOF'
+console.log('{}');
+EOF
+fresh; out="$(cd "$repo" && KDD_SPEC_GRAPH="$stubdir/obj.mjs" "$KDD_STATUS" --json)"; rc=$?
+[[ "$rc" -eq 0 ]] && pass "non-array toolkit output: exit 0" || fail "non-array toolkit output: exit 0 (rc=$rc)"
+check "non-array toolkit output: error" 'd.error' 'kdd-cli-failed'
+
+fresh; sed 's/^id: WRK-SPEC-BILL-PRORATA-001$/id: WRK-SPEC-AAA-001/' "$repo/$SPEC" > "$repo/$W/WRK-SPEC-AAA-001-other.md"
+set_status "$W/WRK-SPEC-AAA-001-other.md" draft; run
+check "two open specs: both listed" 'd.open_work.length' '2'
+check "focus ranks executing above spec-review" 'd.focus.spec' 'WRK-SPEC-BILL-PRORATA-001'
+
 (cd "$repo" && "$KDD_STATUS" --bogus >/dev/null 2>&1); [[ $? -eq 2 ]] && pass "bad argument: exit 2" || fail "bad argument: exit 2"
 
 [[ "$(grep -v '^import' "$KDD_STATUS" | grep -c 'readFileSync\|readdirSync')" == 1 ]] && pass "one file read in the CLI (the ledger)" || fail "one file read in the CLI (the ledger)"

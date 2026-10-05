@@ -41,6 +41,7 @@ test('no open work: the skill alone, or nothing', () => {
 
 test('an error status shows no work', () => {
   expect(statusLine({ ...executing, error: 'toolkit-not-found' }, null)).toBe(undefined)
+  expect(statusLine({ ...executing, error: 'toolkit-not-found' }, 'kdd-superpowers:brainstorming')).toBe(undefined)
 })
 
 test('band text names each pending spec and kdd:spec-consolidate', () => {

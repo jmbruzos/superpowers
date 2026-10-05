@@ -1,6 +1,7 @@
 {
   "name": "kdd-work",
   "version": "0.1.0",
+  "author": { "name": "NFQ Advisory" },
   "description": "Shows open KDD work (kdd-superpowers): pane, status line and a band while consolidation is pending",
   "types": "./types/index.d.ts"
 }
