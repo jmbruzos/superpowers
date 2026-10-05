@@ -1,6 +1,6 @@
 # Release notes
 
-## Unreleased — kdd-work mod
+## 0.5.0 — kdd-work mod
 
 Implements WRK-SPEC-FORK-MODS-001:
 - **`kdd-status`** (`skills/kdd-conventions/scripts/`): the state of open work as
@@ -18,6 +18,9 @@ Implements WRK-SPEC-FORK-MODS-001:
   function hooks; the main plugin does not depend on it.
 - `test-invariants.sh` also scans `mods/` and `*.ts`/`*.tsx`, and checks the
   `kdd-work` versions match.
+- Knowledge: DOC-FORK-LEDGER-001 (the SDD ledger contract, with five open
+  inconsistencies) and DOC-FORK-MODS-001 (kdd-work and the function-hook
+  constraints of Claude Code 2.1.289), both `confidence: low`.
 
 ## 0.4.0 — gates hold their findings
 
