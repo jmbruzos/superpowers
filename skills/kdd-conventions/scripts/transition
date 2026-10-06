@@ -71,7 +71,9 @@ else
 today="$(date +%F)"; now="$(date -Iseconds)"
 backup="$(mktemp)"; cp "$file" "$backup"
 trap 'rm -f "$backup"' EXIT
-awk -v target="$target" -v today="$today" -v now="$now" -v who="$verified" '
+# an artifact without `updated:` gets one right after `status:` (POSIX awk; no GNU sed)
+need_updated=1; printf '%s\n' "$fm" | grep -q '^updated:' && need_updated=0
+awk -v target="$target" -v today="$today" -v now="$now" -v who="$verified" -v need_updated="$need_updated" '
   function emit_entry() { print "  - by: " who; print "    at: " now }
   BEGIN { infm = 0; done = 0; have_updated = 0; inver = 0; wrote_ver = 0 }
   NR == 1 && $0 == "---" { infm = 1; print; next }
@@ -81,16 +83,12 @@ awk -v target="$target" -v today="$today" -v now="$now" -v who="$verified" '
     infm = 0; print; next
   }
   infm && inver && $0 !~ /^[[:space:]]+/ { if (who != "" && !wrote_ver) { emit_entry(); wrote_ver = 1 } inver = 0 }
-  infm && $1 == "status:"  { print "status: " target; next }
+  infm && $1 == "status:"  { print "status: " target; if (need_updated) print "updated: " today; next }
   infm && $1 == "updated:" { print "updated: " today; have_updated = 1; next }
   infm && $1 == "verified:" { inver = 1; print; next }
   infm && $1 == "stale_after:" && who != "" && !wrote_ver { print "verified:"; emit_entry(); wrote_ver = 1 }
   { print }
 ' "$backup" > "$file"
-# an artifact without `updated:` gets one right after `status:`
-if ! printf '%s\n' "$fm" | grep -q '^updated:'; then
-  sed -i "0,/^status: ${target}\$/s//status: ${target}\nupdated: ${today}/" "$file"
-fi
 
 # --- validate; a red graph restores the file -------------------------------------------
 if ! out="$("$KDD_CLI" --specs "$specs" validate 2>&1)"; then

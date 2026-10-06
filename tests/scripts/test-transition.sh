@@ -40,7 +40,7 @@ rm -rf "$r"
 
 # 3. draft → active with --verified: appends the human entry (key absent) and uses the spec(...) message
 r="$(repo)"
-sed -i 's/^status: active$/status: draft/' "$r/$SPEC"; git -C "$r" commit -qam draft
+sed -i.bak 's/^status: active$/status: draft/' "${r:?}/${SPEC:?}" && rm -f "${r:?}/${SPEC:?}.bak"; git -C "$r" commit -qam draft
 grep -q '^verified:' "$r/$SPEC" && fail "precondition: fixture spec has no verified key" || pass "precondition: fixture spec has no verified key"
 ( cd "$r" && "$TRANSITION" --verified human:test "$SPEC" active >/dev/null 2>&1 ); rc=$?
 [[ $rc -eq 0 ]] && pass "draft → active --verified exits 0" || fail "draft → active --verified exits 0 (rc=$rc)"
@@ -51,7 +51,7 @@ msg="$(git -C "$r" log -1 --format=%s)"
 [[ "$msg" == "spec(WRK-SPEC-BILL-PRORATA-001): approved — active, human-verified" ]] && pass "commit message spec(<ID>): approved — active, human-verified" || fail "commit message spec(...) (got '$msg')"
 ( cd "$r" && "$KDD_CLI_SCRIPT" --specs specs validate >/dev/null 2>&1 ) && pass "graph validates after --verified" || fail "graph validates after --verified"
 # key present: a second human entry is appended under the same key
-sed -i 's/^status: active$/status: draft/' "$r/$SPEC"; git -C "$r" commit -qam draft-again
+sed -i.bak 's/^status: active$/status: draft/' "${r:?}/${SPEC:?}" && rm -f "${r:?}/${SPEC:?}.bak"; git -C "$r" commit -qam draft-again
 ( cd "$r" && "$TRANSITION" --verified human:other "$SPEC" active >/dev/null 2>&1 )
 [[ "$(grep -c '^verified:' "$r/$SPEC")" -eq 1 ]] && pass "single verified key" || fail "single verified key"
 grep -q 'by: human:other' "$r/$SPEC" && pass "second entry appended under it" || fail "second entry appended under it"
@@ -74,7 +74,7 @@ rm -rf "$r"
 
 # 6. red validate: the file is restored and nothing is committed
 r="$(repo)"; head0="$(git -C "$r" rev-parse HEAD)"; before="$(sha1sum < "$r/$TASK")"
-sed -i '/^layer:/d' "$r/specs/domain/"DOM-BILL-PRORATA-001*.md; git -C "$r" commit -qam broken   # graph now fails validate
+dom="$(ls "${r:?}/specs/domain/"DOM-BILL-PRORATA-001*.md)"; sed -i.bak '/^layer:/d' "${dom:?}" && rm -f "${dom:?}.bak"; git -C "$r" commit -qam broken   # graph now fails validate
 ( cd "$r" && "$TRANSITION" "$TASK" completed >/dev/null 2>&1 ); rc=$?
 [[ $rc -ne 0 ]] && pass "red validate exits non-zero" || fail "red validate exits non-zero (rc=$rc)"
 [[ "$(sha1sum < "$r/$TASK")" == "$before" ]] && pass "red validate restores the file" || fail "red validate restores the file"
@@ -108,4 +108,21 @@ else
 fi
 [[ "$(status_of "$r/$TASK")" == "completed" ]] && pass "move applied in either mode" || fail "move applied in either mode"
 rm -rf "$r"
+
+# 11. built-in mode on an artifact without `updated:` inserts it right after `status:` (WRK-SPEC-FORK-TRANSITION-002)
+r="$(repo)"; stub="$(mktemp -d)"
+cat > "${stub:?}/spec-graph.mjs" <<EOF
+import { spawnSync } from 'node:child_process';
+const r = spawnSync('node', ['$KDD_CLI', ...process.argv.slice(2)], { encoding: 'utf8' });
+const out = process.argv.includes('--help') ? r.stdout.split('\n').filter(l => !/^  transition/.test(l)).join('\n') : r.stdout;
+process.stdout.write(out); process.stderr.write(r.stderr); process.exit(r.status ?? 1);
+EOF
+sed -i.bak '/^updated:/d' "${r:?}/${TASK:?}" && rm -f "${r:?}/${TASK:?}.bak"; git -C "$r" commit -qam no-updated
+err="$(cd "$r" && KDD_SPEC_GRAPH="$stub/spec-graph.mjs" TRANSITION_TRACE=1 "$TRANSITION" "$TASK" completed 2>&1 >/dev/null)"; rc=$?
+[[ "$err" == *"mode: builtin"* ]] && pass "stub without transition → mode: builtin" || fail "stub without transition → mode: builtin (stderr: $err)"
+[[ $rc -eq 0 ]] && pass "built-in move without updated: exits 0" || fail "built-in move without updated: exits 0 (rc=$rc, stderr: $err)"
+[[ "$(grep -c '^updated:' "$r/$TASK")" -eq 1 ]] && pass "exactly one updated: line" || fail "exactly one updated: line (got $(grep -c '^updated:' "$r/$TASK"))"
+[[ "$(grep -A1 -m1 '^status:' "$r/$TASK" | tail -1)" == "updated: $TODAY" ]] && pass "updated: today right after status:" || fail "updated: today right after status: (got '$(grep -A1 -m1 '^status:' "$r/$TASK" | tail -1)')"
+( cd "$r" && "$KDD_CLI_SCRIPT" --specs specs validate >/dev/null 2>&1 ) && pass "graph validates after the built-in move" || fail "graph validates after the built-in move"
+rm -rf "${r:?}" "${stub:?}"
 finish
