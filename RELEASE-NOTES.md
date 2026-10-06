@@ -1,5 +1,15 @@
 # Release notes
 
+## 0.5.1 — portable sed in transition
+
+Implements WRK-SPEC-FORK-TRANSITION-002:
+- `transition`'s built-in move (toolkit without `spec-graph transition`)
+  inserted a missing `updated:` with GNU-only `sed -i "0,/re/…"`, which broke on
+  macOS; the frontmatter `awk` now prints it right after `status:`.
+- `tests/scripts/test-transition.sh` no longer uses `sed -i '<script>'` without
+  a suffix (BSD sed read the script as the suffix): 9 failures → 0 on macOS. A
+  new case forces the built-in mode with a stub toolkit.
+
 ## 0.5.0 — kdd-work mod
 
 Implements WRK-SPEC-FORK-MODS-001:
