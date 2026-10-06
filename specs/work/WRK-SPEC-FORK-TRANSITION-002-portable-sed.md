@@ -3,7 +3,7 @@ id: WRK-SPEC-FORK-TRANSITION-002
 type: spec
 layer: work-spec
 scope: ephemeral
-status: active
+status: archived
 confidence: low
 version: 0.1.0
 created: 2026-10-06
@@ -24,6 +24,8 @@ generated:
 verified:
   - by: human:jmbruzos
     at: 2026-10-06T10:00:58+02:00
+  - by: human:jmbruzos
+    at: 2026-10-06T10:05:27+02:00
 stale_after: 2027-01-04T10:00:00+01:00
 tags: [fork, transition, portability, tests]
 ---
@@ -73,3 +75,17 @@ Out of scope: any other script, the CLI mode.
 - [ ] The new built-in-mode case fails before change 1 (on macOS the `sed` errors, or `updated:` is missing or misplaced) and passes after it.
 - [ ] `grep -nE "sed -i[[:space:]]+['\"]|sed -i[[:space:]]+\"0,|0,/" skills/kdd-conventions/scripts/transition tests/scripts/test-transition.sh` finds nothing.
 - [ ] `bash tests/scripts/run.sh` shows no new failure (in the main checkout `test-invariants.sh` still fails only because of the untracked `docs/superpowers/`).
+
+## Execution Log
+
+### Rulings
+- Ruling: test cleanup lines use `"${r:?}/…"` guards — a built-in safety check refused `rm -f "$r/…"` with unguarded variables; the guard makes the test stop instead of removing outside its temp repo — costs: none.
+
+### Knowledge gaps
+- none
+
+### Capture candidates (pending)
+- none — consolidation: nothing to distil (no activated knowledge; the change is a portability fix).
+
+### Result
+- `tests/scripts/test-transition.sh` on macOS: 9 failures → 0 (40 assertions, new case 11 red before the fix with `sed: … unescaped newline inside substitute pattern`, green after). Commit e58152a on branch fix/portable-sed.
