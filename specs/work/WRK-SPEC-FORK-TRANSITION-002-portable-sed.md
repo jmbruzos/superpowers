@@ -24,8 +24,6 @@ generated:
 verified:
   - by: human:jmbruzos
     at: 2026-10-06T10:00:58+02:00
-  - by: human:jmbruzos
-    at: 2026-10-06T10:05:27+02:00
 stale_after: 2027-01-04T10:00:00+01:00
 tags: [fork, transition, portability, tests]
 ---
