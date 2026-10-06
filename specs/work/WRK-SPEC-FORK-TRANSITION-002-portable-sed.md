@@ -3,7 +3,7 @@ id: WRK-SPEC-FORK-TRANSITION-002
 type: spec
 layer: work-spec
 scope: ephemeral
-status: draft
+status: active
 confidence: low
 version: 0.1.0
 created: 2026-10-06
@@ -21,6 +21,9 @@ sources: []
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-10-06T10:00:00+02:00
+verified:
+  - by: human:jmbruzos
+    at: 2026-10-06T10:00:58+02:00
 stale_after: 2027-01-04T10:00:00+01:00
 tags: [fork, transition, portability, tests]
 ---
