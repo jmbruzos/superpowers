@@ -24,6 +24,9 @@ activates:
 equips: []
 activation_frozen: true
 activation_resolved_at: <datetime>
+activation_pins:                    # RFC-KDD-006 Part E: where each activated id was read, with an integrity
+  - source: <source from kdd-cli pins>   # self@<commit> | specs/_backbone/<repo>/kdd.lock | federation:<version>
+    integrity: <sha256:… from kdd-cli pins>
 dependencies:
   - id: <KNOWLEDGE-ID>
     relation: constrained-by
@@ -69,6 +72,8 @@ unlisted claims verified: <N> hold
 | Attack | Cause | Evidence | Ruling |
 |---|---|---|---|
 ```
+
+`activation_pins` is the output of `<kdd-cli> --specs specs pins <every id in activates and equips>`, pasted as is; `activation_pins: []` when both lists are empty.
 
 Add `- id: <FEAT-ID>\n    relation: implements` under `dependencies` when the work materializes a FEAT.
 

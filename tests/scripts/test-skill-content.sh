@@ -238,4 +238,12 @@ must_contain skills/kdd-conventions/references/adversarial-gates.md "Knowledge g
 must_contain skills/kdd-conventions/references/adversarial-gates.md "rejected → <ID> § <section> \"<literal>\"" "permitting-quote ruling format"
 must_contain skills/kdd-conventions/references/artifact-templates.md "unlisted claims verified: <N> hold" "template summarises unlisted holds"
 must_contain skills/kdd-conventions/SKILL.md ".kdd/brainstorm/<topic>-design.md" "locations table lists the design file"
+# --- activation_pins (WRK-TASK-TOOLKIT-FEDERATION-003-009, RFC-KDD-006 Part E) ---
+must_contain skills/kdd-conventions/references/artifact-templates.md "activation_pins:" "WRK-SPEC template records activation_pins"
+must_contain skills/kdd-conventions/references/artifact-templates.md "<source from kdd-cli pins>" "template points at the pins command"
+must_contain skills/kdd-conventions/SKILL.md "kdd-cli> --specs specs pins" "kdd-conventions shows how pins are computed"
+must_contain skills/kdd-conventions/SKILL.md "kdd-repo.yaml" "pins are required only with a repository descriptor"
+must_contain skills/kdd-conventions/SKILL.md "activation_pins: []" "older CLI fallback documented"
+must_contain skills/kdd-conventions/SKILL.md "activation-unpinned" "names the validate rule"
+must_contain skills/brainstorming/SKILL.md "\`activation_pins\` from \`kdd-cli pins\`" "brainstorming writes pins with the WRK-SPEC"
 finish
