@@ -1,5 +1,19 @@
 # Release notes
 
+## 0.6.0 — activation pins
+
+Implements WRK-TASK-TOOLKIT-FEDERATION-003-009 (WRK-SPEC-TOOLKIT-FEDERATION-001, AC8; RFC-KDD-006 Part E):
+- WRK-SPEC frontmatter (full and compact) records `activation_pins` — the
+  sources each frozen id was read from (`self@<commit>`, a backbone or
+  reference lock, `federation:<version>`) with their integrities — written
+  from `kdd-cli pins`, never by hand.
+- `kdd-conventions` (*Trust family*) and `brainstorming` (*Writing the
+  WRK-SPEC*) write them whenever an activation is frozen; `spec-graph
+  validate` requires them only where the project has `kdd-repo.yaml`
+  (`activation-unpinned`). With a toolkit older than CLI 0.13.0 (no `pins`)
+  they write `activation_pins: []` and say so.
+- Needs the kdd toolkit plugin 1.9.0 (CLI 0.13.0) for `pins`.
+
 ## 0.5.1 — portable sed in transition
 
 Implements WRK-SPEC-FORK-TRANSITION-002:
