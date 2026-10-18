@@ -121,3 +121,15 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   would change its hash and break the pins that froze it. From now on these
   fields take `date -Iseconds`. — Cost: cosmetic, a timestamp up to ~4 h
   early. — this log.
+- **U-11 · 2026-10-18 · 0/1** — The batch-0 baseline ran on
+  `claude-sonnet-5-5`: `test-kdd-flow.sh` passed no `--model` and the
+  account default moved from Opus (FRAG-FORK-TOKENS-003's main session) to
+  Sonnet. The protocol fixes `--model opus`, so: the harness pins
+  `KDD_FLOW_MODEL` (default `opus`, `155d911`); the in-flight batch-1 run
+  was stopped; both arms (0.6.1 and 0.7.0) run on Opus, scenarios 1–7 × 2,
+  alternating before/after; the Sonnet runs stay in FRAG-FORK-UPSTREAM-001
+  as supplementary data. Pre-registration amended before any after-run
+  (`f5a4b46`). — Precision over speed and cost: an Opus pass costs roughly
+  2–3× a Sonnet one (estimate $15–25 per pass, four passes). — If you
+  prefer Sonnet for level 1, set `KDD_FLOW_MODEL=sonnet` and say so in the
+  protocol. — `155d911`, `f5a4b46`.
