@@ -206,3 +206,13 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
     one, discovery stays with `kdd:spec-context` (P3: one activation path).
   - Batch 4 depends on batch 3 (scenario opt-in helper; before arm).
   — Cost if wrong: a later batch adds the builder check. — WRK-SPEC-FORK-UPSTREAM-005.
+- **U-17 · 2026-10-18 · 4** — WRK-PLAN-FORK-UPSTREAM-005 (4 tasks) written;
+  gate A2 13/18 BROKEN, all accepted (table in the plan). It found a real
+  defect in the approved spec: the `unavailable` row's relative `kdd-cli`
+  path would report an installed toolkit as NOT FOUND in any user project.
+  **I amended the active spec** (component 5): the hook names the absolute
+  `kdd-cli` path in that line. Also: pressure tests run baseline-first; a
+  worse batch is held for your ruling; batch 4's task 004 closes the sync
+  (CLAUDE.md/README wording, batch 5 go/no-go pending you). Execution waits
+  for batch 3's release. — Cost if wrong: one hook line. —
+  WRK-SPEC/PLAN-FORK-UPSTREAM-005.

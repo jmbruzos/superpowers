@@ -99,7 +99,7 @@ taken as a form: the fork already presents the design in sections of up to
    to you, and what they already have; build on what existing work already
    uses; a choice you make goes in the design as your call, said in plain
    words, never as something they agreed to. It applies on the bounded and
-   the architectural path; on the spike path the probe plan names the medium.
+   the architectural path.
 2. **Open questions first** — the bullet "Prefer multiple choice questions
    when possible, but open-ended is fine too" becomes "Get them describing
    first: open questions come first, a short menu only when they're stuck,
@@ -123,9 +123,11 @@ taken as a form: the fork already presents the design in sections of up to
      terminal; you never run the viewer."
    - *Your KDD Environment* table: one row for any line reading `unavailable
      (no PATH at session start)` → "the probe could not run: before the first
-     workflow skill, run `skills/using-superpowers/scripts/kdd-cli --path` and
-     act on its result as on the `toolkit:` line (a path: found; any other
-     result: NOT FOUND), check yourself whether `specs/` exists (act as on
+     workflow skill, run the `kdd-cli` path the `toolkit:` line names (the
+     hook prints it: `toolkit: unavailable (no PATH at session start; check
+     with <absolute plugin path>/skills/using-superpowers/scripts/kdd-cli
+     --path)`) and act on its result as on the `toolkit:` line (a path:
+     found; any other result: NOT FOUND), check yourself whether `specs/` exists (act as on
      `specs_dir:`), and treat `open_work` and `okf_bundles` as unknown — say
      so once."
 
@@ -267,3 +269,14 @@ Adjudicated unattended (decision log U-16).
 | + 2 · open questions vs the approaches menu | ambiguity | `SKILL.md:110-111,204` | accepted: the rule governs intent questions only |
 | + 2 · kdd-cli non-3 exits | ambiguity | `kdd-cli:15,23,28` | accepted: any non-path result is NOT FOUND |
 | + 5 · scenario 8's helper and the before tag are batch 3's | code-reality | `git tag` | accepted: depends on WRK-SPEC-FORK-UPSTREAM-004; before arm = batch 3's release |
+
+**Amendment (gate A2 of WRK-PLAN-FORK-UPSTREAM-005, 2026-10-18):** component
+5's `unavailable` row first told the session to run
+`skills/using-superpowers/scripts/kdd-cli --path`, a path relative to the
+plugin, which does not exist in a user's project — the row would then report
+an installed toolkit as NOT FOUND. The hook's `toolkit:` line under a broken
+PATH now names the absolute `kdd-cli` path and the row runs that; the
+component-1 spike clause is dropped (no anchor, no checklist step reaches it).
+`hooks/session-start` changes only in the `unavailable` `toolkit:` line, so the
+normal-PATH `<KDD-ENVIRONMENT>` block stays byte-identical to 0.6.0's
+(DOC-FORK-UPSTREAM-001 §5). Recorded as decision log U-17.
