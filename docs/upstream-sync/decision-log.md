@@ -191,3 +191,18 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   "no independent review until the end"; scenario 8's checks are a script
   tested deterministically before any paid run. — Cost if wrong: idle time
   until 0.8.0. — WRK-PLAN-FORK-UPSTREAM-004.
+- **U-16 · 2026-10-18 · 4** — Batch 4 designed unattended
+  (WRK-SPEC-FORK-UPSTREAM-005; verifier 11/11; gate A1 18/24 BROKEN, all
+  adjudicated — table in the spec). Calls:
+  - **7.0's builder check is not taken** (KDD over upstream, simplicity):
+    gate A1's attacks 2 and 4 already ask what a builder would ask; adding
+    it would also have stopped headless runs ("I will not answer
+    questions") at its "theirs" pile. DOC-FORK-UPSTREAM-001 §2's batch-4
+    row lists it; at consolidation that item carries this ruling.
+  - 7.0's alternating playback is not taken as a form; only "mark your
+    guesses" is added — the fork's sectioned design with approval per
+    section already plays the design back.
+  - `kdd:spec-ask` is routed only for questions outside a workflow; inside
+    one, discovery stays with `kdd:spec-context` (P3: one activation path).
+  - Batch 4 depends on batch 3 (scenario opt-in helper; before arm).
+  — Cost if wrong: a later batch adds the builder check. — WRK-SPEC-FORK-UPSTREAM-005.
