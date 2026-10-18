@@ -1,0 +1,154 @@
+=== Scenario 4: writing-plans from an active WRK-SPEC → plan + task files ===
+  [PASS] WRK-PLAN written
+  [PASS] WRK-TASK files written (2)
+  [PASS] task activations ⊆ spec (WRK-TASK-BILL-PRORATA-001-001-billing-period.md)
+  [PASS] task activations ⊆ spec (WRK-TASK-BILL-PRORATA-001-002-prorata-amount.md)
+  [PASS] Architecture Impact cites the DOM
+  [PASS] plan + tasks validate
+  [PASS] plan and every task are status: active
+  [PASS] activation committed (plan(WRK-PLAN-BILL-PRORATA-…))
+  plan-metrics: {"plan":"WRK-PLAN-BILL-PRORATA-001","tasks":2,"impl_code_share":0,"proportion":10.07,"review_focus":"lines:0"}
+=== Scenario 5: subagent-driven-development executes the hello plan ===
+  [PASS] hello library tests pass
+  [PASS] ledger under .kdd/sdd/<plan id>/ (deleted by finishing after the execution log commit; git log shows the execution log commit)
+  [PASS] task 001 completed
+  [PASS] task 002 completed
+  [PASS] plan completed
+  [PASS] commits carry task IDs
+  [PASS] execution log persisted by finishing
+  [PASS] spec closed
+=== Scenario 6: code review flags an activated-rule violation as Critical ===
+  [FAIL] report has a knowledge compliance section
+  Expected to find: Knowledge Compliance
+  In output:
+    API Error: Opus 5.5's safeguards flagged this message (https://www.anthropic.com/legal/aup). This sometimes happens with safe, normal conversations. Claude Code can't respond to this message with Opus 5.5.
+    
+    Try rephrasing the request in a new session or change your model.
+    
+    Learn more: https://support.claude.com/en/articles/8106465
+    
+    Details: `[reasoning_extraction]`
+    
+    Request ID: req_011Cg9mGSJgQTP9S6tgbZe8k
+    
+    Message ID: msg_011Cg9mGSYpfdzP5vzNj2HiY
+  [FAIL] violation is Critical
+  Expected to find: Critical
+  In output:
+    API Error: Opus 5.5's safeguards flagged this message (https://www.anthropic.com/legal/aup). This sometimes happens with safe, normal conversations. Claude Code can't respond to this message with Opus 5.5.
+    
+    Try rephrasing the request in a new session or change your model.
+    
+    Learn more: https://support.claude.com/en/articles/8106465
+    
+    Details: `[reasoning_extraction]`
+    
+    Request ID: req_011Cg9mGSJgQTP9S6tgbZe8k
+    
+    Message ID: msg_011Cg9mGSYpfdzP5vzNj2HiY
+  [FAIL] names the violated rule
+  Expected to find: half-up\|Rule 3\|DOM-BILL-PRORATA-001
+  In output:
+    API Error: Opus 5.5's safeguards flagged this message (https://www.anthropic.com/legal/aup). This sometimes happens with safe, normal conversations. Claude Code can't respond to this message with Opus 5.5.
+    
+    Try rephrasing the request in a new session or change your model.
+    
+    Learn more: https://support.claude.com/en/articles/8106465
+    
+    Details: `[reasoning_extraction]`
+    
+    Request ID: req_011Cg9mGSJgQTP9S6tgbZe8k
+    
+    Message ID: msg_011Cg9mGSYpfdzP5vzNj2HiY
+
+scenario         turns   cache_w   cache_r      out   cost$    dur
+scenario-4          32     67.7k   1388.5k    30.1k    1.83   477s
+    claude-opus-5-5                cache_w=96.7k cache_r=1503.4k out=42.3k cost=1.83
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             62        124     81,782  3,385,699 $  11.85
+    a9b26102480689c8a an adversary. Your job is to break an implementation plan be     1          2      3,394     33,833 $   0.16
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         63
+      Input tokens:           126
+      Output tokens:          85,176
+      Cache creation tokens:  156,654
+      Cache read tokens:      3,419,532
+    
+      Total input (incl cache): 3,576,312
+      Total tokens:             3,661,488
+    
+      Estimated cost: $12.01
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+scenario-5          30     73.7k   1510.3k    18.6k    1.58   303s
+    claude-opus-5-5                cache_w=90.6k cache_r=1632.5k out=23.3k cost=1.47
+    claude-haiku-5-5               cache_w=32.9k cache_r=165.0k out=5.2k cost=0.01
+    claude-sonnet-5-5              cache_w=29.7k cache_r=37.2k out=2.3k cost=0.10
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             54        108     36,292  3,115,581 $  10.37
+    a0c4969e86ab1e0c7 a Senior Code Reviewer with expertise in software architectu     1          2      2,103     23,303 $   0.10
+    a37ecf6b601df54df reviewing one task's implementation: whether it matches its      1          2        651     14,656 $   0.07
+    a6c344a7686192bf1 implementing Task WRK-TASK-DEMO-HELLO-001-001: hello functio     1          2        235     18,947 $   0.06
+    a9f906b6ea886310d implementing Task WRK-TASK-DEMO-HELLO-001-002: goodbye funct     1          2        252     19,870 $   0.07
+    afc5e7107de6a077a reviewing one task's implementation: whether it matches its      1          2        738     14,729 $   0.07
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         59
+      Input tokens:           118
+      Output tokens:          40,271
+      Cache creation tokens:  169,400
+      Cache read tokens:      3,207,086
+    
+      Total input (incl cache): 3,376,604
+      Total tokens:             3,416,875
+    
+      Estimated cost: $10.73
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+scenario-6           8     24.7k    166.7k     3.8k    0.44    69s
+    claude-opus-5-5                cache_w=47.2k cache_r=215.4k out=4.3k cost=0.44
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)              7         12      3,939    133,703 $   0.53
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         7
+      Input tokens:           12
+      Output tokens:          3,939
+      Cache creation tokens:  21,851
+      Cache read tokens:      133,703
+    
+      Total input (incl cache): 155,566
+      Total tokens:             159,505
+    
+      Estimated cost: $0.53
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+FAILED: 3 assertion(s).

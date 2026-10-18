@@ -1,0 +1,4 @@
+35a911d plan(WRK-PLAN-MDM-MEMBER-EXIT-001): plan y 4 tareas; gate A2 adjudicado
+d09e9c8 spec(RFC-PIPE-039): accepted — activado por WRK-SPEC-MDM-MEMBER-EXIT-001 (ADR-011)
+bc43285 spec(WRK-SPEC-MDM-MEMBER-EXIT-001): approved — active, human-verified
+691ef10 spec(WRK-SPEC-MDM-MEMBER-EXIT-001): la ficha que pierde un miembro se recalcula (RFC-PIPE-039)

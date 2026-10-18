@@ -1,0 +1,5 @@
+c69e4e4 plan(WRK-PLAN-MDM-LOSING-MEMBER-001): la ficha que pierde un miembro se recalcula — 7 tareas
+605e1cc spec(WRK-SPEC-MDM-LOSING-MEMBER-001): 0.1.1 — rulings del gate A2 (PRODUCED, payload de GoldenRecordUpdated, pins en el recalculo dirigido, AC7)
+db25a2a spec(RFC-PIPE-039): accepted — activado por WRK-SPEC-MDM-LOSING-MEMBER-001
+8251efd spec(WRK-SPEC-MDM-LOSING-MEMBER-001): approved — active, human-verified
+65db620 spec(WRK-SPEC-MDM-LOSING-MEMBER-001): la ficha que pierde un miembro se recalcula

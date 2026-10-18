@@ -1,0 +1,4 @@
+325bd56 plan(WRK-PLAN-MDM-LOSING-MEMBER-001): plan y 4 tareas de la ficha que pierde un miembro
+109cdee spec(WRK-SPEC-MDM-LOSING-MEMBER-001): enmienda 1 — SurvivorshipConfig nula no es un error (gate A2)
+427891e spec(WRK-SPEC-MDM-LOSING-MEMBER-001): approved — active, human-verified
+c104a4e spec(WRK-SPEC-MDM-LOSING-MEMBER-001): la ficha que pierde un miembro se recalcula (RFC-PIPE-039)

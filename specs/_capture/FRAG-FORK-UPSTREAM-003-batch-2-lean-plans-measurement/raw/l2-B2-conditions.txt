@@ -1,0 +1,5 @@
+label=B2 base=aacdae5 model=opus wait=1
+toolkit=/Users/josemanuelbruzospereiro/.claude/plugins/cache/kdd/kdd/1.13.0/cli/spec-graph.mjs
+2.1.302 (Claude Code)
+plugin-dir /private/tmp/claude-501/-Users-josemanuelbruzospereiro-projects-software-superpowers/86d553a3-9da5-45b8-ae8d-6639cc5a94f9/scratchpad/arm-0.7.1
+plugin-dir /Users/josemanuelbruzospereiro/.claude/plugins/cache/kdd/kdd/1.13.0
