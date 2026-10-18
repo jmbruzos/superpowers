@@ -360,4 +360,13 @@ must_contain skills/brainstorming/SKILL.md "Mark anything you're guessing as you
 must_not_contain skills/brainstorming/SKILL.md "Prefer multiple choice questions when possible" "no menu-first default"
 must_not_contain skills/brainstorming/SKILL.md "token-intensive" "companion offer carries no cost warning"
 
+# --- WRK-TASK-FORK-UPSTREAM-005-002: using-superpowers routes ---
+US=skills/using-superpowers/SKILL.md
+must_contain $US '→ `kdd:spec-ask`' "knowledge question routes to spec-ask"
+must_contain $US "asked outside a workflow skill" "spec-ask route is outside workflows only"
+must_contain $US '→ `kdd:spec-tui`' "browsing routes to spec-tui"
+must_contain $US "you never run the viewer" "spec-tui: the human runs the viewer"
+must_contain $US "unavailable (no PATH at session start)" "environment table handles an unavailable probe"
+must_contain $US "any other result: NOT FOUND" "unavailable: a failing kdd-cli --path is NOT FOUND"
+
 finish

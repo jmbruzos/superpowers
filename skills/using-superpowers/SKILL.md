@@ -31,6 +31,8 @@ When multiple skills apply, process skills come first — they set the approach,
 - "Fix this bug" → kdd-superpowers:systematic-debugging first, then domain skills.
 - "Write a domain / architecture / product spec for X" → the Knowledge axis belongs to the toolkit: `kdd:spec-create` or the `kdd-spec-assistant` agent. Never brainstorming.
 - "Build / change / add X" → the Work axis: kdd-superpowers:brainstorming, which produces the WRK-SPEC and freezes its knowledge activation.
+- A question about what the knowledge says ("what does our spec say about X?", "which rules apply to Y?") asked outside a workflow skill → `kdd:spec-ask`. Never brainstorming. Inside a workflow, discovery stays with the skill's own step (`kdd:spec-context`).
+- Browsing the knowledge graph → `kdd:spec-tui`: the skill prepares the `spec-graph tui` command and your human partner runs it in their own terminal; you never run the viewer.
 - `kdd:*` skills are not invoked directly for steps of the workflow (discovery, activation, consolidation) — the workflow skills invoke them where the flow says so. Two parallel paths to the same artifact is how activations stop being auditable.
 
 ## Your KDD Environment
@@ -45,6 +47,7 @@ workflow skill and act on it — once, not every turn.
 | `specs_dir:` | `NONE` | Say once that `specs/work/` will be created with the first WRK-SPEC and that, with no knowledge base, activation will be `[]` and knowledge will be captured from the code (kdd-superpowers:kdd-conventions, *capturing-from-code*). Do not ask whether to "use KDD" — there is no other mode. |
 | `open_work:` | one or more entries | If the request fits an open WRK-SPEC, offer to resume it — read the WRK-SPEC, its WRK-PLAN and the ledger under `.kdd/sdd/<WRK-PLAN-ID>/` — before starting new work. An entry marked `(completed, pending consolidation)` is work pending consolidation: mention it. |
 | `okf_bundles:` | one or more directories | Mention once that OKF bundles must be imported before their concepts can be activated, and offer `kdd:spec-graph import-okf --dry-run` against each directory (e.g. `kdd:spec-graph import-okf <dir> --dry-run`). Never activate a raw OKF concept. |
+| any line reading `unavailable (no PATH at session start)` | the probe could not run | The probe could not run: before the first workflow skill, run the `kdd-cli` path the `toolkit:` line names (`toolkit: unavailable (no PATH at session start; check with <absolute plugin path>/skills/using-superpowers/scripts/kdd-cli --path)`) and act on its result as on the `toolkit:` line (a path: found; any other result: NOT FOUND). Check yourself whether `specs/` exists and act as on `specs_dir:`; treat `open_work` and `okf_bundles` as unknown — say so once. |
 
 When every line is the quiet value (`toolkit:` found, `specs_dir:` present, `open_work: none`, `okf_bundles: none`) say nothing about it.
 

@@ -36,15 +36,17 @@ fi
 # tolerates them explicitly — do not assume that elsewhere in the script.
 kdd_environment() {
   local toolkit specs_line open_line okf_line tool na="unavailable (no PATH at session start)"
+  # The toolkit line also names the absolute kdd-cli path, so the session can probe once itself.
+  local na_toolkit="unavailable (no PATH at session start; check with ${PLUGIN_ROOT}/skills/using-superpowers/scripts/kdd-cli --path)"
   if [ "$path_broken" -eq 1 ]; then
-    printf '<KDD-ENVIRONMENT>\ntoolkit: %s\nspecs_dir: %s\nopen_work: %s\nokf_bundles: %s\n</KDD-ENVIRONMENT>' "$na" "$na" "$na" "$na"
+    printf '<KDD-ENVIRONMENT>\ntoolkit: %s\nspecs_dir: %s\nopen_work: %s\nokf_bundles: %s\n</KDD-ENVIRONMENT>' "$na_toolkit" "$na" "$na" "$na"
     return 0
   fi
   # The probe needs these; without them (broken PATH) it says so instead of guessing.
   # `toolkit: NOT FOUND` is printed only when kdd-cli actually ran and failed.
   for tool in find awk mktemp wc tr sort rm grep sed head dirname; do
     if ! command -v "$tool" >/dev/null 2>&1; then
-      printf '<KDD-ENVIRONMENT>\ntoolkit: %s\nspecs_dir: %s\nopen_work: %s\nokf_bundles: %s\n</KDD-ENVIRONMENT>' "$na" "$na" "$na" "$na"
+      printf '<KDD-ENVIRONMENT>\ntoolkit: %s\nspecs_dir: %s\nopen_work: %s\nokf_bundles: %s\n</KDD-ENVIRONMENT>' "$na_toolkit" "$na" "$na" "$na"
       return 0
     fi
   done
