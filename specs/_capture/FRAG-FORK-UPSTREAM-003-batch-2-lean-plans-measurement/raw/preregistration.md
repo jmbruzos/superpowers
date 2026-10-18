@@ -1,0 +1,60 @@
+# Pre-registration — upstream sync batch 2 (WRK-SPEC-FORK-UPSTREAM-003), levels 1 and 2
+
+Written 2026-10-18, before any after-run. Protocol: DOC-FORK-UPSTREAM-001 §4;
+plan WRK-PLAN-FORK-UPSTREAM-003, task 004.
+
+## Arms
+
+- **Before:** `kdd-superpowers--v0.7.0`.
+- **After:** the release candidate `4838e16` (tasks 001–003 complete; not
+  tagged — 0.8.0 is tagged only if the batch is not worse, task 004 Step 5).
+- **Fixed:** kdd toolkit 1.13.0 (CLI and plugin root pinned), the Claude Code
+  version recorded per run, `--model opus` (`KDD_FLOW_MODEL=opus`; level 2:
+  `MODEL=opus`), runs in sequence, alternating before/after. Both arms get the
+  harness of `4838e16`: `tests/claude-code/test-kdd-flow.sh`, `toolkit-env.sh`,
+  `plan-metrics.mjs`, `tests/claude-code/fixtures`, `tests/scripts/fixtures`.
+  The scenario-4 prompt (harness) approves the saved plan in advance in both
+  arms.
+
+## Level 1 — fixture (scenarios 4, 5, 6; n=2 per side)
+
+- **Deciding:**
+  1. `impl_code_share` of scenario 4's plan (from `plan-metrics.mjs`) is lower
+     in both after runs than in both before runs.
+  2. Every scenario-4, -5, -6 check that passes in both before runs passes in
+     both after runs; the scenario-4 checks include the new activation and
+     `plan(` commit checks.
+  3. Both after-run WRK-PLANs have a `## Review Focus` section reading
+     `lines:<n≥1>` or `none-per-class:<n≥1>` (spec AC4).
+- **Reported:** `proportion`, turns, output tokens, `total_cost_usd`, wall
+  time, per scenario and arm.
+
+## Level 2 — real task (RFC-PIPE-039 at mdm-platform `aacdae5`; B1 A1 B2 A2)
+
+- Pre-flight: `spec-graph validate` with toolkit 1.13.0 over mdm-platform's
+  specs at `aacdae5`, recorded in the report.
+- Prompt: `tests/claude-code/ab/prompts/k-task.txt` + `k-wait.txt`, identical
+  on both arms.
+- Judges: evidence judge and neutral summary per run (prompts in
+  `tests/claude-code/ab/prompts/`, paths substituted only), one blind H1–H10
+  pass over the four summaries under shuffled codes.
+- **Deciding:**
+  1. Plan executability (evidence judge, item 3: tasks without a runnable
+     test step, invalid task order, files or symbols that do not exist):
+     the after arm's mean count of defects is not higher than the before
+     arm's.
+  2. False claims about current code in the plan and tasks (evidence judge,
+     item 1): the after arm's mean per run is not 2 or more above the before
+     arm's.
+- **Reported:** plan + tasks length (lines and `proportion`), output tokens,
+  `total_cost_usd`, turns, wall time, H1–H10 per run, knowledge violations.
+
+## Worse, cost, decision
+
+- Worse = a deciding metric above fails, or a behaviour check passes before
+  and fails after (DOC-FORK-UPSTREAM-001 §4). Worse → rework or revert, no
+  release.
+- A cost rise above 20 % with non-overlapping ranges (per level, summed per
+  run) → no release until the human accepts it.
+- Runs lost to authentication or network errors are set aside by name and
+  repeated, never averaged.
