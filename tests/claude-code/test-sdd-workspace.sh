@@ -198,6 +198,41 @@ PLAN
         echo "    got: $rp_explicit"
     fi
 
+    # --- range guards: BASE must be an ancestor of HEAD, range must be non-empty ---
+    local divergent
+    divergent="$(cd "$repo" && git "${git_id[@]}" commit-tree 'HEAD~1^{tree}' -p 'HEAD~1' -m divergent)"
+    rc=0
+    local guard_err
+    guard_err="$(cd "$repo" && "$SDD_SCRIPTS/review-package" plan-a.md "$divergent" HEAD 2>&1 >/dev/null)" || rc=$?
+    if [[ "$rc" -eq 3 && "$guard_err" == *"not a descendant"* ]]; then
+        pass "review-package rejects a BASE that is not an ancestor of HEAD with exit 3"
+    else
+        fail "review-package rejects a BASE that is not an ancestor of HEAD with exit 3"
+        echo "    exit: $rc"
+        echo "    stderr: $guard_err"
+    fi
+
+    rc=0
+    guard_err="$(cd "$repo" && "$SDD_SCRIPTS/review-package" plan-a.md HEAD HEAD 2>&1 >/dev/null)" || rc=$?
+    if [[ "$rc" -eq 3 && "$guard_err" == *"empty commit range"* ]]; then
+        pass "review-package rejects an empty BASE..HEAD range with exit 3"
+    else
+        fail "review-package rejects an empty BASE..HEAD range with exit 3"
+        echo "    exit: $rc"
+        echo "    stderr: $guard_err"
+    fi
+
+    # --- an existing .kdd/sdd/.gitignore is the repository's: never overwritten ---
+    printf '*\n!progress.md\n' > "$repo/.kdd/sdd/.gitignore"
+    (cd "$repo" && "$SDD_SCRIPTS/sdd-workspace" plan-a.md >/dev/null)
+    if [[ "$(cat "$repo/.kdd/sdd/.gitignore")" == $'*\n!progress.md' ]]; then
+        pass "sdd-workspace leaves an existing .kdd/sdd/.gitignore unchanged"
+    else
+        fail "sdd-workspace leaves an existing .kdd/sdd/.gitignore unchanged"
+        echo "    got: $(cat "$repo/.kdd/sdd/.gitignore")"
+    fi
+    printf '*\n' > "$repo/.kdd/sdd/.gitignore"
+
     # --- Worktree isolation: a linked worktree resolves its own workspace ---
     local wt="$TEST_ROOT/wt"
     ( cd "$repo" && git worktree add -q "$wt" -b wt-feature )
