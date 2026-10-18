@@ -40,3 +40,17 @@ Written 2026-10-18, before any after-run. Protocol: DOC-FORK-UPSTREAM-001 §4.
 Ranges of n=2 per side; a difference is claimed only where the ranges do not
 overlap. Runs lost to authentication or network errors are set aside by
 name and repeated, never averaged.
+
+## Amendment 1 — before any after-run (2026-10-18)
+
+The batch-0 baseline runs ran on `claude-sonnet-5-5`: `test-kdd-flow.sh`
+passed no `--model` and the account default had moved from Opus. The harness
+now pins `--model "$KDD_FLOW_MODEL"` (default `opus`, `155d911`). Therefore:
+
+- **Before** is re-run in full on Opus: scenarios 1–7 × 2 at
+  `kdd-superpowers--v0.6.1` with the current harness and fixtures copied in.
+  The Sonnet runs are kept in FRAG-FORK-UPSTREAM-001 as supplementary data,
+  not as an arm.
+- **After** is scenarios 1–7 × 2 at `kdd-superpowers--v0.7.0` with the same
+  harness copied in (the tag predates `155d911`).
+- Everything else above stands.
