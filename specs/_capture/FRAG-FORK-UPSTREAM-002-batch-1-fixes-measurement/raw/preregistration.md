@@ -69,3 +69,5 @@ Fixed in `a37a90c`, released as `kdd-superpowers--v0.7.1`. Therefore:
   harness, same fixed conditions. **Before** stays the two 0.6.1 runs already
   taken.
 - Deciding metric and reading rule unchanged.
+
+(Note: the tag `kdd-superpowers--v0.7.1` is `45ce7e0` on `release/0.7.1` = `v0.7.0` + the fix + the bump only; a first tag at `b97cfef` on the feature branch also carried batch-2 commits and was deleted before any run used it.)

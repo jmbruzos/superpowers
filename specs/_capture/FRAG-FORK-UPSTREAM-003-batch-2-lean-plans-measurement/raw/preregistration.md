@@ -58,3 +58,16 @@ plan WRK-PLAN-FORK-UPSTREAM-003, task 004.
   run) → no release until the human accepts it.
 - Runs lost to authentication or network errors are set aside by name and
   repeated, never averaged.
+
+## Amendment 1 — before any after-run (2026-10-18)
+
+`kdd-superpowers--v0.7.0` injects nothing under Claude Code (its hook
+wrapper runs `session-start` in POSIX mode; batch-1 FRAG-FORK-UPSTREAM-002),
+so it cannot be a before arm. Therefore:
+
+- **Before:** `kdd-superpowers--v0.7.1` (`45ce7e0`: 0.7.0 + the wrapper fix).
+- **After:** the feature-branch commit that holds batch 2's tasks 001–003
+  plus the same wrapper fix (named by sha in the report; candidate
+  `4838e16` + `a37a90c`). The release, if any, is cut the same way as 0.7.1:
+  only these changes on top of the before tag.
+- Everything else above stands.

@@ -216,3 +216,21 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   (CLAUDE.md/README wording, batch 5 go/no-go pending you). Execution waits
   for batch 3's release. — Cost if wrong: one hook line. —
   WRK-SPEC/PLAN-FORK-UPSTREAM-005.
+- **U-18 · 2026-10-18 · 1** — **0.7.0 broke the SessionStart hook under
+  Claude Code** (not published; local tag only). Claude Code runs the hook
+  command through `/bin/sh` (macOS: bash in POSIX mode, `BASH=/bin/sh`);
+  upstream 7.0's wrapper `exec "${BASH:-bash}"` then ran `session-start` in
+  POSIX mode, where its process substitution is a syntax error — nothing was
+  injected. Found by the batch-1 measurement (scenario 1 failed in both
+  after runs, passed in both before runs), reproduced with an instrumented
+  hook under headless Claude Code, fixed with a test that runs the wrapper
+  through `/bin/sh` (`a37a90c`) and verified again headless. Calls:
+  - the wrapper deviates from upstream's file (batch-1 AC5 said "byte for
+    byte"): correctness over verbatim; upstream has the same bug only
+    latently (its session-start uses no bash-only syntax);
+  - **0.7.1** is cut on `release/0.7.1` = `v0.7.0` + fix + bump (`45ce7e0`);
+    a first tag on the feature branch also carried batch-2 commits and was
+    deleted before any run used it;
+  - batch-1 after arm re-measured at 0.7.1; batch-2 before arm moved from
+    0.7.0 to 0.7.1 (pre-registrations amended before any affected run).
+  — Cost of the miss: one more pass (~$15–20). — `a37a90c`, `45ce7e0`.
