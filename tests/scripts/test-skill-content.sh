@@ -256,7 +256,7 @@ must_contain skills/test-driven-development/SKILL.md "means the project's suite,
 must_contain skills/requesting-code-review/code-reviewer.md "## The spec is a vision document" "reviewer: spec is a vision document"
 must_contain skills/requesting-code-review/code-reviewer.md "never overrides a rule" "reviewer: activated rules still bind (KDD)"
 must_contain skills/requesting-code-review/code-reviewer.md "## Declined to judge" "reviewer: declined-to-judge list"
-must_contain skills/requesting-code-review/code-reviewer.md "the session that dispatched you" "reviewer: who rules on declined lines"
+must_contain skills/requesting-code-review/code-reviewer.md "The session that dispatched you rules on each line" "reviewer: who rules on declined lines"
 must_contain tests/scripts/test-invariants.sh ".antigravity-plugin" "invariants reject .antigravity-plugin"
 must_contain tests/scripts/test-invariants.sh ".muse-plugin" "invariants reject .muse-plugin"
 must_contain tests/scripts/test-invariants.sh "index.js" "invariants reject index.js"
