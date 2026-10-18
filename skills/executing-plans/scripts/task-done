@@ -9,11 +9,12 @@
 #   BASE is the SHA task-start printed; the completion line records BASE..HEAD,
 #   HEAD being the last work commit, before the transition's own commit.
 # Exit: the test command's status when it fails; 2 usage or another plan's
-# task/ledger; 3 no commit since BASE; 4 tests passed but the transition failed
+# task/ledger; 3 no commit since BASE, or — for a completed task — a BASE that
+# disagrees with the task's own range; 4 tests passed but the transition failed
 # (nothing recorded). Re-running is safe: with the completion line present and
 # the task completed it does nothing; a missing line is rewritten with the
-# original range; a line without the transition is followed by the transition
-# only.
+# original range, recovered from git; a line without the transition is followed
+# by the transition only.
 set -euo pipefail
 
 if [ $# -lt 5 ] || [ "$4" != "--" ]; then
@@ -60,7 +61,26 @@ if [ "$status" = completed ] && has_line; then
   exit 0
 fi
 
-[ "$(git rev-list --count "$base..HEAD")" -gt 0 ] || { echo "task-done: no commit since BASE $base — nothing to close" >&2; exit 3; }
+# A completed task without its line keeps its own range, recovered from git:
+# from the parent of its first commit (the oldest whose subject carries the
+# WRK-TASK ID) to the parent of its chore(<WRK-TASK-ID>): complete commit. The
+# BASE passed is only checked against it, since a resumed executor may not hold
+# the one task-start printed.
+if [ "$status" = completed ]; then
+  done_commit=$(git log -n 1 --format=%H --fixed-strings --grep="chore($task_id): complete")
+  [ -n "$done_commit" ] || { echo "task-done: $task_id is completed but no chore($task_id): complete commit found" >&2; exit 1; }
+  first=$(git log --reverse --format='%H %s' "$done_commit" | awk -v id="$task_id" 'index(substr($0, 42), id) { print $1; exit }')
+  recovered=$(git rev-parse --verify --quiet "$first^") || recovered=""
+  [ -n "$recovered" ] && [ "$(git rev-list --count "$recovered..$done_commit^")" -gt 0 ] || {
+    echo "task-done: no commit of $task_id before chore($task_id): complete — its range cannot be recovered" >&2; exit 3; }
+  if ! git merge-base --is-ancestor "$base" "$done_commit^" || [ "$(git rev-list --count "$base..$done_commit^")" -eq 0 ]; then
+    echo "task-done: BASE $base is not the start of $task_id's range; recovered BASE $(git rev-parse --short=7 "$recovered") (parent of its first commit) — nothing recorded" >&2
+    exit 3
+  fi
+  base=$recovered
+else
+  [ "$(git rev-list --count "$base..HEAD")" -gt 0 ] || { echo "task-done: no commit since BASE $base — nothing to close" >&2; exit 3; }
+fi
 
 # Render the command the way a person would type it, for the ledger line.
 cmd=""
@@ -85,8 +105,6 @@ fi
 # the parent of its commit.
 head7=$(git rev-parse --short=7 HEAD)
 if [ "$status" = completed ]; then
-  done_commit=$(git log -n 1 --format=%H --fixed-strings --grep="chore($task_id): complete")
-  [ -n "$done_commit" ] || { echo "task-done: $task_id is completed but no chore($task_id): complete commit found" >&2; exit 1; }
   head7=$(git rev-parse --short=7 "$done_commit^")
 else
   bash "$kit/skills/kdd-conventions/scripts/transition" --specs "$top/specs" "$task" completed >&2 || {

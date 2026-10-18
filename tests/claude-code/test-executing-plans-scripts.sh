@@ -98,7 +98,7 @@ main() {
     [[ "$rc" -eq 3 && "$(cat "$LEDGER")" == "$identity" ]]; check "task-done with no commit since BASE exits 3 and records nothing" $?
 
     # --- task-done: a failing command records nothing ---
-    ( cd "$repo" && echo x > work1.txt && git add work1.txt && git commit -qm "work 1" )
+    ( cd "$repo" && echo x > work1.txt && git add work1.txt && git commit -qm "feat($T1_ID): work 1" )
     local h1; h1="$(cd "$repo" && git rev-parse --short=7 HEAD)"
     rc=0; out="$(cd "$repo" && bash "$EP_SCRIPTS/task-done" "$PLAN" "$T1" "$base" -- sh -c 'echo "FAILED (errors=1)"; exit 1' 2>&1)" || rc=$?
     [[ "$rc" -eq 1 && "$out" == *FAILED* ]]; check "task-done exits with the command's status and shows its output" $?
@@ -129,12 +129,19 @@ main() {
     [[ "$rc" -eq 0 && "$(sed -n 2p "$LEDGER")" == "$line1" && "$(cat "$LEDGER")" == "$snap" && "$(cd "$repo" && git rev-list --count HEAD)" -eq "$n_commits" ]]; check "re-run with the line present is a no-op (exit 0)" $?
 
     grep -v "^Task $T1_ID: complete" "$LEDGER" > "$TEST_ROOT/ledger.tmp"; cp "$TEST_ROOT/ledger.tmp" "$LEDGER"
+    # a BASE that disagrees with the task's own range is refused before the tests run,
+    # naming the base recovered from git (the parent of the task's first commit)
+    local nol; nol="$(cat "$LEDGER")"
+    rc=0; out="$(cd "$repo" && bash "$EP_SCRIPTS/task-done" "$PLAN" "$T1" HEAD -- touch "$TEST_ROOT/ran" 2>&1)" || rc=$?
+    [[ "$rc" -eq 3 && "$out" == *"recovered BASE ${b7}"* && "$out" != *"nothing to close"* && "$(cat "$LEDGER")" == "$nol" && ! -e "$TEST_ROOT/ran" && "$(cd "$repo" && git rev-list --count HEAD)" -eq "$n_commits" ]]; check "re-run on a completed task with BASE=HEAD exits 3 naming the recovered BASE, runs and writes nothing" $?
+    rc=0; out="$(cd "$repo" && bash "$EP_SCRIPTS/task-done" "$PLAN" "$T1" HEAD~1 -- touch "$TEST_ROOT/ran" 2>&1)" || rc=$?
+    [[ "$rc" -eq 3 && "$out" == *"recovered BASE ${b7}"* && "$(cat "$LEDGER")" == "$nol" && ! -e "$TEST_ROOT/ran" ]]; check "re-run on a completed task with BASE=HEAD~1 exits 3 instead of recording an empty range" $?
     rc=0; (cd "$repo" && bash "$EP_SCRIPTS/task-done" "$PLAN" "$T1" "$base" -- true >/dev/null 2>&1) || rc=$?
     [[ "$rc" -eq 0 && "$(sed -n 2p "$LEDGER")" == "$line1" && "$(cat "$LEDGER")" == "$snap" && "$(cd "$repo" && git rev-list --count HEAD)" -eq "$n_commits" ]]; check "re-run on a completed task without its line writes the line once, same range, no commit" $?
 
     # --- task 002: the last non-blank line, and a task already recorded but still active ---
     ( cd "$repo" && bash "$EP_SCRIPTS/task-start" "$PLAN" "$T2" >/dev/null 2>&1 ) ; base="$(cd "$repo" && git rev-parse HEAD)"
-    ( cd "$repo" && echo y > work2.txt && git add work2.txt && git commit -qm "work 2" )
+    ( cd "$repo" && echo y > work2.txt && git add work2.txt && git commit -qm "feat($T2_ID): work 2" )
     local h2; h2="$(cd "$repo" && git rev-parse --short=7 HEAD)"
     rc=0; out="$(cd "$repo" && bash "$EP_SCRIPTS/task-done" "$PLAN" "$T2" "$base" -- echo ok 2>&1)" || rc=$?
     [[ "$rc" -eq 0 && "$(grep "^Task $T2_ID: complete" "$LEDGER")" == "Task $T2_ID: complete (commits ${base:0:7}..$h2, tests: echo ok → ok)" ]]; check "the line ends with the command's last non-blank output" $?
