@@ -192,7 +192,10 @@ from it. That is the whole requirement: unambiguous, not complete. Each kind
 of step carries what makes it unambiguous and nothing more:
 
 - **A test step:** the test's name and its assertions, as code, with the
-  spec's exact values in them.
+  spec's exact values in them. Whatever code the step shows must compile
+  where it lands: every type, method, overload, accessor and variable it
+  names exists in the code today or is created by an earlier step. A test
+  that does not compile fails for the wrong reason.
 - **A code step:** the exact signature (name, parameters, return type), the
   file it lives in, and the specific values the spec pins. The implementer
   writes the body. A body appears only for an algorithm the signature and
@@ -219,7 +222,7 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 **2. Step scan:** Every step must let the implementer write exactly one reasonable thing, and no step may carry more than that: a line that decides nothing is a gap, a function body the signature and tests already determine is a transcript. Fix both.
 
-**3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
+**3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug. A name no task defines must exist in the code today with that exact signature: open the file and check it, do not recall it.
 
 **4. Activation coverage:** Does every row of *Architecture Impact* cite a spec or a FRAG? Does every task's `activates` stay inside the spec's set? Does every activated spec bind at least one task (otherwise why activate it)?
 
