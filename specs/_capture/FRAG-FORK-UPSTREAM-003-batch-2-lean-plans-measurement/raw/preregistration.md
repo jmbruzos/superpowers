@@ -83,3 +83,23 @@ has `stop_reason: refusal` is classified **cut**, set aside by name like a
 network loss, and repeated on the same arm until each arm has two uncut runs
 of that scenario. Scenario 4 and the level-2 runs are unaffected. The
 release, if any, is built on `kdd-superpowers--v0.7.2`.
+
+## Amendment 3 — counting rule for level-2 deciding metric 1, written after the four evidence-judge reports were read, before any count was made by the adjudicator (2026-10-18)
+
+The pre-registration names the defect kinds but not how to count them, and
+the four judge reports describe them in free text. A separate adjudicator
+counts them from the four reports under neutral codes (key kept apart),
+with this rule, fixed now:
+
+- A defect is (a) a task without a runnable test step; (b) an invalid task
+  order (a task uses what a later task creates); or (c) a step that, as
+  written, names a file, type, method, overload, field, variable or accessor
+  that does not exist at that point (neither in the code at `aacdae5` nor
+  created by an earlier step), or that would not compile as written.
+- Each distinct step counts once. Not counted: wrong line anchors, wrong
+  descriptions of behaviour, design disagreements, knowledge violations,
+  and an acceptance check that fails because the design is incomplete.
+
+A provisional count by the controller, made while writing this rule from
+the reports, already put the after arm above the before arm; the rule was not
+chosen to favour either arm.
