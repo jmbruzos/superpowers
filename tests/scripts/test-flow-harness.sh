@@ -39,4 +39,9 @@ grep -q 'toolkit-env.sh' "$REPO_ROOT/tests/claude-code/test-kdd-flow.sh" && pass
 hits="$(cd "$REPO_ROOT" && grep -rln 'knowledge-driven-development' CLAUDE.md docs tests 2>/dev/null | grep -v '^tests/scripts/test-flow-harness.sh$')"
 [[ -z "$hits" ]] && pass "no doc or test points at ../knowledge-driven-development" \
   || { fail "no doc or test points at ../knowledge-driven-development"; echo "$hits" | sed 's/^/    /'; }
+# grep -q closes a pipe early; under pipefail the writer's SIGPIPE turns a match into a failure
+# (baseline run 1, scenario 5: commits with task IDs present, check failed)
+hits="$(grep -nE '\| *grep -[a-zA-Z]*q' "$REPO_ROOT/tests/claude-code/test-kdd-flow.sh")"
+[[ -z "$hits" ]] && pass "test-kdd-flow.sh pipes into no grep -q" || { fail "test-kdd-flow.sh pipes into no grep -q"; echo "$hits" | sed 's/^/    /'; }
+
 finish

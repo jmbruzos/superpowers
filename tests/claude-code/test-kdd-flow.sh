@@ -113,7 +113,7 @@ n="$(ls "$p4"/specs/work/WRK-TASK-BILL-PRORATA-001-*.md 2>/dev/null | wc -l | tr
 [[ "$n" -ge 1 ]] && pass "WRK-TASK files written ($n)" || fail "WRK-TASK files written"
 for t in "$p4"/specs/work/WRK-TASK-*.md; do
   [[ -f "$t" ]] || continue
-  awk '/^activates:/{f=1; next} f && /^[[:space:]]+- /{print; next} f{exit}' "$t" | grep -vq "DOM-BILL-PRORATA-001@1.0.0" && fail "task activations ⊆ spec ($(basename "$t"))" || pass "task activations ⊆ spec ($(basename "$t"))"
+  awk '/^activates:/{f=1; next} f && /^[[:space:]]+- /{print; next} f{exit}' "$t" | grep -vc "DOM-BILL-PRORATA-001@1.0.0" >/dev/null && fail "task activations ⊆ spec ($(basename "$t"))" || pass "task activations ⊆ spec ($(basename "$t"))"
 done
 [[ -n "$plan" ]] && grep -q "^## Architecture Impact" "$plan" && grep -q "DOM-BILL-PRORATA-001" "$plan" && pass "Architecture Impact cites the DOM" || fail "Architecture Impact cites the DOM"
 out4v="$(validate "$p4")"; [[ "$out4v" == *"Validation passed"* ]] && pass "plan + tasks validate" || fail "plan + tasks validate: $out4v"
@@ -127,7 +127,7 @@ out="$(run_scenario "$p5" "Use kdd-superpowers:subagent-driven-development to ex
 (cd "$p5" && npm test >/dev/null 2>&1) && pass "hello library tests pass" || fail "hello library tests pass"
 if [[ -f "$p5/.kdd/sdd/WRK-PLAN-DEMO-HELLO-001/progress.md" ]]; then
   pass "ledger under .kdd/sdd/<plan id>/"
-elif git -C "$p5" log --format=%s | grep -qi "WRK-PLAN-DEMO-HELLO-001.*execution log"; then
+elif git -C "$p5" log --format=%s | grep -ci "WRK-PLAN-DEMO-HELLO-001.*execution log" >/dev/null; then
   pass "ledger under .kdd/sdd/<plan id>/ (deleted by finishing after the execution log commit; git log shows the execution log commit)"
 else
   fail "ledger under .kdd/sdd/<plan id>/ (deleted by finishing after the execution log commit, and no execution-log commit found in git log)"
@@ -135,7 +135,7 @@ fi
 grep -q "^status: completed" "$p5"/specs/work/WRK-TASK-DEMO-HELLO-001-001-*.md && pass "task 001 completed" || fail "task 001 completed"
 grep -q "^status: completed" "$p5"/specs/work/WRK-TASK-DEMO-HELLO-001-002-*.md && pass "task 002 completed" || fail "task 002 completed"
 grep -q "^status: completed" "$p5"/specs/work/WRK-PLAN-DEMO-HELLO-001-*.md && pass "plan completed" || fail "plan completed"
-git -C "$p5" log --format=%s | grep -q "WRK-TASK-DEMO-HELLO-001-001" && pass "commits carry task IDs" || fail "commits carry task IDs"
+git -C "$p5" log --format=%s | grep -c "WRK-TASK-DEMO-HELLO-001-001" >/dev/null && pass "commits carry task IDs" || fail "commits carry task IDs"
 grep -q "^## Execution Log" "$p5"/specs/work/WRK-PLAN-DEMO-HELLO-001-*.md && pass "execution log persisted by finishing" || fail "execution log persisted by finishing"
 grep -q "^status: completed\|^status: archived" "$p5"/specs/work/WRK-SPEC-DEMO-HELLO-001-*.md && pass "spec closed" || fail "spec closed"
 
@@ -165,7 +165,7 @@ spec7wt="$(ls "$p7"/specs/work/WRK-SPEC-*.md 2>/dev/null | head -1)"
 [[ -n "$spec7wt" ]] && pass "WRK-SPEC written under specs/work" || fail "WRK-SPEC written under specs/work"
 if [[ -n "$spec7wt" ]]; then
   rel7="specs/work/$(basename "$spec7wt")"
-  git -C "$p7" log --format=%s -- "$rel7" | grep -q "^spec(" && pass "WRK-SPEC committed" || fail "WRK-SPEC committed"
+  git -C "$p7" log --format=%s -- "$rel7" | grep -c "^spec(" >/dev/null && pass "WRK-SPEC committed" || fail "WRK-SPEC committed"
   git -C "$p7" diff --quiet HEAD -- "$rel7" && pass "committed WRK-SPEC equals the working tree" || fail "committed WRK-SPEC equals the working tree (review appended after the commit?)"
   spec7="$(mktemp)"; git -C "$p7" show "HEAD:$rel7" > "$spec7" 2>/dev/null   # every check below reads the committed version
   grep -q "^## Code Premises" "$spec7" && pass "Code Premises section" || fail "Code Premises section"
