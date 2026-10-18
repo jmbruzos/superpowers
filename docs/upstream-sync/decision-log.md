@@ -262,3 +262,10 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   repeated — written before batch-2 after-run 1's result was read). — Cost
   if wrong: the reviewer loses an explicit list of what it skipped. —
   `d7c4d11`, `6f457a7`.
+- **U-21 · 2026-10-18 · all** — The session's scratchpad was announced as no
+  longer available while measurements were still running in it. Running
+  processes are left to finish there (moving them would break them); every
+  finished result was copied to `.kdd/upstream-sync/measure/` (git-ignored,
+  66 MB) and new measurements write there. Also: `plan-metrics` counted only
+  `- ` bullets and read batch-2 after-run 1's numbered Review Focus (4 items)
+  as `lines:0`; fixed with a test (`60f74f1`), both readings go in the FRAG.
