@@ -192,7 +192,7 @@ is the whole process.
 - Get them describing first: open questions come first, a short menu only when they're stuck, and when they say "just guess" or "what do you think?", propose something concrete
 - Only one question per message - if a topic needs more exploration, break it into multiple questions
 - Focus on understanding: purpose, constraints, success criteria
-- Find out early which choices about medium, platform, language and libraries your human partner wants to make, which they hand to you, and what they already have; build on what existing work already uses. A choice you make goes in the design as your call, said in plain words, never as something they agreed to
+- Find out early which choices about medium, platform, language and libraries your human partner wants to make, which they hand to you, and what they already have; build on what existing work already uses; a choice you make goes in the design as your call, said in plain words, never as something they agreed to
 
 **Capturing from code (brownfield):**
 
