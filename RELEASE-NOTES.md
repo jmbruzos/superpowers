@@ -1,5 +1,26 @@
 # Release notes
 
+## 0.6.1 — measurement harness (upstream sync batch 0)
+
+Implements WRK-SPEC-FORK-UPSTREAM-001 (batch 0 of DOC-FORK-UPSTREAM-001). No
+skill, hook or script the plugin ships changes; this release is the before
+arm of batch 1.
+- `tests/claude-code/toolkit-env.sh`: headless runs find the kdd toolkit
+  through `kdd-cli` (CLI and plugin root from one install); `KDD_SPEC_GRAPH`
+  and `KDD_TOOLKIT_DIR` still win. `test-kdd-flow.sh` no longer skips on the
+  non-existent `../knowledge-driven-development` default.
+- `tests/claude-code/ab/`: the RFC-PIPE-039 real-task study under version
+  control — a portable `run-one.sh` and the K, wait, evidence-judge,
+  neutral-summary and blind-pass prompts, byte for byte.
+- `tests/claude-code/fixtures/rounding-plan/`: an execution fixture whose
+  first task activates a numeric rule (half-even rounding), so gate A4 can
+  fire in a measured run.
+- The `tests/scripts/` fixture's WRK-SPEC criterion no longer contradicts
+  its DOM rule (scenario 4 stopped to ask about it).
+- `.gitignore` restored (an accidental commit had reduced it to one line).
+- New tests: `test-flow-harness.sh`, `test-ab-harness.sh`,
+  `test-rounding-fixture.sh`.
+
 ## 0.6.0 — activation pins
 
 Implements WRK-TASK-TOOLKIT-FEDERATION-003-009 (WRK-SPEC-TOOLKIT-FEDERATION-001, AC8; RFC-KDD-006 Part E):
