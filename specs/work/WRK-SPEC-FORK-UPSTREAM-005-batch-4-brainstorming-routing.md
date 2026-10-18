@@ -280,3 +280,14 @@ component-1 spike clause is dropped (no anchor, no checklist step reaches it).
 `hooks/session-start` changes only in the `unavailable` `toolkit:` line, so the
 normal-PATH `<KDD-ENVIRONMENT>` block stays byte-identical to 0.6.0's
 (DOC-FORK-UPSTREAM-001 §5). Recorded as decision log U-17.
+
+**Amendment (measurement protocol, 2026-10-19):** after this spec was
+written the human narrowed the protocol for the rest of the sync (decision
+log H-8; ledger ruling R1 of WRK-PLAN-FORK-UPSTREAM-005). *Testing →
+Measurement* is superseded by FRAG-FORK-UPSTREAM-005's pre-registration
+(`dfa6bb6`): level 1 n=1 per side, a failing check re-run once on both arms;
+level 2 two runs per side with the evidence judge only — no neutral
+summaries, no blind H1–H10 pass — deciding on false claims (after mean not
+2 or more above) and executability defects (after mean not higher, counted
+under FRAG-FORK-UPSTREAM-003 amendment 3's rule). AC4's "each deciding
+metric" means that pre-registered set.
