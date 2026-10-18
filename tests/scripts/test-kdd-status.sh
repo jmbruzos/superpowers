@@ -156,6 +156,12 @@ grep -q "^Task WRK-TASK-BILL-PRORATA-001-001: complete (commits ${nbase:0:7}\.\.
 printf '%s\n' "$IDENTITY" "Final: Ruling: x — y — z" > "$wt/$LEDGER_DIR/progress.md"
 ( cd "$wt" && git reset -q --hard "$nbase" ); run "$wt"
 check "Final: Ruling: is not a completion" "$P.done" '0'
+# none of the notes Native writes counts as completion
+printf '%s\n' "$IDENTITY" "Pre-flight: no shared interfaces" "Attack: Constant return — Ruling: fixed by test x" \
+  "Final: Ruling: x — y — z" "Final: minor (deferred): m" "Final: fixed f — t RED→GREEN, suite 3/3" > "$wt/$LEDGER_DIR/progress.md"
+run "$wt"
+check "Native note forms are not completion" "$P.done" '0'
+check "Native note forms: ledger used" "$P.ledger" 'used'
 # the ledger is git-ignored state of the checkout that ran the plan
 ( cd "$repo" && git worktree add -q --detach "$repo-b" feat ); TMPS+=("$repo-b")
 run "$repo-b"
