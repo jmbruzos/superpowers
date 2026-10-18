@@ -56,6 +56,7 @@ run_scenario() { # DIR PROMPT [extra env…] — runs claude headless in DIR wit
 new_project() { local d; d="$(mktemp -d)"; git -C "$d" init -q -b main; printf 'node_modules/\n' > "$d/.gitignore"; git -C "$d" add -A; git -C "$d" -c user.email=t@e -c user.name=t commit -qm init; echo "$d"; }
 validate() { node "$KDD_SPEC_GRAPH" --specs "$1/specs" validate 2>&1; }
 want() { [[ -z "${KDD_FLOW_SCENARIOS:-}" || " $KDD_FLOW_SCENARIOS " == *" $1 "* ]]; }   # KDD_FLOW_SCENARIOS="5 6" runs only those
+want_explicit() { [[ " ${KDD_FLOW_SCENARIOS:-} " == *" $1 "* ]]; }   # opt-in scenarios: an empty list never selects them
 
 if want 1; then
 echo "=== Scenario 1: toolkit missing → brainstorming stops with install instruction ==="
@@ -219,6 +220,32 @@ if [[ -n "$a1_line" ]]; then
   [[ -n "$write_line" && "$write_line" -lt "$a1_line" ]] && pass "WRK-SPEC written before gate A1" || fail "WRK-SPEC written before gate A1 (write line:$write_line A1 line:$a1_line)"
 fi
 rm -f "${spec7:-}"
+
+fi
+if want_explicit 8 && [[ -z "${KDD_FLOW_USAGE:-}" ]]; then
+echo "=== Scenario 8: SKIP — it reads the run's own transcripts; set KDD_FLOW_USAGE=<dir> ==="
+
+fi
+if want_explicit 8 && [[ -n "${KDD_FLOW_USAGE:-}" ]]; then
+arm8="${KDD_FLOW_ARM8:-native}"   # native | inline-old | sdd — the execution mode compared (DOC-FORK-UPSTREAM-001 §4)
+echo "=== Scenario 8 ($arm8): the rounding plan executed in one mode (opt-in, paid) ==="
+plan8="specs/work/WRK-PLAN-DEMO-MONEY-001-money-library.md"
+base8="to execute $plan8 on this branch (I consent). Run through the final review and its fixes, then stop: do not start finishing-a-development-branch."
+case "$arm8" in
+  native)    prompt8="Use kdd-superpowers:executing-plans $base8" ;;
+  inline-old) prompt8="Use kdd-superpowers:executing-plans $base8 Execute every task yourself in this session; do not dispatch subagents." ;;
+  sdd)       prompt8="Use kdd-superpowers:subagent-driven-development $base8" ;;
+  *) echo "unknown KDD_FLOW_ARM8='$arm8' (native | inline-old | sdd)"; exit 2 ;;
+esac
+p8="$(new_project)"; cp -R "$SCRIPT_DIR/fixtures/rounding-plan/specs" "$p8/specs"; cp "$SCRIPT_DIR/fixtures/rounding-plan/package.json" "$p8/package.json"
+git -C "$p8" add -A; git -C "$p8" -c user.email=t@e -c user.name=t commit -qm plan
+USAGE_SCENARIO="8-$arm8"
+out="$(run_scenario "$p8" "$prompt8")"
+# the checks read this run's own copied transcripts only, never the shared config dir's projects,
+# so scenarios 4-5 of the same invocation cannot leak into them
+checks8="$("$SCRIPT_DIR/scenario8-checks.sh" "$p8" "$KDD_FLOW_USAGE/scenario-8-$arm8.transcripts" "$arm8" 2>&1)"; rc8=$?
+echo "$checks8"
+[[ "$rc8" -eq 0 ]] || FAILURES=$((FAILURES + $(grep -c '^  \[FAIL\]' <<<"$checks8")))
 
 fi
 echo ""

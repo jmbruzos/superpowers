@@ -52,4 +52,28 @@ n_pinned="$(grep 'claude -p ' "$REPO_ROOT/tests/claude-code/test-kdd-flow.sh" | 
   || fail "every claude -p in test-kdd-flow.sh passes --model \$KDD_FLOW_MODEL ($n_pinned of $n_runs)"
 grep -q 'KDD_FLOW_MODEL="${KDD_FLOW_MODEL:-opus}"' "$REPO_ROOT/tests/claude-code/test-kdd-flow.sh" && pass "KDD_FLOW_MODEL defaults to opus" || fail "KDD_FLOW_MODEL defaults to opus"
 
+# scenario 8 (Native vs old inline vs SDD) is a paid comparison run: opt-in only
+FLOW="$REPO_ROOT/tests/claude-code/test-kdd-flow.sh"
+helper="$(grep -E '^want_explicit\(\)' "$FLOW" | sed 's/ *#.*$//')"   # drop the trailing comment
+if [[ -n "$helper" ]]; then
+  r1="$(KDD_FLOW_SCENARIOS="" bash -c "$helper"'; want_explicit 8 && echo yes || echo no')"
+  r2="$(KDD_FLOW_SCENARIOS="5 6" bash -c "$helper"'; want_explicit 8 && echo yes || echo no')"
+  r3="$(KDD_FLOW_SCENARIOS="5 8" bash -c "$helper"'; want_explicit 8 && echo yes || echo no')"
+  r4="$(KDD_FLOW_SCENARIOS="18" bash -c "$helper"'; want_explicit 8 && echo yes || echo no')"
+  [[ "$r1|$r2|$r3|$r4" == "no|no|yes|no" ]] && pass "want_explicit is true only when KDD_FLOW_SCENARIOS names the scenario" \
+    || fail "want_explicit is true only when KDD_FLOW_SCENARIOS names the scenario (got $r1|$r2|$r3|$r4)"
+else fail "test-kdd-flow.sh defines want_explicit"; fi
+n="$(grep -cE '^if want_explicit 8 && \[\[ -n "\$\{KDD_FLOW_USAGE:-\}" \]\]; then' "$FLOW")"
+[[ "$n" -eq 1 ]] && pass "scenario 8 is guarded by want_explicit 8 and KDD_FLOW_USAGE" || fail "scenario 8 is guarded by want_explicit 8 and KDD_FLOW_USAGE"
+[[ "$(grep -c '^if want 8' "$FLOW")" -eq 0 ]] && pass "scenario 8 is not run by want (an empty list never selects it)" || fail "scenario 8 is not run by want"
+for arm in native inline-old sdd; do
+  n="$(grep -cE "^ *$arm\\)" "$FLOW")"
+  [[ "$n" -ge 1 ]] && pass "scenario 8 has the $arm arm prompt" || fail "scenario 8 has the $arm arm prompt"
+done
+grep -q 'KDD_FLOW_ARM8:-native' "$FLOW" && pass "KDD_FLOW_ARM8 defaults to native" || fail "KDD_FLOW_ARM8 defaults to native"
+grep -q 'scenario8-checks.sh' "$FLOW" && pass "scenario 8 calls scenario8-checks.sh" || fail "scenario 8 calls scenario8-checks.sh"
+grep -q 'USAGE_SCENARIO="8-\$' "$FLOW" && pass "scenario 8 usage name is scenario-8-<arm>" || fail "scenario 8 usage name is scenario-8-<arm>"
+n="$(grep -c 'CONFIG_DIR/projects' <(sed -n '/^if want_explicit 8/,/^fi$/p' "$FLOW"))"
+[[ "$n" -eq 0 ]] && pass "scenario 8 never reads \$CONFIG_DIR/projects" || fail "scenario 8 never reads \$CONFIG_DIR/projects"
+
 finish
