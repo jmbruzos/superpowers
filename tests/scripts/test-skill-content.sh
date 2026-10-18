@@ -352,4 +352,12 @@ must_contain skills/requesting-code-review/code-reviewer.md "Review Focus (when 
 must_contain skills/requesting-code-review/SKILL.md "Review Focus" "requesting-code-review lists Review Focus"
 must_contain skills/writing-plans/plan-adversary-prompt.md "A step that gives a signature and no body is not a violation by itself: attack whether the task's tests pin the rule — a rule its tests would let an implementation break is BROKEN." "A2 attack 1 reads signature-only steps"
 
+# --- brainstorming ideas (WRK-TASK-FORK-UPSTREAM-005-001) ---
+must_contain skills/brainstorming/SKILL.md "which choices about medium, platform, language and libraries" "brainstorming asks who owns how it gets made"
+must_contain skills/brainstorming/SKILL.md "a choice you make goes in the design as your call" "a choice the agent makes is its call, not agreed"
+must_contain skills/brainstorming/SKILL.md "Get them describing first" "open questions come first"
+must_contain skills/brainstorming/SKILL.md "Mark anything you're guessing as your guess" "guesses are marked in the design"
+must_not_contain skills/brainstorming/SKILL.md "Prefer multiple choice questions when possible" "no menu-first default"
+must_not_contain skills/brainstorming/SKILL.md "token-intensive" "companion offer carries no cost warning"
+
 finish
