@@ -28,7 +28,7 @@ edit here:
 ## Testing
 
 ```bash
-export KDD_SPEC_GRAPH=/path/to/spec-graph.mjs   # e.g. ../knowledge-driven-development/apps/spec-graph/spec-graph.mjs
+export KDD_SPEC_GRAPH=/path/to/spec-graph.mjs   # optional: default is the installed kdd plugin; a checkout: ../spec-driven/kdd-toolkit/cli/spec-graph.mjs
 bash tests/scripts/run.sh
 bash tests/hooks/test-session-start.sh
 bash tests/claude-code/test-sdd-workspace.sh

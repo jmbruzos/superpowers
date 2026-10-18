@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Headless Claude Code scenarios for the kdd-superpowers flow.
-# Assumptions: `claude` on PATH; the kdd toolkit at $KDD_TOOLKIT_DIR (default
-# ../knowledge-driven-development/kdd-toolkit relative to the repo); credentials via
+# Assumptions: `claude` on PATH; the kdd toolkit resolved by toolkit-env.sh (the installed
+# plugin kdd-cli finds, or KDD_SPEC_GRAPH / KDD_TOOLKIT_DIR when set); credentials via
 # ~/.claude/.credentials.json (copied into an isolated CLAUDE_CONFIG_DIR so user-scope
 # plugins — e.g. upstream superpowers — do not load), or CLAUDE_CODE_OAUTH_TOKEN
 # (a long-lived token from `claude setup-token`, useful when login lives only in the
@@ -21,8 +21,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$SCRIPT_DIR/test-helpers.sh"
 source "$SCRIPT_DIR/usage-lib.sh"   # KDD_FLOW_USAGE=<dir> → per-scenario token usage (WRK-SPEC-FORK-TOKENS-001)
-KDD_TOOLKIT_DIR="${KDD_TOOLKIT_DIR:-$REPO_ROOT/../knowledge-driven-development/kdd-toolkit}"
-KDD_SPEC_GRAPH="${KDD_SPEC_GRAPH:-$KDD_TOOLKIT_DIR/cli/spec-graph.mjs}"
 TIMEOUT="${CLAUDE_PROMPT_TIMEOUT:-900}"
 # portable timeout: GNU timeout, Homebrew gtimeout, or perl's alarm (macOS ships perl, not timeout)
 if command -v timeout >/dev/null; then TIMEOUT_CMD=(timeout "$TIMEOUT")
@@ -33,7 +31,7 @@ pass() { echo "  [PASS] $1"; }
 fail() { echo "  [FAIL] $1"; FAILURES=$((FAILURES + 1)); }
 
 command -v claude >/dev/null || { echo "SKIP: claude not found"; exit 0; }
-[[ -f "$KDD_SPEC_GRAPH" ]] || { echo "SKIP: kdd toolkit not found at $KDD_TOOLKIT_DIR"; exit 0; }
+source "$SCRIPT_DIR/toolkit-env.sh" || { echo "SKIP: kdd toolkit not found"; exit 0; }   # KDD_SPEC_GRAPH + KDD_TOOLKIT_DIR (DOC-FORK-UPSTREAM-001 §4)
 
 CONFIG_DIR="$(mktemp -d)"
 [[ -f "$HOME/.claude/.credentials.json" ]] && cp "$HOME/.claude/.credentials.json" "$CONFIG_DIR/"
