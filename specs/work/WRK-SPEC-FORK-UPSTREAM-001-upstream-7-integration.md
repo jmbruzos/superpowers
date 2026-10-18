@@ -118,7 +118,7 @@ Dispositions: **adopt** (near-literal), **adapt** (rewritten in KDD terms),
 |---|---|---|---|
 | 1. Fixes | `requesting-code-review`: `awk '{print $1}'` → `cut -d' ' -f1` and multi-commit base `git merge-base origin/main HEAD`; `systematic-debugging` example no longer prints the secret; brainstorm `server.cjs` inserts content literally (function replacer); TDD paragraph "the project's suite defines green" (†); `review-package` range guards (exit 3); `sdd-workspace` writes `.kdd/sdd/.gitignore` only when missing; `code-reviewer.md` "the spec is a vision document" and "Declined to judge" (†); `hooks/run-hook.cmd` Windows fixes; `hooks/session-start` survives a broken `PATH` (see AC6); `kdd-conventions/scripts/transition` exposes `--verify-only`; development paths to the toolkit (`CLAUDE.md`, `docs/testing.md`, `tests/claude-code/README.md`, and `test-kdd-flow.sh`'s `KDD_TOOLKIT_DIR` default); `test-invariants.sh` also rejects `.antigravity-plugin`, `.muse-plugin` and `index.js` | adopt; session-start, transition and test-invariants: adapt | compact |
 | 2. Lean plans | writing-plans 6.4.2: the plan records decisions, not code; *What a Step Contains*; proportion self-review; Review Focus (up to five uncovered input classes, each pinned by a test in its owning task); your human partner reviews the saved plan before execution; handoff recommends one execution mode with a reason. Touches `artifact-templates.md` and `test-skill-content.sh` anchors. A2 stays. | adapt | full |
-| 3. Native | executing-plans inline mode: `task-start` / `task-done` over WRK-TASK files, `transition`, ledger lines per DOC-FORK-LEDGER-001 as WRK-SPEC-FORK-MODS-002 leaves it, `Knowledge gap:` rulings, final review through `review-brief` with the plan's Review Focus, under the rules in *Batch 3 rules* below; SDD's *when to use* diagram; the plan handoff offers Subagent-driven / Native; the opt-in nested SDD orchestrator from upstream's `references/claude-code-tools.md`, placed at `skills/subagent-driven-development/claude-code-orchestrator.md` | adapt | full |
+| 3. Native | executing-plans inline mode: `task-start` / `task-done` over WRK-TASK files, `transition`, ledger lines per DOC-FORK-LEDGER-001 in the forms of *Batch 3 rules* 4, `Knowledge gap:` rulings, final review through `review-brief` with the plan's Review Focus, under the rules in *Batch 3 rules* below; SDD's *when to use* diagram; the plan handoff offers Subagent-driven / Native; the opt-in nested SDD orchestrator from upstream's `references/claude-code-tools.md`, placed at `skills/subagent-driven-development/claude-code-orchestrator.md` | adapt | full |
 | 4. Brainstorming and routing | ideas from 7.0 only: "how it gets made" (which platform/language/library choices your human partner owns), playback in 200–300-word chunks with guesses marked, open questions before menus, a builder check before A1, the companion offer without its token-cost warning. The three paths, the HARD-GATE and the compact WRK-SPEC stay. using-superpowers *Skill Priority*: a question about what the knowledge says → `kdd:spec-ask`; browsing the graph → `kdd:spec-tui` (your human partner launches it). | idea | full |
 | 5. Diagnosing | `diagnosing-superpowers` adapted: state under `.kdd/`, issues to this repository | adapt, optional | decided when batch 4 closes |
 | — | other harnesses (Antigravity, Muse, OpenCode, Hermes, Codex, Cursor, Gemini, Kimi, Devin, Qwen) and their manifests, tests and docs; upstream `docs/superpowers/*`; `AGENTS.md` replacing `CLAUDE.md`; the Code of Conduct; the full brainstorming rewrite; "skip the questions" and "quick task: just do it" (they clash with the HARD-GATE and P3); the toolkit's `new-task` as a second path to a WRK-SPEC; a `skills/using-superpowers/references/` directory (`test-invariants.sh:32` forbids it) | discard | — |
@@ -149,16 +149,28 @@ SDD gives a task touching knowledge:
 3. **A3 and A5 in the final review.** The whole-branch review covers every
    activated rule the branch touches (A3) and every WRK-SPEC acceptance
    criterion (A5), as SDD's final review does.
+4. **Ledger forms that every reader accepts.** `task-start` writes the
+   identity line `# SDD ledger — plan: <WRK-PLAN-ID> (<plan file path
+   relative to the repository root>)` — SDD's form (`subagent-driven-development/SKILL.md:155`),
+   with the path's spelling fixed, which SDD leaves to the caller. A task's
+   `transition … completed` runs first; `task-done` then appends
+   `Task <WRK-TASK-ID>: complete (commits <a7>..<b7>, tests: <command> →
+   <result>)`, as today's executing-plans orders them. `kdd-status` reads
+   both as it is today (identity by `plan: <ID> ` prefix,
+   `kdd-status-lib.mjs:21`; completion by prefix or frontmatter, `:41`),
+   and the forms stay valid under any later reader that compares the path
+   or trusts only the frontmatter. `tests/scripts/test-kdd-status.sh` gains
+   a case with a Native ledger.
 
 ### Data flow
 
-- **Order:** 1 → 2 → WRK-SPEC-FORK-MODS-002 → 3 → 4 → (5).
+- **Order:** 1 → 2 → 3 → 4 → (5).
   - Batch 3 depends on batch 2: the plan handoff offers Native, and Native's
     final review uses Review Focus.
-  - Batch 3 depends on WRK-SPEC-FORK-MODS-002 (your human partner's draft,
-    its own flow, not absorbed here): it settles DOC-FORK-LEDGER-001's
-    inconsistencies 1, 2 and 4 (completion line vs task status, ledger
-    identity, root), which Native's `task-done` writes into.
+  - Batch 3 does not wait on DOC-FORK-LEDGER-001's open inconsistencies:
+    *Batch 3 rules* 4 picks forms that are correct under every reading of
+    them. Closing those inconsistencies stays a WRK-SPEC of its own, outside
+    this umbrella.
   - Batch 4 is independent and goes last because it is the most
     prose-sensitive.
 - **Releases:** one minor release per batch, 0.7.0 to 0.10.0, each with its
@@ -259,7 +271,7 @@ Every batch WRK-SPEC cites this section and adds only its hypotheses.
 |---|---|
 | DOC-FORK-TOKENS-001@0.3.0 | level-1 measurement method and the before side |
 | DOC-FORK-GATES-001@0.4.0 | level-2 A/B method; gates A1–A6 the batches must keep |
-| DOC-FORK-LEDGER-001@0.1.0 | ledger forms the Native mode must write; its open inconsistencies order batch 3 after WRK-SPEC-FORK-MODS-002 |
+| DOC-FORK-LEDGER-001@0.1.0 | ledger forms the Native mode must write, chosen to hold under every reading of its open inconsistencies |
 | FRAG-FORK-GATES-003, -004, -005 | evidence, not activated: protocol, judge prompts, K prompt, reading rule, plan executability metric, reference figures |
 | FRAG-FORK-TOKENS-003 | evidence, not activated: latest fixture cost per side |
 | FRAG-FORK-LEDGER-001 | evidence, not activated: ledger line forms as written today |
@@ -297,7 +309,7 @@ All three activated documents are `draft`, `confidence: low`, without
 - **DOC-FORK-LEDGER-001, Completion:** "A finished task is a line starting
   `Task <task>: complete`, always followed by a parenthesised suffix …
   Readers match the prefix, never the whole line." Native writes `<task>` as
-  the WRK-TASK ID.
+  the WRK-TASK ID (*Batch 3 rules* 4).
 - **DOC-FORK-LEDGER-001, Maintenance:** "Change a ledger form in the skills
   and in `kdd-status-lib.mjs` in the same commit;
   `tests/scripts/test-kdd-status.sh` holds the parsed forms." / "Resolving
@@ -406,10 +418,10 @@ toolkit 1.9.0..1.13.0.
     fixture holding one WRK-SPEC set to `completed`, is byte-identical to
     the 0.6.0 hook's output in the same two directories (the second shows
     `completed, pending consolidation`).
-- [ ] AC8. Batch 3 implements *Batch 3 rules* 1–3, and its scenario-8 or
+- [ ] AC8. Batch 3 implements *Batch 3 rules* 1–4; its scenario-8 or
   level-2b transcripts show A4 dispatched for a task that meets its
-  condition. WRK-SPEC-FORK-MODS-002 is `completed` or `archived` before
-  batch 3's WRK-SPEC is approved.
+  condition; `tests/scripts/test-kdd-status.sh` has a Native-ledger case
+  where every completed task counts as done and the ledger is `used`.
 - [ ] AC9. Releases 0.7.0 onward each have a `RELEASE-NOTES.md` entry and a
   `kdd-superpowers--v<version>` tag; `CLAUDE.md` and `README.md` carry the
   "selected changes through 7.0.0" wording; the umbrella WRK-PLAN's
@@ -448,7 +460,7 @@ decisions.
 | 3 · AC7 does not cover `completed` | ambiguity | fixture has 4 × `status: active` | accepted: second directory with a `completed` WRK-SPEC |
 | 3 · AC3 `git log` cannot order runs | ambiguity | runs leave no commit here | accepted: pre-registration sha/time vs `result.json` start times |
 | 3 · batch 2 judged on design points | ambiguity | FRAG-003 prereg:52-55 | accepted: batch 2 decides on plan executability and the evidence judge over the plan; H1–H10 reported only |
-| 4 · Native ledger order and identity | knowledge-gap | DOC-FORK-LEDGER-001 inconsistencies 1–2; WRK-SPEC-FORK-MODS-002 | accepted: D2 — MODS-002 closes before batch 3 (*Data flow*, AC8) |
+| 4 · Native ledger order and identity | knowledge-gap | DOC-FORK-LEDGER-001 inconsistencies 1–2; the then-untracked draft WRK-SPEC-FORK-MODS-002 | accepted: D2 — first ruled "MODS-002 closes before batch 3", then revised by the human: MODS-002 was discarded (never committed, moved out of the graph), and *Batch 3 rules* 4 fixes forms valid under every reading, so batch 3 waits on nothing (AC8) |
 | 5 · `references/` forbidden by test-invariants | code-reality | `test-invariants.sh:32,35` | accepted: D3 — the orchestrator moves to batch 3 as `skills/subagent-driven-development/claude-code-orchestrator.md`; `references/` added to the discard row |
 | 5 · AC7 toolkit test absent from the checkout | code-reality | `../spec-driven` on a feature branch at 1.11.0 | accepted: run in a worktree at tag `kdd--v1.13.0` |
 | 5 · arms do not pin the `kdd:*` skills | code-reality | `test-kdd-flow.sh:24,52` | accepted: `KDD_TOOLKIT_DIR` fixed to the 1.13.0 plugin; batch 1 fixes the default |
