@@ -125,4 +125,32 @@ err="$(cd "$r" && KDD_SPEC_GRAPH="$stub/spec-graph.mjs" TRANSITION_TRACE=1 "$TRA
 [[ "$(grep -A1 -m1 '^status:' "$r/$TASK" | tail -1)" == "updated: $TODAY" ]] && pass "updated: today right after status:" || fail "updated: today right after status: (got '$(grep -A1 -m1 '^status:' "$r/$TASK" | tail -1)')"
 ( cd "$r" && "$KDD_CLI_SCRIPT" --specs specs validate >/dev/null 2>&1 ) && pass "graph validates after the built-in move" || fail "graph validates after the built-in move"
 rm -rf "${r:?}" "${stub:?}"
+# 12. --verify-only: a human verified entry without a status move (WRK-SPEC-FORK-UPSTREAM-002 AC8)
+r="$(repo)"; st0="$(status_of "$r/$SPEC")"; n0="$(grep -c -- '- by: human:' "$r/$SPEC")"
+( cd "$r" && "$TRANSITION" --verify-only --verified human:t "$SPEC" >/dev/null 2>&1 ); rc=$?
+[[ $rc -eq 0 ]] && pass "--verify-only exits 0" || fail "--verify-only exits 0 (rc=$rc)"
+[[ "$(status_of "$r/$SPEC")" == "$st0" ]] && pass "--verify-only leaves status" || fail "--verify-only leaves status (got $(status_of "$r/$SPEC"))"
+[[ "$(grep -c -- '- by: human:t' "$r/$SPEC")" -ge 1 && "$(grep -c -- '- by: human:' "$r/$SPEC")" -eq $((n0 + 1)) ]] && pass "--verify-only adds one verified entry" || fail "--verify-only adds one verified entry"
+msg="$(git -C "$r" log -1 --format=%s)"
+[[ "$msg" == "spec(WRK-SPEC-BILL-PRORATA-001): verified by human:t" ]] && pass "commit message spec(<ID>): verified by human:<id>" || fail "commit message spec(<ID>): verified by human:<id> (got '$msg')"
+[[ -z "$(git -C "$r" status --porcelain)" ]] && pass "tree clean after --verify-only" || fail "tree clean after --verify-only"
+for bad in "--verify-only $SPEC" "--verify-only --verified human:t $SPEC active"; do
+  before="$(sha1sum < "$r/$SPEC")"; head0="$(git -C "$r" rev-parse HEAD)"
+  # shellcheck disable=SC2086 # word-splitting the case is the point
+  ( cd "$r" && "$TRANSITION" $bad >/dev/null 2>&1 ); rc=$?
+  [[ $rc -eq 2 && "$(sha1sum < "$r/$SPEC")" == "$before" && "$(git -C "$r" rev-parse HEAD)" == "$head0" ]] \
+    && pass "refused, exit 2, untouched: transition $bad" || fail "refused, exit 2, untouched: transition $bad (rc=$rc)"
+done
+stub="$(mktemp -d)"
+cat > "${stub:?}/spec-graph.mjs" <<EOF
+import { spawnSync } from 'node:child_process';
+const r = spawnSync('node', ['$KDD_CLI', ...process.argv.slice(2)], { encoding: 'utf8' });
+const out = process.argv.includes('--help') ? r.stdout.split('\n').filter(l => !/verify-only/.test(l)).join('\n') : r.stdout;
+process.stdout.write(out); process.stderr.write(r.stderr); process.exit(r.status ?? 1);
+EOF
+before="$(sha1sum < "$r/$SPEC")"
+( cd "$r" && KDD_SPEC_GRAPH="$stub/spec-graph.mjs" "$TRANSITION" --verify-only --verified human:t "$SPEC" >/dev/null 2>&1 ); rc=$?
+[[ $rc -eq 2 && "$(sha1sum < "$r/$SPEC")" == "$before" ]] && pass "toolkit without --verify-only → exit 2, untouched" || fail "toolkit without --verify-only → exit 2, untouched (rc=$rc)"
+rm -rf "${r:?}" "${stub:?}"
+
 finish

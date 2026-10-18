@@ -260,5 +260,6 @@ must_contain skills/requesting-code-review/code-reviewer.md "The session that di
 must_contain tests/scripts/test-invariants.sh ".antigravity-plugin" "invariants reject .antigravity-plugin"
 must_contain tests/scripts/test-invariants.sh ".muse-plugin" "invariants reject .muse-plugin"
 must_contain tests/scripts/test-invariants.sh "index.js" "invariants reject index.js"
+must_contain skills/kdd-conventions/SKILL.md "transition --verify-only --verified human:<id> FILE" "kdd-conventions documents verify-only"
 
 finish

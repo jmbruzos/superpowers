@@ -2,11 +2,15 @@
 # Move a work artifact (WRK-SPEC / WRK-PLAN / WRK-TASK) to its next status.
 #
 # Usage: transition [--specs DIR] [--verified human:<id>] [--no-commit] FILE STATUS
+#        transition [--specs DIR] --verify-only --verified human:<id> [--no-commit] FILE
 #   FILE        the artifact's .md file
 #   STATUS      target status: active | completed | archived
 #   --specs     specs directory for `validate` (default ./specs)
 #   --verified  append a human `verified` entry (writer ≠ confirmer: only on explicit approval)
 #   --no-commit rewrite and validate, but leave the commit to the caller
+#   --verify-only append the --verified entry with no status move (toolkit >= 1.13,
+#               `spec-graph transition --verify-only`; no built-in fallback); commits
+#               `spec(<ID>): verified by human:<id>`
 #
 # Does exactly what the kdd-conventions *Status transitions* table says, in one step:
 # rewrites `status:` and `updated:` in the frontmatter, validates the graph, and commits
@@ -19,23 +23,43 @@
 # validate restores the file and commits nothing (exit 1). Exit 2 on usage errors.
 set -euo pipefail
 
-specs="./specs"; verified=""; commit=1
+specs="./specs"; verified=""; commit=1; verify_only=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --specs) specs="${2:?}"; shift 2 ;;
     --verified) verified="${2:?}"; shift 2 ;;
     --no-commit) commit=0; shift ;;
+    --verify-only) verify_only=1; shift ;;
     -*) echo "unknown option: $1" >&2; exit 2 ;;
     *) break ;;
   esac
 done
-usage="usage: transition [--specs DIR] [--verified human:<id>] [--no-commit] FILE STATUS"
+usage="usage: transition [--specs DIR] [--verified human:<id>] [--no-commit] FILE STATUS | --verify-only --verified human:<id> FILE"
+KDD_CLI="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../using-superpowers/scripts" && pwd)/kdd-cli"
+
+# --- verify only: a human verified entry, no status move (delegated, never built in) ---
+if [[ "$verify_only" -eq 1 ]]; then
+  [[ $# -eq 1 && "$verified" =~ ^human:[^[:space:]]+$ ]] || { echo "$usage" >&2; exit 2; }
+  file="$1"; [[ -f "$file" ]] || { echo "no such file: $file" >&2; exit 2; }
+  "$KDD_CLI" transition --help 2>/dev/null | grep -q -- '--verify-only' \
+    || { echo "transition --verify-only needs the kdd toolkit >= 1.13 (spec-graph transition --verify-only)" >&2; exit 2; }
+  id="$(awk 'NR==1 && $0!="---"{exit} NR>1 && $0=="---"{exit} NR>1 && $1=="id:"{print $2; exit}' "$file")"
+  [[ -n "$id" ]] || { echo "no id: in $file" >&2; exit 1; }
+  "$KDD_CLI" --specs "$specs" transition --verify-only --verified "$verified" "$file" >/dev/null \
+    || { rc=$?; echo "$id: spec-graph transition --verify-only failed (exit $rc)" >&2; exit "$rc"; }
+  if [[ "$commit" -eq 1 ]]; then
+    msg="spec(${id}): verified by ${verified}"
+    git add -- "$file"; git commit -q -m "$msg" -- "$file"
+    echo "$id: verified by $verified (spec $(git rev-parse --short HEAD))"
+  else
+    echo "$id: verified by $verified (not committed)"
+  fi
+  exit 0
+fi
 [[ $# -eq 2 ]] || { echo "$usage" >&2; exit 2; }
 file="$1"; target="$2"
 [[ -f "$file" ]] || { echo "no such file: $file" >&2; exit 2; }
 [[ -z "$verified" || "$verified" =~ ^human:[^[:space:]]+$ ]] || { echo "$usage (--verified takes human:<id>)" >&2; exit 2; }
-
-KDD_CLI="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../using-superpowers/scripts" && pwd)/kdd-cli"
 
 # --- read the frontmatter -------------------------------------------------------------
 fm="$(awk 'NR==1 && $0!="---"{exit 1} NR>1 && $0=="---"{exit} NR>1{print}' "$file")" \
