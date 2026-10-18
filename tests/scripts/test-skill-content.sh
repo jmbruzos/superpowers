@@ -246,4 +246,19 @@ must_contain skills/kdd-conventions/SKILL.md "kdd-repo.yaml" "pins are required 
 must_contain skills/kdd-conventions/SKILL.md "activation_pins: []" "older CLI fallback documented"
 must_contain skills/kdd-conventions/SKILL.md "activation-unpinned" "names the validate rule"
 must_contain skills/brainstorming/SKILL.md "\`activation_pins\` from \`kdd-cli pins\`" "brainstorming writes pins with the WRK-SPEC"
+# --- upstream sync batch 1 (WRK-SPEC-FORK-UPSTREAM-002) ---
+must_not_contain skills/requesting-code-review/SKILL.md "awk '{print \$1}'" "base-SHA example has no \$1 (skill args replace it)"
+must_contain skills/requesting-code-review/SKILL.md "cut -d' ' -f1" "base-SHA example uses cut"
+must_contain skills/requesting-code-review/SKILL.md "git merge-base origin/main HEAD" "multi-commit base is the merge base"
+must_not_contain skills/systematic-debugging/SKILL.md 'IDENTITY:+SET' "debugging example does not print the secret (expansion)"
+must_not_contain skills/systematic-debugging/SKILL.md 'env | grep IDENTITY' "debugging example does not print the secret (env)"
+must_contain skills/test-driven-development/SKILL.md "means the project's suite, not just your file." "TDD: the project's suite defines green"
+must_contain skills/requesting-code-review/code-reviewer.md "## The spec is a vision document" "reviewer: spec is a vision document"
+must_contain skills/requesting-code-review/code-reviewer.md "never overrides a rule" "reviewer: activated rules still bind (KDD)"
+must_contain skills/requesting-code-review/code-reviewer.md "## Declined to judge" "reviewer: declined-to-judge list"
+must_contain skills/requesting-code-review/code-reviewer.md "the session that dispatched you" "reviewer: who rules on declined lines"
+must_contain tests/scripts/test-invariants.sh ".antigravity-plugin" "invariants reject .antigravity-plugin"
+must_contain tests/scripts/test-invariants.sh ".muse-plugin" "invariants reject .muse-plugin"
+must_contain tests/scripts/test-invariants.sh "index.js" "invariants reject index.js"
+
 finish
