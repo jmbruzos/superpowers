@@ -3,11 +3,11 @@ id: WRK-TASK-FORK-UPSTREAM-005-003
 type: spec
 layer: work-task
 scope: ephemeral
-status: active
+status: completed
 confidence: low
 version: 0.1.0
 created: 2026-10-18
-updated: 2026-10-18
+updated: 2026-10-19
 owner: jmbruzos
 title: "Scenario 9 (opt-in)"
 parent: WRK-PLAN-FORK-UPSTREAM-005
