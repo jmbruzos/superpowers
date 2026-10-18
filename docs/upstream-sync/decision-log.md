@@ -133,3 +133,21 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   2–3× a Sonnet one (estimate $15–25 per pass, four passes). — If you
   prefer Sonnet for level 1, set `KDD_FLOW_MODEL=sonnet` and say so in the
   protocol. — `155d911`, `f5a4b46`.
+- **U-12 · 2026-10-18 · 2** — Batch 2 designed and adjudicated unattended
+  (WRK-SPEC-FORK-UPSTREAM-003, full path; premise verifier 13/13 hold, U7
+  false as a quotation; gate A1 17/18 BROKEN, all accepted — table in the
+  spec). Calls worth your review:
+  - **KDD over upstream:** the handoff does *not* get upstream's per-plan
+    mode recommendation yet; recommending today's gate-less executing-plans
+    would break DOC-FORK-UPSTREAM-001 §3.4. It comes with batch 3.
+  - **Amends WRK-SPEC-FORK-CORE-001's WRK-TASK design** ("steps with real
+    code"): the test step keeps real code; the implementation step gives a
+    signature. That line was 6.3.0's step shape, not a KDD principle.
+  - An advance approval that names the plan ("I approve … the plan in
+    advance") counts as the plan review and is quoted in the activation
+    commit; it keeps the headless scenarios and the RFC-PIPE-039 prompt
+    unchanged across arms.
+  - Deciding metrics are relative to the before arm (no fixed 25 %
+    threshold); level 2 cannot show lean plans execute as well — batch 3's
+    level 2b is that check and can reopen batch 2.
+  — Cost if wrong: one more batch-2 iteration. — WRK-SPEC-FORK-UPSTREAM-003.
