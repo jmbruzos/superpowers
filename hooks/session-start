@@ -14,6 +14,14 @@ case "$0" in
 esac
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
+# A PATH that is empty or has an empty, "." or relative element makes bash look up
+# commands in the current directory — the project being opened. Such a PATH is
+# treated as broken: no command is looked up at all (the Windows half refuses a
+# bash or where from the current directory for the same reason).
+# (patterns only, no array: bash 3.2 with set -u rejects an empty one)
+path_broken=0
+case ":${PATH-}:" in *::*|*:[!/:]*) path_broken=1 ;; esac
+
 skill_md="${PLUGIN_ROOT}/skills/using-superpowers/SKILL.md"
 if [ -r "$skill_md" ]; then
   using_superpowers_content="$(<"$skill_md")"
@@ -27,12 +35,15 @@ fi
 # grep/awk pipelines are safe here only because this function guards or
 # tolerates them explicitly — do not assume that elsewhere in the script.
 kdd_environment() {
-  local toolkit specs_line open_line okf_line tool
+  local toolkit specs_line open_line okf_line tool na="unavailable (no PATH at session start)"
+  if [ "$path_broken" -eq 1 ]; then
+    printf '<KDD-ENVIRONMENT>\ntoolkit: %s\nspecs_dir: %s\nopen_work: %s\nokf_bundles: %s\n</KDD-ENVIRONMENT>' "$na" "$na" "$na" "$na"
+    return 0
+  fi
   # The probe needs these; without them (broken PATH) it says so instead of guessing.
   # `toolkit: NOT FOUND` is printed only when kdd-cli actually ran and failed.
   for tool in find awk mktemp wc tr sort rm grep sed head dirname; do
     if ! command -v "$tool" >/dev/null 2>&1; then
-      local na="unavailable (no PATH at session start)"
       printf '<KDD-ENVIRONMENT>\ntoolkit: %s\nspecs_dir: %s\nopen_work: %s\nokf_bundles: %s\n</KDD-ENVIRONMENT>' "$na" "$na" "$na" "$na"
       return 0
     fi
@@ -151,7 +162,7 @@ session_context="<EXTREMELY_IMPORTANT>\nYou have kdd-superpowers.\n\n**Below is 
 # alone when PATH is broken, so the context still gets out.
 emit_json() {
   # shellcheck disable=SC2059 # every caller passes a literal format string
-  if command -v cat >/dev/null 2>&1; then
+  if [ "$path_broken" -eq 0 ] && command -v cat >/dev/null 2>&1; then
     printf "$@" | cat
   else
     printf "$@"

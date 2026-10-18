@@ -326,6 +326,23 @@ else
     echo "    exit: $nopath_rc"; head -c 400 "$nopath_out" | sed 's/^/      /'; head -5 "$TEST_ROOT/nopath.err" | sed 's/^/      /'
 fi
 
+# --- broken PATH never runs a command from the current directory (review of batch 1, Important 1) ---
+for broken in "" "." "/nonexistent::/also-missing"; do
+    planted="$TEST_ROOT/planted-$RANDOM"; mkdir -p "$planted/specs"
+    for t in cat find awk mktemp wc tr sort rm grep sed head dirname; do
+        printf '#!/bin/sh\necho PLANTED-%s-RAN >> "%s/ran"\n' "$t" "$planted" > "$planted/$t"; chmod +x "$planted/$t"
+    done
+    p_rc=0
+    p_out="$(/usr/bin/env -i PATH="$broken" HOME="$(make_home planted)" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+        /bin/bash -c "cd '$planted' && exec /bin/bash '$WRAPPER_UNDER_TEST' session-start" 2>/dev/null)" || p_rc=$?
+    if [[ "$p_rc" -eq 0 && ! -e "$planted/ran" && "$p_out" == *"unavailable (no PATH at session start)"* ]]; then
+        pass "PATH='$broken': no planted command runs, probe unavailable"
+    else
+        fail "PATH='$broken': no planted command runs, probe unavailable"
+        echo "    exit: $p_rc; ran: $(cat "$planted/ran" 2>/dev/null | tr '\n' ' ')"
+    fi
+done
+
 # --- the KDD-ENVIRONMENT block is the 0.6.0 hook's, byte for byte (toolkit TUI contract; AC7) ---
 if git -C "$REPO_ROOT" rev-parse -q --verify 'refs/tags/kdd-superpowers--v0.6.0' >/dev/null; then
     old_root="$TEST_ROOT/hook-0.6.0"; mkdir -p "$old_root/hooks"
@@ -333,17 +350,22 @@ if git -C "$REPO_ROOT" rev-parse -q --verify 'refs/tags/kdd-superpowers--v0.6.0'
     done_proj="$TEST_ROOT/done-proj"; cp -R "$REPO_ROOT/tests/scripts/fixtures" "$done_proj"
     f="$(grep -rl '^layer: work-spec' "$done_proj/specs/work" | head -1)"
     sed -i.bak 's/^status: active$/status: completed/' "$f" && rm -f "$f.bak"
-    envblock() { # ROOT DIR
-        env -i PATH="${PATH:-}" HOME="$TEST_ROOT" CLAUDE_PLUGIN_ROOT="$1" bash -c "cd '$2' && exec bash '$1/hooks/session-start'" \
+    envblock() { # ROOT DIR [VAR=value…]
+        local root="$1" dir="$2"; shift 2
+        env -i PATH="${PATH:-}" HOME="$TEST_ROOT" CLAUDE_PLUGIN_ROOT="$root" "$@" bash -c "cd '$dir' && exec bash '$root/hooks/session-start'" \
           | node -e 'const c=JSON.parse(require("fs").readFileSync(0,"utf8")).hookSpecificOutput.additionalContext; const m=c.match(/<KDD-ENVIRONMENT>[\s\S]*<\/KDD-ENVIRONMENT>/); process.stdout.write(m ? m[0] : "NO BLOCK")'
     }
+    found_cli="$("$REPO_ROOT/skills/using-superpowers/scripts/kdd-cli" --path 2>/dev/null || true)"
     for d in "$REPO_ROOT/tests/scripts/fixtures" "$done_proj"; do
-        if [[ "$(envblock "$REPO_ROOT" "$d")" == "$(envblock "$old_root" "$d")" ]]; then
-            pass "KDD-ENVIRONMENT block identical to 0.6.0 in $(basename "$d")"
-        else
-            fail "KDD-ENVIRONMENT block identical to 0.6.0 in $(basename "$d")"
-            diff <(envblock "$old_root" "$d") <(envblock "$REPO_ROOT" "$d") | sed 's/^/      /'
-        fi
+        for tk in "toolkit not found" "toolkit found"; do
+            extra=(); [[ "$tk" == "toolkit found" ]] && { [[ -n "$found_cli" ]] || continue; extra=(KDD_SPEC_GRAPH="$found_cli"); }
+            if [[ "$(envblock "$REPO_ROOT" "$d" "${extra[@]+"${extra[@]}"}")" == "$(envblock "$old_root" "$d" "${extra[@]+"${extra[@]}"}")" ]]; then
+                pass "KDD-ENVIRONMENT block identical to 0.6.0 in $(basename "$d"), $tk"
+            else
+                fail "KDD-ENVIRONMENT block identical to 0.6.0 in $(basename "$d"), $tk"
+                diff <(envblock "$old_root" "$d" "${extra[@]+"${extra[@]}"}") <(envblock "$REPO_ROOT" "$d" "${extra[@]+"${extra[@]}"}") | sed 's/^/      /'
+            fi
+        done
     done
     [[ "$(envblock "$REPO_ROOT" "$done_proj")" == *"completed, pending consolidation"* ]] \
         && pass "a completed WRK-SPEC shows as pending consolidation" || fail "a completed WRK-SPEC shows as pending consolidation"

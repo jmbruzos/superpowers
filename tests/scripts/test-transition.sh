@@ -153,4 +153,11 @@ before="$(sha1sum < "$r/$SPEC")"
 [[ $rc -eq 2 && "$(sha1sum < "$r/$SPEC")" == "$before" ]] && pass "toolkit without --verify-only → exit 2, untouched" || fail "toolkit without --verify-only → exit 2, untouched (rc=$rc)"
 rm -rf "${r:?}" "${stub:?}"
 
+# 13. --verify-only --no-commit writes the entry and leaves the commit to the caller (review of batch 1, Minor 3)
+r="$(repo)"; head0="$(git -C "$r" rev-parse HEAD)"
+( cd "$r" && "$TRANSITION" --verify-only --verified human:t --no-commit "$SPEC" >/dev/null 2>&1 ); rc=$?
+[[ $rc -eq 0 && "$(git -C "$r" rev-parse HEAD)" == "$head0" && -n "$(git -C "$r" status --porcelain -- "$SPEC")" ]] \
+  && pass "--verify-only --no-commit writes, does not commit" || fail "--verify-only --no-commit writes, does not commit (rc=$rc)"
+rm -rf "${r:?}"
+
 finish
