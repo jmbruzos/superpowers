@@ -49,3 +49,25 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   passes. I do not install tools unattended. — `! brew install shellcheck`
   and run `bash scripts/lint-shell.sh tests/claude-code/ab/run-one.sh
   tests/claude-code/toolkit-env.sh`. — `c4b64f1`.
+- **U-5 · 2026-10-18 · 0** — Release 0.6.1 committed and tagged (`d99d696`)
+  before the baseline finished; `FRAG-FORK-UPSTREAM-001` lands after the tag.
+  — The tag is the before arm of batch 1 and must hold only batch-0 harness
+  changes; the FRAG is data, not part of the arm. — None expected; if you
+  want the FRAG inside 0.6.1, move the tag. — `d99d696`.
+- **U-6 · 2026-10-18 · 1** — Batch 1 design approved by me (bounded path,
+  compact WRK-SPEC-FORK-UPSTREAM-002), with these calls:
+  - the dev-path item of the batch-1 row was already done in batch 0
+    (`90eb8fa`), so it is not repeated;
+  - `code-reviewer.md` gets one KDD sentence per upstream section — an
+    activated rule binds as written and a reasonable person's expectation
+    fills only silence; the dispatching session rules on "Declined to judge"
+    (KDD over upstream: P5);
+  - `transition --verify-only` has no built-in fallback for toolkits < 1.13
+    (simplicity; the toolkit owns the move, P4);
+  - the hook prints `unavailable (no PATH at session start)` from batch 1,
+    but the using-superpowers row that tells the agent what to do with it
+    stays in batch 4, as DOC-FORK-UPSTREAM-001 §2 says — a rare case
+    (broken PATH) runs a few releases without that row;
+  - measured at level 1 only, decided on "no check regresses"; cost reported.
+  — Cost if wrong: a reworded section or one more release. —
+  WRK-SPEC-FORK-UPSTREAM-002.
