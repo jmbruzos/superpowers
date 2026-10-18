@@ -42,7 +42,7 @@ function reviewFocus(body) {
   const sec = [];
   for (const l of body.slice(i + 1)) { if (/^## /.test(l)) break; sec.push(l); }
   const lines = sec.filter((l) => l.trim() !== '');
-  const bullets = lines.filter((l) => /^\s*- /.test(l)).length;
+  const bullets = lines.filter((l) => /^\s*(?:- |\d+[.)] )/.test(l)).length;   // "- " bullets or "1." / "1)" items
   const first = lines[0] ?? '';
   if (/^none — every input class/.test(first) && bullets >= 1) return `none-per-class:${bullets}`;
   if (/^none/.test(first)) return 'none-bare';
