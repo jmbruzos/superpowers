@@ -165,3 +165,19 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   Execution mode: Subagent-Driven (the only mode with gates today); the
   plan was reviewed by me, not by you — this entry is that record.
   — Cost if wrong: a re-run of scenario 4. — WRK-PLAN-FORK-UPSTREAM-003.
+- **U-14 · 2026-10-18 · 3** — Batch 3 (Native) designed unattended
+  (WRK-SPEC-FORK-UPSTREAM-004; verifier 15/15, gate A1 25/26 BROKEN, all
+  accepted — table in the spec). Calls:
+  - **§3.5 settled, none left out**: identity compared by plan ID in both
+    modes (SDD's text changes from "plan file"); frontmatter is the resume
+    signal; the ledger root is the plan's working tree, and `kdd-status`
+    from another checkout reports `none` — a tested decision; the range ends
+    before the transition commit.
+  - gate (b) gets its own trimmed prompt; A4 in Native: fix by TDD, one
+    re-dispatch, park with ruling; no no-subagent path (Claude Code only).
+  - **Waiting for you (blocking the batch-3 release):** level 2b — Native
+    vs SDD executing a real batch-2 plan, about $30–60 per arm. The policy
+    row requires it and the protocol requires your confirmation of its
+    cost. Implementation and level 1 proceed; the release does not.
+  — Cost if wrong: rework of one script or one skill section. —
+  WRK-SPEC-FORK-UPSTREAM-004.
