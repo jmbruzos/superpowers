@@ -3,7 +3,7 @@ id: WRK-SPEC-FORK-UPSTREAM-001
 type: spec
 layer: work-spec
 scope: ephemeral
-status: draft
+status: active
 confidence: low
 version: 0.2.0
 created: 2026-10-18
@@ -42,6 +42,9 @@ sources:
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-10-18T12:30:00+02:00
+verified:
+  - by: human:jmbruzos
+    at: 2026-10-18T11:01:52+02:00
 stale_after: 2027-01-16T12:30:00+02:00
 tags: [kdd, fork, upstream, measurement, harness, baseline, testing]
 ---
