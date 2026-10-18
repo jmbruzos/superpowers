@@ -103,3 +103,28 @@ with this rule, fixed now:
 A provisional count by the controller, made while writing this rule from
 the reports, already put the after arm above the before arm; the rule was not
 chosen to favour either arm.
+
+## Amendment 4 — re-measurement of the reworked candidate, written before any of its runs (2026-10-18)
+
+Result so far: level 2 deciding metric 1 failed (amendment-3 count: before
+B1 1, B2 1; after A1 2, A2 2). The batch is worse as measured and is not
+released. Rework `60bfc23` (two added sentences in `writing-plans`; decision
+log U-22). Re-measurement:
+
+- **After′ arm:** the measured candidate `b6cbc2a` + `60bfc23` (cherry-picked
+  onto a detached worktree; sha named in the report). Everything else as
+  before: toolkit 1.13.0, opus, the harness of the measuring commit.
+- **Before arm:** the existing runs B1 and B2 and level-1 before runs 1–2,
+  not repeated (confound: time; Claude Code version is recorded per run).
+- **Level 2:** two runs A3, A4 in sequence; evidence judge, neutral summary
+  and one blind H1–H10 pass over S1–S4 plus the two new summaries under
+  fresh shuffled codes; defects counted with amendment 3's rule by a
+  separate adjudicator over all six reports under fresh codes. Deciding
+  metrics unchanged, computed with A3/A4 as the after arm. A1/A2 are
+  reported as the unreworked candidate.
+- **Level 1:** scenario 4 only, n=2 (the rework touches only
+  `writing-plans`, which scenarios 5–6 do not load); deciding metrics 1–3
+  unchanged for scenario 4; scenarios 5–6 keep their earlier result.
+- **Decision:** not worse on every deciding metric → release 0.8.0 (built on
+  `kdd-superpowers--v0.7.2` + batch 2 + `60bfc23`); worse again → revert
+  batch 2's writing-plans changes and hold for a human ruling.

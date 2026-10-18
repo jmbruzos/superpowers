@@ -269,3 +269,20 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   66 MB) and new measurements write there. Also: `plan-metrics` counted only
   `- ` bullets and read batch-2 after-run 1's numbered Review Focus (4 items)
   as `lines:0`; fixed with a test (`60f74f1`), both readings go in the FRAG.
+- **U-22 · 2026-10-18 · batch 2** — Level 2 found batch 2 worse on deciding
+  metric 1 (plan executability): adjudicated defects before 1 + 1, after 2 + 2
+  (pre-registration amendment 3, counted blind by a separate judge). Level 1
+  and the other level-2 metric were favourable (false claims per run 4.5 →
+  2; `impl_code_share` 0.20 → 0.02; Review Focus present). The after-arm
+  defects share one shape — test code naming overloads, accessors or
+  variables that do not exist — which matches the lean test step ("name and
+  assertions, as code") read as permission to sketch. **Rework, not
+  revert**: two added sentences in `writing-plans` (test code compiles where
+  it lands; self-review checks names against the code), `60bfc23`. 0.8.0 is
+  not tagged as measured. Re-measure: level 2 A3/A4 and level 1 scenario 4
+  on the reworked candidate against the same before runs (amendment 4).
+  **Needs your ruling** (spec AC5 asks for a human ruling on rework vs
+  revert): this is provisional. — Cost if wrong: if the cause is noise
+  (n=2, counts of 1–2), the rework adds two sentences for nothing; if the
+  cause is elsewhere, the re-measure shows it and the batch is reverted. —
+  `c2f6dbd`, `60bfc23`.
