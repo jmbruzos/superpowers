@@ -61,3 +61,11 @@ plan WRK-PLAN-FORK-UPSTREAM-004, task 005.
 - Scenario 4/5 cost above +20 % with non-overlapping ranges → no release
   until the human accepts it.
 - Not worse → release 0.9.0 after level 2b has run (spec AC7, AC9).
+
+## Amendment 1 — level 2b dropped by human ruling, before any level-2b run (2026-10-18)
+
+Decision log H-8: the human agreed a leaner protocol; level 2b (indicative,
+n=1, not deciding) is not run, and spec AC7 is waived by that ruling.
+Level 1 continues exactly as registered above (runs were in progress; this
+amendment changes nothing about them). Decision: not worse at level 1 →
+release 0.9.0.

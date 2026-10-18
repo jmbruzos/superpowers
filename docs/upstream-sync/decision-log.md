@@ -29,6 +29,16 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
 - **H-7 · 2026-10-18** — Measurement cost approved by the human ("no te
   preocupes por el gasto. Aprobado"), including batch 3's level 2b (Native
   vs SDD on a real plan); the cost-confirmation hold of U-14 is lifted.
+- **H-8 · 2026-10-18** — Leaner measurement for the rest of the sync, agreed
+  by the human ("¿Es necesario tal volumen de pruebas?" → proposal → "Si").
+  Kept: level-1 behaviour checks (n=1 per arm; n=2 only when a cost or
+  metric gain is claimed), level 2 with the evidence judge only when a batch
+  changes plan- or design-shaping prose, task and final reviews. Dropped:
+  the blind H1–H10 pass and the neutral summaries (never decided, noise ±1
+  point), scenarios the batch does not touch, and level 2b. Batch 3 skips
+  level 2b (its spec AC7 is waived by this ruling) and finishes the level-1
+  runs already pre-registered. DOC-FORK-UPSTREAM-001 §4 is updated at
+  consolidation.
 
 ## Taken unattended (review these)
 
