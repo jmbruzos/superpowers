@@ -1,5 +1,30 @@
 # Release notes
 
+## 0.9.0 — Native execution (upstream sync batch 3)
+
+Implements WRK-SPEC-FORK-UPSTREAM-004 (batch 3 of DOC-FORK-UPSTREAM-001),
+from superpowers 6.4.1 and 7.0, adapted to KDD:
+- `executing-plans` is Native: the session implements every WRK-TASK itself
+  under SDD's workspace and ledger, with every gate SDD gives a task run
+  before the task is marked complete — the final test run, A4 when its
+  condition holds, a knowledge check after a `Knowledge gap:` ruling on an
+  activated rule — and one fresh whole-branch review on the most capable
+  model (A3, A5, Review Focus). New scripts `task-start` and `task-done`
+  keep the ledger honest; `task-done` transitions a task only after a
+  passing run and recovers the task's own range on a re-run.
+- `subagent-driven-development`: when-to-use offers Native; the ledger is
+  matched by plan ID; a task whose frontmatter says `completed` is done;
+  `review-package` exit 3 is ruled on; an opt-in nested orchestrator for
+  Claude Code (`claude-code-orchestrator.md`).
+- `writing-plans` handoff offers Subagent-driven and Native with a per-plan
+  recommendation; the plan-review rule is unchanged.
+- Harness: opt-in scenario 8 (Native vs the old inline stub vs SDD on the
+  rounding fixture) with deterministic checks.
+
+Measured (FRAG-FORK-UPSTREAM-004, opus, toolkit 1.13.0): Native passes every
+scenario-8 check in both runs and costs about 20 % less than SDD on the
+fixture; scenarios 4–5 do not regress.
+
 ## 0.8.0 — lean plans (upstream sync batch 2)
 
 Implements WRK-SPEC-FORK-UPSTREAM-003 (batch 2 of DOC-FORK-UPSTREAM-001),
