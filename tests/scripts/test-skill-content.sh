@@ -271,6 +271,8 @@ must_contain skills/writing-plans/SKILL.md "**A reference to another task:** thi
 must_contain skills/writing-plans/SKILL.md "\"Follow DOM-X\" without the rule's text (copy the rule; the implementer's brief carries the spec, but the step must say which line binds it)" "rule-citation line kept verbatim"
 must_contain skills/writing-plans/SKILL.md "**6. Review Focus:**" "self-review checks Review Focus"
 must_contain skills/writing-plans/SKILL.md "**7. Proportion:**" "self-review checks proportion"
+must_contain skills/writing-plans/SKILL.md "every type, method, overload, accessor and variable it" "test steps compile where they land (batch-2 rework, U-22)"
+must_contain skills/writing-plans/SKILL.md "open the file and check it, do not recall it." "self-review checks names against the code (batch-2 rework, U-22)"
 must_contain skills/writing-plans/SKILL.md "## Review Focus" "WRK-PLAN template has Review Focus (skill)"
 must_contain skills/kdd-conventions/references/artifact-templates.md "## Review Focus" "WRK-PLAN template has Review Focus (templates)"
 must_contain skills/writing-plans/SKILL.md "a code block only for an algorithm they do not determine" "an algorithm body is still allowed"
