@@ -86,6 +86,12 @@ if [[ -n "$spec" ]]; then
   out2v="$(validate "$p2")"; [[ "$out2v" == *"Validation passed"* ]] && pass "validates" || fail "validates: $out2v"
   grep -q "^## Problem Statement" "$spec" && ! grep -q "^## Open Questions" "$spec" && pass "compact body" || fail "compact body"
 fi
+# in-workflow boundary (DOC-FORK-UPSTREAM-001 batch 4): discovery inside brainstorming goes through kdd:spec-context,
+# never kdd:spec-ask. Only this run's transcripts count: the config dir's project folder is named after the temp dir.
+tx2="$(find "$CONFIG_DIR/projects" -path "*${p2##*.}*" -name '*.jsonl' 2>/dev/null)"
+skills2=""; [[ -n "$tx2" ]] && skills2="$(grep -hE '"name": ?"Skill"' $tx2 2>/dev/null)"
+[[ "$(grep -cE '"skill": ?"kdd:spec-context"' <<<"$skills2")" -gt 0 ]] && pass "discovery invokes kdd:spec-context" || fail "discovery invokes kdd:spec-context"
+[[ "$(grep -cE '"skill": ?"kdd:spec-ask"' <<<"$skills2")" -eq 0 ]] && pass "discovery does not invoke kdd:spec-ask" || fail "discovery does not invoke kdd:spec-ask"
 
 fi
 if want 3; then
@@ -247,6 +253,23 @@ out="$(run_scenario "$p8" "$prompt8")"
 checks8="$("$SCRIPT_DIR/scenario8-checks.sh" "$p8" "$KDD_FLOW_USAGE/scenario-8-$arm8.transcripts" "$arm8" 2>&1)"; rc8=$?
 echo "$checks8"
 [[ "$rc8" -eq 0 ]] || FAILURES=$((FAILURES + $(grep -c '^  \[FAIL\]' <<<"$checks8")))
+
+fi
+if want_explicit 9 && [[ -z "${KDD_FLOW_USAGE:-}" ]]; then
+echo "=== Scenario 9: SKIP — it reads the run's own transcripts; set KDD_FLOW_USAGE=<dir> ==="
+
+fi
+if want_explicit 9 && [[ -n "${KDD_FLOW_USAGE:-}" ]]; then
+echo "=== Scenario 9: a knowledge question outside a workflow → kdd:spec-ask, not brainstorming (opt-in, paid) ==="
+p9="$(new_project)"; cp -R "$REPO_ROOT/tests/scripts/fixtures/specs" "$p9/specs"; rm -rf "$p9/specs/work"; git -C "$p9" add -A; git -C "$p9" -c user.email=t@e -c user.name=t commit -qm specs
+USAGE_SCENARIO=9
+rm -rf "$KDD_FLOW_USAGE/scenario-9.transcripts"   # usage_record only adds to it: a rerun must not read the last run
+out="$(run_scenario "$p9" "What do our specs say about rounding pro-rata amounts?")"
+# the checks read this run's own copied transcripts only, never the shared config dir's projects
+skills9="$(find "$KDD_FLOW_USAGE/scenario-9.transcripts" -name '*.jsonl' -exec grep -hE '"name": ?"Skill"' {} + 2>/dev/null)"
+[[ "$(grep -cE '"skill": ?"kdd:spec-ask"' <<<"$skills9")" -gt 0 ]] && pass "invokes kdd:spec-ask" || fail "invokes kdd:spec-ask"
+[[ "$(grep -cE '"skill": ?"kdd-superpowers:brainstorming"' <<<"$skills9")" -eq 0 ]] && pass "does not invoke brainstorming" || fail "does not invoke brainstorming"
+[[ -z "$(find "$p9/specs/work" -type f 2>/dev/null)" ]] && pass "no file under specs/work written" || fail "no file under specs/work written"
 
 fi
 echo ""
