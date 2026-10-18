@@ -303,3 +303,8 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   of names that follows fixes the meaning). — Cost if wrong: a level-2
   difference the two fixture runs cannot show; batch 3's level 2b plans run
   on this text.
+  Scenario 4 ×2 on the re-cut 0.8.0 (`8e799d6`, epochs 1792349148 and
+  1792349511): 8/8 checks both; `impl_code_share` 0 / 0; Review Focus
+  lines:5 / lines:5; proportion 9.68 / 9.11; cost 1.49 / 1.57 USD — in line
+  with FRAG-FORK-UPSTREAM-003's reworked rows. Data in
+  `.kdd/upstream-sync/measure/v080-l1/` (git-ignored).
