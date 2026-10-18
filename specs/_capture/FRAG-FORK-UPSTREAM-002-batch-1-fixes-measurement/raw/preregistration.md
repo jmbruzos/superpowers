@@ -54,3 +54,18 @@ now pins `--model "$KDD_FLOW_MODEL"` (default `opus`, `155d911`). Therefore:
 - **After** is scenarios 1–7 × 2 at `kdd-superpowers--v0.7.0` with the same
   harness copied in (the tag predates `155d911`).
 - Everything else above stands.
+
+## Amendment 2 — after the first after-runs, before the re-run (2026-10-18)
+
+The two after-runs at `kdd-superpowers--v0.7.0` failed scenario 1 in both
+(passed in both before runs): a regression by the deciding rule. Root cause,
+reproduced: 0.7.0's `run-hook.cmd` exec'd `$BASH` (`/bin/sh` under Claude
+Code on macOS), so `session-start` ran in POSIX mode and injected nothing.
+Fixed in `a37a90c`, released as `kdd-superpowers--v0.7.1`. Therefore:
+
+- The 0.7.0 after-runs are kept in the FRAG as the observation that found
+  the regression; they are not the after arm.
+- **After** is re-run at `kdd-superpowers--v0.7.1`: scenarios 1–7 × 2, same
+  harness, same fixed conditions. **Before** stays the two 0.6.1 runs already
+  taken.
+- Deciding metric and reading rule unchanged.
