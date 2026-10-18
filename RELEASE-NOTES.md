@@ -1,5 +1,16 @@
 # Release notes
 
+## 0.7.1 — the SessionStart hook runs again under Claude Code
+
+Fixes a regression in 0.7.0 (never published): Claude Code runs the hook
+command through `/bin/sh`, which on macOS is bash in POSIX mode with
+`BASH=/bin/sh`. 0.7.0's wrapper (upstream 7.0's `exec "${BASH:-bash}"`) then
+ran `session-start` in POSIX mode, where it fails with a syntax error, so no
+session got using-superpowers or `<KDD-ENVIRONMENT>`. The wrapper now uses
+`$BASH` only when it is a bash binary, else `/bin/bash`, else `bash` from
+PATH. Found by the batch-1 measurement; a new test runs the wrapper through
+`/bin/sh`.
+
 ## 0.7.0 — upstream fixes (upstream sync batch 1)
 
 Implements WRK-SPEC-FORK-UPSTREAM-002 (batch 1 of DOC-FORK-UPSTREAM-001),
