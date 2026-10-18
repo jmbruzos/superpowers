@@ -1,0 +1,78 @@
+=== Scenario 5: subagent-driven-development executes the hello plan ===
+  [PASS] hello library tests pass
+  [PASS] ledger under .kdd/sdd/<plan id>/ (deleted by finishing after the execution log commit; git log shows the execution log commit)
+  [PASS] task 001 completed
+  [PASS] task 002 completed
+  [PASS] plan completed
+  [PASS] commits carry task IDs
+  [PASS] execution log persisted by finishing
+  [PASS] spec closed
+=== Scenario 6: code review flags an activated-rule violation as Critical ===
+  [PASS] report has a knowledge compliance section
+  [PASS] violation is Critical
+  [PASS] names the violated rule
+
+scenario         turns   cache_w   cache_r      out   cost$    dur
+scenario-5          32     73.3k   1596.0k    16.6k    1.56   287s
+    claude-opus-5-5                cache_w=89.8k cache_r=1696.1k out=20.8k cost=1.42
+    claude-haiku-5-5               cache_w=34.2k cache_r=218.0k out=6.3k cost=0.01
+    claude-sonnet-5-5              cache_w=35.0k cache_r=70.7k out=3.3k cost=0.13
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             55        110     31,575  3,099,589 $  10.23
+    a4a997991f259a222 implementing Task WRK-TASK-DEMO-HELLO-001-002: goodbye funct     1          2        345     19,798 $   0.07
+    ab457c33796b57ae7 the final whole-branch code reviewer for plan WRK-PLAN-DEMO-     1          2      3,055     22,723 $   0.12
+    ad924faf277582ab2 implementing Task WRK-TASK-DEMO-HELLO-001-001: hello functio     1          2        258     19,971 $   0.07
+    adcd4354f1e248afe the task reviewer for WRK-TASK-DEMO-HELLO-001-002 (goodbye f     1          2        981     18,077 $   0.08
+    ae4c17a1e4046ee8e the task reviewer for WRK-TASK-DEMO-HELLO-001-001 (hello fun     1          2      1,086     18,044 $   0.08
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         60
+      Input tokens:           120
+      Output tokens:          37,300
+      Cache creation tokens:  163,593
+      Cache read tokens:      3,198,202
+    
+      Total input (incl cache): 3,361,915
+      Total tokens:             3,399,215
+    
+      Estimated cost: $10.65
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+scenario-6           7     24.6k    139.2k     7.1k    0.52   112s
+    claude-opus-5-5                cache_w=38.4k cache_r=200.9k out=10.5k cost=0.52
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)              8         16     10,568    193,464 $   0.84
+    a73a097b69a30f959 a Senior Code Reviewer with expertise in software architectu     1          2      2,717     20,686 $   0.10
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         9
+      Input tokens:           18
+      Output tokens:          13,285
+      Cache creation tokens:  35,743
+      Cache read tokens:      214,150
+    
+      Total input (incl cache): 249,911
+      Total tokens:             263,196
+    
+      Estimated cost: $0.95
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+PASS
