@@ -107,7 +107,7 @@ if want 4; then
 echo "=== Scenario 4: writing-plans from an active WRK-SPEC → plan + task files ==="
 p4="$(new_project)"; cp -R "$REPO_ROOT/tests/scripts/fixtures/specs" "$p4/specs"; rm -f "$p4"/specs/work/WRK-PLAN-* "$p4"/specs/work/WRK-TASK-*; git -C "$p4" add -A; git -C "$p4" -c user.email=t@e -c user.name=t commit -qm specs
 USAGE_SCENARIO=4
-out="$(run_scenario "$p4" "Use kdd-superpowers:writing-plans for WRK-SPEC-BILL-PRORATA-001 (specs/work). Two tasks are enough. Write the WRK-PLAN and the WRK-TASK files, validate, and when you offer the execution choice assume I chose Subagent-Driven: activate them and commit. Do not execute the plan.")"
+out="$(run_scenario "$p4" "Use kdd-superpowers:writing-plans for WRK-SPEC-BILL-PRORATA-001 (specs/work). Two tasks are enough. I approve the saved plan in advance and will not review it. Write the WRK-PLAN and the WRK-TASK files, validate, and when you offer the execution choice assume I chose Subagent-Driven: activate them and commit. Do not execute the plan.")"
 plan="$(ls "$p4"/specs/work/WRK-PLAN-BILL-PRORATA-*.md 2>/dev/null | head -1)"
 [[ -n "$plan" ]] && pass "WRK-PLAN written" || fail "WRK-PLAN written"
 n="$(ls "$p4"/specs/work/WRK-TASK-BILL-PRORATA-001-*.md 2>/dev/null | wc -l | tr -d ' ')"
@@ -118,6 +118,17 @@ for t in "$p4"/specs/work/WRK-TASK-*.md; do
 done
 [[ -n "$plan" ]] && grep -q "^## Architecture Impact" "$plan" && grep -q "DOM-BILL-PRORATA-001" "$plan" && pass "Architecture Impact cites the DOM" || fail "Architecture Impact cites the DOM"
 out4v="$(validate "$p4")"; [[ "$out4v" == *"Validation passed"* ]] && pass "plan + tasks validate" || fail "plan + tasks validate: $out4v"
+inactive4=0
+for f in "$p4"/specs/work/WRK-PLAN-BILL-PRORATA-*.md "$p4"/specs/work/WRK-TASK-*.md; do
+  [[ -f "$f" ]] || continue
+  grep -c "^status: active" "$f" >/dev/null || { inactive4=$((inactive4+1)); echo "    not active: $(basename "$f")"; }
+done
+[[ -n "$plan" && "$inactive4" -eq 0 ]] && pass "plan and every task are status: active" || fail "plan and every task are status: active"
+git -C "$p4" log --format=%s | grep -c "^plan(WRK-PLAN-BILL-PRORATA-" >/dev/null && pass "activation committed (plan(WRK-PLAN-BILL-PRORATA-…))" || fail "activation committed (plan(WRK-PLAN-BILL-PRORATA-…))"
+plan4="$(ls "$p4"/specs/work/WRK-PLAN-BILL-PRORATA-*.md 2>/dev/null | head -1)"
+metrics4="$(node "$SCRIPT_DIR/plan-metrics.mjs" "$plan4" 2>&1)"
+echo "  plan-metrics: $metrics4"
+if [[ -n "${KDD_FLOW_USAGE:-}" ]]; then mkdir -p "$KDD_FLOW_USAGE"; echo "  plan-metrics: $metrics4" > "$KDD_FLOW_USAGE/scenario-4.plan-metrics.txt"; fi
 
 fi
 if want 5; then
