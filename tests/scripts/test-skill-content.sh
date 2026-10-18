@@ -255,8 +255,9 @@ must_not_contain skills/systematic-debugging/SKILL.md 'env | grep IDENTITY' "deb
 must_contain skills/test-driven-development/SKILL.md "means the project's suite, not just your file." "TDD: the project's suite defines green"
 must_contain skills/requesting-code-review/code-reviewer.md "## The spec is a vision document" "reviewer: spec is a vision document"
 must_contain skills/requesting-code-review/code-reviewer.md "never overrides a rule" "reviewer: activated rules still bind (KDD)"
-must_contain skills/requesting-code-review/code-reviewer.md "## Declined to judge" "reviewer: declined-to-judge list"
-must_contain skills/requesting-code-review/code-reviewer.md "The session that dispatched you rules on each line" "reviewer: who rules on declined lines"
+# "Declined to judge" removed: it made the safety classifier cut the reviewer's report in 5/5 runs
+# (scenario 6; 0/5 with only the vision-document section) — decision log U-20
+must_not_contain skills/requesting-code-review/code-reviewer.md "Declined to judge" "reviewer has no declined-to-judge list (classifier cut, U-20)"
 must_contain tests/scripts/test-invariants.sh ".antigravity-plugin" "invariants reject .antigravity-plugin"
 must_contain tests/scripts/test-invariants.sh ".muse-plugin" "invariants reject .muse-plugin"
 must_contain tests/scripts/test-invariants.sh "index.js" "invariants reject index.js"
