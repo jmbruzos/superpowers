@@ -234,3 +234,13 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   - batch-1 after arm re-measured at 0.7.1; batch-2 before arm moved from
     0.7.0 to 0.7.1 (pre-registrations amended before any affected run).
   — Cost of the miss: one more pass (~$15–20). — `a37a90c`, `45ce7e0`.
+- **U-19 · 2026-10-18 · all** — Batch WRK-SPECs move to `completed` as
+  each batch's ACs are met (batch 0 now), but **consolidation is deferred to
+  the end of the sync**: bumping DOC-FORK-UPSTREAM-001 / -TOKENS-001 /
+  -GATES-001 / -LEDGER-001 mid-sync would put newer text under the pins of
+  batches still running. The consolidation list so far: DOC-FORK-UPSTREAM-001
+  §4 "harness = script + toolkit-env.sh + fixtures" (U-9), the model pin
+  (U-11), §2 row outcomes (builder check not taken U-16, 0.7.1 U-18);
+  DOC-FORK-TOKENS-001 gains FRAG-FORK-UPSTREAM-001 as its latest source;
+  DOC-FORK-LEDGER-001 and -GATES-001 per batch 3. `completed` WRK-SPECs show
+  as "pending consolidation" in the session-start probe until then.
