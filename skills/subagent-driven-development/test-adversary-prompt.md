@@ -1,8 +1,9 @@
 # Test Adversary Prompt (gate A4)
 
-Dispatch after a clean A3 when the task activates a `CALC-*`, a numeric
-or business rule, or is security-sensitive. Common contract:
-kdd-superpowers:kdd-conventions `references/adversarial-gates.md`.
+Dispatch after a clean A3 (SDD) or after the task's steps (Native) when
+the task activates a `CALC-*`, a numeric or business rule, or is
+security-sensitive. Common contract: kdd-superpowers:kdd-conventions
+`references/adversarial-gates.md`.
 
 ```
 Subagent (general-purpose):
