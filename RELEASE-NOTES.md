@@ -1,5 +1,31 @@
 # Release notes
 
+## 0.8.0 — lean plans (upstream sync batch 2)
+
+Implements WRK-SPEC-FORK-UPSTREAM-003 (batch 2 of DOC-FORK-UPSTREAM-001),
+from superpowers 6.4.1–6.4.2, adapted to KDD:
+- `writing-plans`: a plan records the decisions the implementer cannot make
+  alone — files, names and signatures, the spec's values, the tests — not
+  the code. A code step carries the exact signature and file; a body only for
+  an algorithm the signature and tests do not determine. Self-review gains a
+  step scan, a Review Focus check and a proportion check; the plan is
+  reviewed by your human partner (or approved in advance by name) before
+  anything runs.
+- Fork addition after measurement: a test step's code must compile where it
+  lands, and self-review checks every name no task defines against the code.
+  Without it the lean plans of the first measurement named overloads,
+  accessors and variables that do not exist (FRAG-FORK-UPSTREAM-003).
+- WRK-PLAN gains `## Review Focus`: up to five input classes the spec implies
+  and no task tests, each pinned by a test in the owning task; the review
+  brief carries it and the reviewer checks each line.
+- Harness: `test-kdd-flow.sh` pins the model (`KDD_FLOW_MODEL`, default
+  opus); scenario 4 reports plan metrics (`plan-metrics.mjs`).
+
+Measured (FRAG-FORK-UPSTREAM-003, opus, toolkit 1.13.0): on the fixture,
+implementation code in plans 0.20 → 0.01 and every check passes; on a real
+task (RFC-PIPE-039), false claims about the code per plan 4.5 → 3.5,
+executability defects 1 → 0, cost per run 17.4 → 14.2 USD.
+
 ## 0.7.2 — the code reviewer's report is no longer cut
 
 Fixes a regression in 0.7.0 (never published): upstream 7.0's "Declined to
