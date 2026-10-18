@@ -263,4 +263,28 @@ must_contain tests/scripts/test-invariants.sh ".muse-plugin" "invariants reject 
 must_contain tests/scripts/test-invariants.sh "index.js" "invariants reject index.js"
 must_contain skills/kdd-conventions/SKILL.md "transition --verify-only --verified human:<id> FILE" "kdd-conventions documents verify-only"
 
+# --- lean plans (WRK-TASK-FORK-UPSTREAM-003-001) ---
+must_contain skills/writing-plans/SKILL.md "## Step Granularity" "step granularity is one checkable action"
+must_contain skills/writing-plans/SKILL.md "**Each step is one action with a checkable result:**" "step = one checkable action"
+must_contain skills/writing-plans/SKILL.md "## What a Step Contains" "What a Step Contains replaces No Placeholders"
+must_contain skills/writing-plans/SKILL.md "**A reference to another task:** this task's own *Consumes* line" "cross-task reference goes through Consumes (KDD)"
+must_contain skills/writing-plans/SKILL.md "\"Follow DOM-X\" without the rule's text (copy the rule; the implementer's brief carries the spec, but the step must say which line binds it)" "rule-citation line kept verbatim"
+must_contain skills/writing-plans/SKILL.md "**6. Review Focus:**" "self-review checks Review Focus"
+must_contain skills/writing-plans/SKILL.md "**7. Proportion:**" "self-review checks proportion"
+must_contain skills/writing-plans/SKILL.md "## Review Focus" "WRK-PLAN template has Review Focus (skill)"
+must_contain skills/kdd-conventions/references/artifact-templates.md "## Review Focus" "WRK-PLAN template has Review Focus (templates)"
+must_contain skills/writing-plans/SKILL.md "a code block only for an algorithm they do not determine" "an algorithm body is still allowed"
+must_contain skills/writing-plans/SKILL.md "An input an activated rule already names is not Review Focus" "Review Focus excludes rule-named inputs (KDD)"
+must_contain skills/writing-plans/SKILL.md "none — every input class the spec implies is tested:" "Review Focus per-class none form"
+must_contain skills/writing-plans/SKILL.md "up to five input classes" "Review Focus capped at five"
+must_contain skills/kdd-conventions/references/artifact-templates.md "**Step 3: Implement \`function(input: InputType) -> ResultType\` in \`exact/path/to/file.py\`**" "templates share Step 3 wording"
+must_contain skills/writing-plans/SKILL.md "**1. Subagent-Driven (recommended)**" "Subagent-Driven stays the recommendation (batch 3 decides otherwise)"
+must_not_contain skills/writing-plans/SKILL.md "For this plan I recommend" "no per-plan recommendation before Native (DOC-FORK-UPSTREAM-001 §3.4)"
+must_contain skills/writing-plans/SKILL.md "Please review the plan" "handoff asks for the plan review"
+must_contain skills/writing-plans/SKILL.md "is not approving a plan your human partner has not seen" "scope approval is not plan approval"
+must_not_contain skills/writing-plans/SKILL.md "2-5 minutes" "no minute-sized steps"
+must_not_contain skills/writing-plans/SKILL.md "questionable taste" "reader is capable (6.4.2)"
+must_not_contain skills/writing-plans/SKILL.md "code blocks required for code steps" "no code-block requirement"
+must_not_contain skills/kdd-conventions/references/artifact-templates.md "**Step 3: Minimal implementation** (code block)" "template Step 3 is a signature"
+
 finish
