@@ -62,7 +62,7 @@ for (const f of process.argv.slice(1)) {
       const ts = Date.parse(d.timestamp);
       const flags = [A4.test(head) || /\bA4\b/.test(desc) ? "a4" : "", FINAL.test(head) || /final[^"]*review|whole-branch/i.test(desc) ? "final" : "",
                      IMPL.test(head) || /^implement/i.test(desc) ? "impl" : ""].filter(Boolean).join(",") || "-";
-      console.log([Number.isNaN(ts) ? 0 : ts, i.model || m.model || "-", flags, desc.replace(/\s+/g, " ")].join("\t"));
+      console.log([Number.isNaN(ts) ? 0 : ts, i.model || m.model || "-", flags, desc.replace(/\s+/g, " "), head.replace(/\s+/g, " ")].join("\t"));
     }
   }
 }' 2>/dev/null | sort -n)"
@@ -78,11 +78,27 @@ else
   fail "the first A4 dispatch is earlier than the commit of chore($T1): complete (A4:${a4_first:-none} commit:${commit_t:-none})"
 fi
 
+# The mode really ran (DOC-FORK-UPSTREAM-001 §4, Level 1): an implementer is a dispatch whose
+# description starts "Implement" or whose prompt opens "You are implementing".
+implementers() { flagged impl; }
+if [[ "$ARM" == sdd ]]; then
+  for pair in "$T1:1" "$T2:2"; do
+    t="${pair%%:*}"; pos="${pair##*:}"; n3="$(printf '%03d' "$pos")"
+    hit="$(implementers | awk -F'\t' -v re="(MONEY-001-$n3|WRK-TASK-$n3|Task $pos([^0-9]|$))" '($4 " " $5) ~ re')"
+    [[ -n "$hit" ]] && pass "sdd: an implementer dispatched for $t" || fail "sdd: an implementer dispatched for $t"
+  done
+elif [[ "$ARM" == inline-old ]]; then
+  impl="$(implementers | cut -f4 | head -3 | tr '\n' ';')"
+  [[ -z "$impl" ]] && pass "inline-old: no implementer dispatched" || fail "inline-old: no implementer dispatched ($impl)"
+fi
 if [[ "$ARM" == native ]]; then
-  impl="$(flagged impl | cut -f4 | head -3 | tr '\n' ';')"
+  impl="$(implementers | cut -f4 | head -3 | tr '\n' ';')"
   [[ -z "$impl" ]] && pass "Native: no implementer dispatched" || fail "Native: no implementer dispatched ($impl)"
-  [[ -n "$(flagged final | awk -F'\t' 'tolower($2) ~ /opus/')" ]] && pass "Native: a final review dispatched with an Opus model" \
-    || fail "Native: a final review dispatched with an Opus model (final reviews: $(flagged final | cut -f2,4 | tr '\n' ';'))"
+fi
+if [[ "$ARM" == native || "$ARM" == sdd ]]; then
+  label="$ARM"; [[ "$ARM" == native ]] && label=Native
+  [[ -n "$(flagged final | awk -F'\t' 'tolower($2) ~ /opus/')" ]] && pass "$label: a final review dispatched with an Opus model" \
+    || fail "$label: a final review dispatched with an Opus model (final reviews: $(flagged final | cut -f2,4 | tr '\n' ';'))"
 
   result="${TDIR%.transcripts}.result"
   if [[ -f "$result" ]]; then text="$(cat "$result")"
@@ -97,7 +113,7 @@ if [[ "$ARM" == native ]]; then
     }
     console.log(last);' 2>/dev/null)"
   fi
-  [[ "$text" == *"Rulings I made"* ]] && pass 'Native: the result text contains "Rulings I made"' || fail 'Native: the result text contains "Rulings I made"'
+  [[ "$text" == *"Rulings I made"* ]] && pass "$label: the result text contains \"Rulings I made\"" || fail "$label: the result text contains \"Rulings I made\""
 fi
 
 if [[ "$FAILURES" -ne 0 ]]; then echo "scenario 8 ($ARM): $FAILURES check(s) failed."; exit 1; fi

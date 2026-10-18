@@ -76,4 +76,8 @@ grep -q 'USAGE_SCENARIO="8-\$' "$FLOW" && pass "scenario 8 usage name is scenari
 n="$(grep -c 'CONFIG_DIR/projects' <(sed -n '/^if want_explicit 8/,/^fi$/p' "$FLOW"))"
 [[ "$n" -eq 0 ]] && pass "scenario 8 never reads \$CONFIG_DIR/projects" || fail "scenario 8 never reads \$CONFIG_DIR/projects"
 
+[[ "$(grep -c 'rm -rf "\$KDD_FLOW_USAGE/scenario-8-\$arm8.transcripts"' "$FLOW")" -eq 1 ]] \
+  && [[ "$(grep -n 'rm -rf "\$KDD_FLOW_USAGE/scenario-8-' "$FLOW" | cut -d: -f1)" -lt "$(grep -n 'out="$(run_scenario "$p8"' "$FLOW" | cut -d: -f1)" ]] \
+  && pass "scenario 8 empties its transcripts directory before the run" || fail "scenario 8 empties its transcripts directory before the run"
+
 finish
