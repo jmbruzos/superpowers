@@ -105,3 +105,19 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
     DOC-FORK-LEDGER-001 (the workspace contract), not written now.
   — Cost if wrong: a reworded probe line or one more release. —
   `8279228`, WRK-SPEC-FORK-UPSTREAM-002.
+- **U-9 · 2026-10-18 · 0/1** — The "harness" copied into a before arm is
+  `tests/claude-code/test-kdd-flow.sh`, `toolkit-env.sh` **and the fixtures
+  the scenarios read** (`tests/scripts/fixtures`, `tests/claude-code/fixtures`):
+  scenario 4 reads its fixture from the arm's own tree, so copying only the
+  script would have re-run the contradictory fixture. DOC-FORK-UPSTREAM-001
+  §4 says "the current test-kdd-flow.sh"; it is corrected at batch-1
+  consolidation, not now (editing an activated DOC mid-batch would drift the
+  pins of WRK-SPEC-FORK-UPSTREAM-001/-002). — Precision. — None. —
+  this log; FRAG-FORK-UPSTREAM-001/-002 Method.
+- **U-10 · 2026-10-18 · all** — The `generated.at` / `activation_resolved_at`
+  times I wrote by hand in DOC-FORK-UPSTREAM-001 (12:00), WRK-SPEC-FORK-
+  UPSTREAM-001 v0.2.0 (12:30) and -002 (15:00) run ahead of the commit clock
+  (`449baf9` was committed at 11:41 +02:00). Left as is: rewriting the DOC
+  would change its hash and break the pins that froze it. From now on these
+  fields take `date -Iseconds`. — Cost: cosmetic, a timestamp up to ~4 h
+  early. — this log.
