@@ -50,13 +50,6 @@ Subagent (general-purpose):
     written; a reasonable person's expectation fills only the spec's
     silence and never overrides a rule.
 
-    ## Declined to judge
-
-    Before your verdict, list every behavior you considered and set aside
-    as outside the plan or spec, one line each, with the reason.
-    The session that dispatched you rules on each line; nothing you set
-    aside is dropped silently. An empty list means you set nothing aside.
-
     ## Read-Only Review
 
     Your review is read-only on this checkout. Do not mutate the working tree, the index, HEAD, or branch state in any way. Use tools like `git show`, `git diff`, and `git log` to inspect history. If you need a working copy of a different revision, check it out into a separate temporary directory (e.g. `git worktree add /tmp/review-[SHA] [SHA]`) — never move HEAD on this checkout.
