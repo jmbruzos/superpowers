@@ -1,5 +1,35 @@
 # Release notes
 
+## 0.7.0 — upstream fixes (upstream sync batch 1)
+
+Implements WRK-SPEC-FORK-UPSTREAM-002 (batch 1 of DOC-FORK-UPSTREAM-001),
+fixes taken from superpowers 6.4.1–7.0.0:
+- `requesting-code-review`: the base-SHA example no longer uses `$1`
+  (Claude Code replaced it with a skill argument); the multi-commit base is
+  `git merge-base origin/main HEAD`.
+- `systematic-debugging`: the multi-layer example reports whether the
+  signing identity is set without printing it.
+- Visual companion: screen content is inserted literally (`$&`, `$'` and
+  similar no longer expand).
+- `test-driven-development`: the project's suite, not the task's test file,
+  defines green; every failure that run shows goes in the report.
+- `code-reviewer.md`: behaviour the spec is silent on is judged by what a
+  reasonable person would expect — an activated rule still binds as written —
+  and the reviewer lists what it declined to judge for the dispatching
+  session to rule on.
+- `review-package` refuses an empty range or a HEAD that does not descend
+  from BASE (exit 3); `sdd-workspace` keeps a repository's own
+  `.kdd/sdd/.gitignore`.
+- Hooks: `run-hook.cmd` is upstream 7.0's (per-user Git for Windows, no WSL
+  launchers, no `bash`/`where` from the current directory, exit codes kept).
+  `session-start` survives a broken `PATH`: it still injects
+  using-superpowers, never looks a command up in the project directory, and
+  marks the KDD probe `unavailable (no PATH at session start)`.
+- `kdd-conventions/scripts/transition --verify-only --verified human:<id>
+  FILE` records a human `verified` entry with no status move (toolkit 1.13).
+- `test-invariants.sh` rejects the upstream 7.0 assets `.antigravity-plugin`,
+  `.muse-plugin`, `index.js`.
+
 ## 0.6.1 — measurement harness (upstream sync batch 0)
 
 Implements WRK-SPEC-FORK-UPSTREAM-001 (batch 0 of DOC-FORK-UPSTREAM-001). No
