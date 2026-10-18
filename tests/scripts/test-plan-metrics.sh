@@ -49,6 +49,8 @@ rf() { cp "$FX"/hello-plan/specs/work/WRK-PLAN-DEMO-HELLO-001-*.md "$plan"; prin
 [[ "$(rf $'- a\n- b')" == "lines:2" ]] && pass "Review Focus two bullets → lines:2" || fail "Review Focus two bullets → lines:2"
 [[ "$(rf $'none — every input class the spec implies is tested:\n- x → T-1: t')" == "none-per-class:1" ]] && pass "Review Focus none per class → none-per-class:1" || fail "Review Focus none per class"
 [[ "$(rf 'none')" == "none-bare" ]] && pass "Review Focus none alone → none-bare" || fail "Review Focus none alone"
+# a numbered list is a list too (batch-2 level-1 after-run 1 wrote "1. … 2. …", read as lines:0 before this case)
+[[ "$(rf $'1. a\n2. b\n3. c')" == "lines:3" ]] && pass "Review Focus numbered list → lines:3" || fail "Review Focus numbered list → lines:3 (got $(rf $'1. a\n2. b\n3. c'))"
 [[ "$(rf $'none — every input class the spec implies is tested:')" == "none-bare" ]] && pass "none per class without bullets → none-bare" || fail "none per class without bullets"
 
 node "$PM" "$t" >/dev/null 2>&1; [[ $? -eq 3 ]] && pass "non-plan file → exit 3" || fail "non-plan file → exit 3"
