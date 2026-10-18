@@ -1,5 +1,13 @@
 # Release notes
 
+## 0.7.2 — the code reviewer's report is no longer cut
+
+Fixes a regression in 0.7.0 (never published): upstream 7.0's "Declined to
+judge" section in `code-reviewer.md` made the safety classifier stop the
+reviewer's report mid-way in about a third of runs (5/5 with that section
+alone, 0/5 without it, scenario 6). The section is removed; "the spec is a
+vision document" stays.
+
 ## 0.7.1 — the SessionStart hook runs again under Claude Code
 
 Fixes a regression in 0.7.0 (never published): Claude Code runs the hook
