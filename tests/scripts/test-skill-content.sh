@@ -99,6 +99,33 @@ must_contain skills/executing-plans/SKILL.md "scripts/transition" "executing-pla
 must_contain skills/executing-plans/SKILL.md "status: completed" "executing-plans completes tasks"
 must_contain skills/executing-plans/SKILL.md ".kdd/sdd/<WRK-PLAN-ID>/progress.md" "executing-plans ledger path"
 
+# --- Native (WRK-TASK-FORK-UPSTREAM-004-002) ---
+EP=skills/executing-plans/SKILL.md
+must_contain $EP "description: Use when executing a WRK-PLAN in the current session as the implementer yourself — your human partner chose Native execution" "Native: description"
+must_contain $EP "scripts/task-start PLAN_FILE TASK_FILE" "Native: task-start takes the WRK-TASK file"
+must_contain $EP "scripts/task-done PLAN_FILE TASK_FILE BASE --" "Native: task-done takes the WRK-TASK file"
+must_contain $EP "test-adversary-prompt.md" "Native: gate (a) A4"
+must_contain $EP "knowledge-check-prompt.md" "Native: gate (b) knowledge check"
+must_contain $EP "review-brief" "Native: gate (c) final review gets the review brief"
+must_contain $EP "{BEFORE_MERGE}: yes" "Native: gate (c) turns on A5"
+must_contain $EP "run before \`task-done\`" "Native: gates run before task-done (DOC-FORK-UPSTREAM-001 §3.4)"
+must_contain $EP "wait for its result before \`task-done\`" "Native: dispatched gates are synchronous"
+must_contain $EP "Attack: … — Ruling:" "Native: A4 rows ledgered"
+must_contain $EP "dispatch it once more on the fixed tests" "Native: A4 BROKEN rows fixed, then one re-dispatch"
+must_contain $EP "a task is done when its frontmatter says \`completed\`" "Native: frontmatter resume rule"
+must_contain $EP "names your plan's ID" "Native: ledger identity compared by plan ID"
+must_contain $EP "transition the WRK-PLAN to completed" "Native: plan transitioned after a clean final review"
+must_contain $EP "finishing-a-development-branch harvests the ledger and deletes" "Native: Finish keeps the workspace"
+must_not_contain $EP "A task cannot be completed without violating a rule of an activated spec" "Native: former stop replaced by gate (b)"
+must_not_contain $EP "../using-superpowers/references/" "Native: no references pointer (forbidden directory)"
+must_not_contain $EP "If subagents are available (they are on Claude Code), use kdd-superpowers:subagent-driven-development instead" "Native: no longer defers to SDD"
+must_not_contain $EP "Without a subagent tool" "Native: Claude Code only (DOC-FORK-UPSTREAM-001 §3.8)"
+must_not_contain $EP "delete this plan's workspace" "Native: workspace deleted by finishing, not here"
+must_not_contain $EP "names your plan file" "Native: identity not compared by file"
+must_not_contain $EP "Declined to judge" "Native: no Declined-to-judge handling (R1, U-20)"
+must_contain skills/executing-plans/knowledge-check-prompt.md "[RULING_LINE]" "knowledge check takes the ruling line"
+must_contain skills/executing-plans/knowledge-check-prompt.md "Knowledge compliance" "knowledge check returns knowledge compliance"
+
 # --- verification-before-completion (Task 017) ---
 must_contain skills/verification-before-completion/SKILL.md "spec-graph validate" "validate as evidence"
 must_contain skills/verification-before-completion/SKILL.md "frag-cite-check" "cite-check as evidence"
