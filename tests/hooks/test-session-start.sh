@@ -332,11 +332,14 @@ if [[ "$nopath_rc" -eq 0 ]] && node -e '
 const p = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
 const c = p.hookSpecificOutput && p.hookSpecificOutput.additionalContext || "";
 const env = (c.match(/\n<KDD-ENVIRONMENT>\n[\s\S]*<\/KDD-ENVIRONMENT>$/) || [""])[0];
-const n = (env.match(/unavailable \(no PATH at session start\)/g) || []).length;
+const n = (env.match(/unavailable \(no PATH at session start[;)]/g) || []).length;
+const tl = (env.match(/\ntoolkit: unavailable[^\n]*/) || [""])[0];
+const want = "check with " + process.argv[2] + "/skills/using-superpowers/scripts/kdd-cli --path)";
+if (!tl.includes(want)) { console.error("toolkit line lacks the absolute kdd-cli path: " + tl); process.exit(1); }
 if (!c.includes("name: using-superpowers")) { console.error("no using-superpowers content"); process.exit(1); }
 if (n !== 4) { console.error("unavailable lines in the block: " + n); process.exit(1); }
 if (env.includes("NOT FOUND")) { console.error("the block says NOT FOUND"); process.exit(1); }
-' "$nopath_out"; then
+' "$nopath_out" "$REPO_ROOT"; then
     pass "with an empty PATH the hook exits 0, injects using-superpowers and marks the probe unavailable"
 else
     fail "with an empty PATH the hook exits 0, injects using-superpowers and marks the probe unavailable"
@@ -370,7 +373,7 @@ if git -C "$REPO_ROOT" rev-parse -q --verify 'refs/tags/kdd-superpowers--v0.6.0'
     envblock() { # ROOT DIR [VAR=value…]
         local root="$1" dir="$2"; shift 2
         env -i PATH="${PATH:-}" HOME="$TEST_ROOT" CLAUDE_PLUGIN_ROOT="$root" "$@" bash -c "cd '$dir' && exec bash '$root/hooks/session-start'" \
-          | node -e 'const c=JSON.parse(require("fs").readFileSync(0,"utf8")).hookSpecificOutput.additionalContext; const m=c.match(/<KDD-ENVIRONMENT>[\s\S]*<\/KDD-ENVIRONMENT>/); process.stdout.write(m ? m[0] : "NO BLOCK")'
+          | node -e 'const c=JSON.parse(require("fs").readFileSync(0,"utf8")).hookSpecificOutput.additionalContext; const m=c.match(/\n<KDD-ENVIRONMENT>\n[\s\S]*<\/KDD-ENVIRONMENT>$/); process.stdout.write(m ? m[0].slice(1) : "NO BLOCK")'
     }
     found_cli="$("$REPO_ROOT/skills/using-superpowers/scripts/kdd-cli" --path 2>/dev/null || true)"
     for d in "$REPO_ROOT/tests/scripts/fixtures" "$done_proj"; do
