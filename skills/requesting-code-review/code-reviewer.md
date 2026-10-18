@@ -86,7 +86,7 @@ Subagent (general-purpose):
       "missing test for <rule>: <input>".
     - Knowledge findings: rules the surrounding code already contradicted
       before this diff.
-    - Review Focus (when the brief has one): for each line, name the test that pins it or give the input that breaks it.
+    - Review Focus (when the brief has one): for each line, name the test that pins it or give the input that breaks it — a line with neither is Important.
 
     **Capture candidates (all modes; mandatory in `brownfield`):**
     - Behaviour the code embodies that no spec documents and this diff
