@@ -143,7 +143,11 @@ and the new one resumes from the same ledger.
   first task in Task Breakdown order whose file still says `active`. A
   `completed` task with no `Task <WRK-TASK-ID>: complete` line was
   interrupted between its transition and its line: re-run `task-done` for
-  it, which appends the missing line with the task's original range. Their
+  it, which appends the missing line with the task's original range. An
+  `active` task that already has commits keeps its BASE: the parent of its
+  first commit (`git log --reverse --format='%H %s' | grep -m 1
+  <WRK-TASK-ID>`, then `^`) — `task-start` still writes its brief, but the
+  HEAD it prints would drop those commits from the gates' packages. Their
   commits exist in git even when your context no longer remembers making
   them: after compaction, trust the task files, the ledger and `git log`
   over your own recollection. A ledger whose first line names a different

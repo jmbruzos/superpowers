@@ -32,6 +32,7 @@ export KDD_SPEC_GRAPH=/path/to/spec-graph.mjs   # optional: default is the insta
 bash tests/scripts/run.sh
 bash tests/hooks/test-session-start.sh
 bash tests/claude-code/test-sdd-workspace.sh
+bash tests/claude-code/test-executing-plans-scripts.sh   # also run by run.sh
 (cd tests/brainstorm-server && npm test)
 bash tests/claude-code/test-kdd-flow.sh          # headless Claude; slow
 KDD_FLOW_USAGE=/tmp/usage bash tests/claude-code/test-kdd-flow.sh   # same, plus a token-usage table
