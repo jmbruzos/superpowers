@@ -26,6 +26,10 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
 - **H-6 · 2026-10-18** — fix the scenario-4 fixture contradiction and
   re-run scenario 4 for the baseline. — `16bc221`.
 
+- **H-7 · 2026-10-18** — Measurement cost approved by the human ("no te
+  preocupes por el gasto. Aprobado"), including batch 3's level 2b (Native
+  vs SDD on a real plan); the cost-confirmation hold of U-14 is lifted.
+
 ## Taken unattended (review these)
 
 - **U-1 · 2026-10-18 · all** — Specs written unattended move `draft →
