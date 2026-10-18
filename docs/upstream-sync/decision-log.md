@@ -39,6 +39,12 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   level 2b (its spec AC7 is waived by this ruling) and finishes the level-1
   runs already pre-registered. DOC-FORK-UPSTREAM-001 §4 is updated at
   consolidation.
+- **H-9 · 2026-10-19** — Publishing authorised by the human ("vas a
+  trabajar de forma desasistida. Al finalizar, si está todo ok, publica las
+  versiones"): when the sync's last required batch closes with every suite
+  green and no batch worse, merge the feature branch into `main`, push `main`
+  and the release tags (0.6.1 through the last one) to `origin`, as 0.6.0 was
+  published (merge to `main` + tag). Lifts U-2 for that one action only.
 
 ## Taken unattended (review these)
 
