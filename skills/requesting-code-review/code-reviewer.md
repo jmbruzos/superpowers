@@ -21,7 +21,7 @@ Subagent (general-purpose):
     Mode: [MODE]
     Read the brief: [KNOWLEDGE_BRIEF]
     In mode `kdd-work` it holds the WRK-SPEC's acceptance criteria and
-    constraints, the plan's Architecture Impact, the activated specs in
+    constraints, the plan's Architecture Impact, the plan's Review Focus, the activated specs in
     full and the cited fragments — the WRK-SPEC is the authority, the plan
     its argument, the activated specs its constraints; verify against all
     three. In the other modes it holds the requirements and, when present,
@@ -79,6 +79,7 @@ Subagent (general-purpose):
       "missing test for <rule>: <input>".
     - Knowledge findings: rules the surrounding code already contradicted
       before this diff.
+    - Review Focus (when the brief has one): for each line, name the test that pins it or give the input that breaks it.
 
     **Capture candidates (all modes; mandatory in `brownfield`):**
     - Behaviour the code embodies that no spec documents and this diff

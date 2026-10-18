@@ -125,6 +125,7 @@ export function buildReviewBrief({ nodes, specNode, specText, planNode }) {
   parts.push(`## 1. Acceptance criteria (${specNode.id})\n\n${sectionOf(body, 'Acceptance Criteria') || '_(none stated)_'}\n`);
   parts.push(`## 2. Constraints (${specNode.id})\n\n${sectionOf(body, 'Constraints') || '_(none stated)_'}\n`);
   parts.push(`## 3. Architecture Impact (${planNode ? planNode.id : 'no plan'})\n\n${planNode ? (sectionOf(planNode.body || '', 'Architecture Impact') || '_(the plan has no Architecture Impact section)_') : '_(no WRK-PLAN for this spec)_'}\n`);
+  parts.push(`## 3b. Review Focus (${planNode ? planNode.id : 'no plan'})\n\n${planNode ? (sectionOf(planNode.body || '', 'Review Focus') || '_(the plan has no Review Focus section)_') : '_(no WRK-PLAN for this spec)_'}\n`);
   parts.push(`## 4. Activated knowledge\n\n${activates.length ? activates.map(({ id, version }) => { const n = findNode(nodes, id); return n ? renderSpecBlock(n, version) : missing(id, 'activated spec'); }).join('\n') : '_(this work activates no knowledge — activates: [])_\n'}`);
   if (equips.length) parts.push(`## 4b. Equipped capabilities\n\n${equips.map(({ id, version }) => { const n = findNode(nodes, id); return n ? renderSpecBlock(n, version) : missing(id, 'equipped artifact'); }).join('\n')}`);
   parts.push(`## 5. Evidence (fragments cited in sources)\n\n${frags.length ? frags.map((id) => { const n = findNode(nodes, id); return n ? renderFragBlock(n) : missing(id, 'fragment'); }).join('\n') : '_(no fragments cited)_\n'}`);
