@@ -195,7 +195,9 @@ of step carries what makes it unambiguous and nothing more:
   spec's exact values in them. Whatever code the step shows must compile
   where it lands: every type, method, overload, accessor and variable it
   names exists in the code today or is created by an earlier step. A test
-  that does not compile fails for the wrong reason.
+  that does not compile fails for the wrong reason. The one exception is
+  the name this task's own code step creates: its absence is the failure
+  the red step expects.
 - **A code step:** the exact signature (name, parameters, return type), the
   file it lives in, and the specific values the spec pins. The implementer
   writes the body. A body appears only for an algorithm the signature and
@@ -207,7 +209,7 @@ of step carries what makes it unambiguous and nothing more:
 A plan is the set of decisions the implementer cannot make alone. A plan
 longer than the code it describes has written the code instead. Lines that
 decide nothing are the opposite failure, and the self-review catches both:
-- "TBD", "handle edge cases", "add appropriate validation", "write tests for the above", a type or function no task defines
+- "TBD", "handle edge cases", "add appropriate validation", "write tests for the above", a type or function no task defines and the code does not have
 - "Follow DOM-X" without the rule's text (copy the rule; the implementer's brief carries the spec, but the step must say which line binds it)
 
 ## Validate
