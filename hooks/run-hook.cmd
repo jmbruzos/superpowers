@@ -59,4 +59,13 @@ case "$0" in
 esac
 SCRIPT_NAME="$1"
 shift
-exec "${BASH:-bash}" "${SCRIPT_DIR}/${SCRIPT_NAME}" "$@"
+# kdd-superpowers: Claude Code runs this line through /bin/sh. On macOS that is
+# bash in POSIX mode with BASH=/bin/sh, and exec'ing $BASH would run the hook in
+# POSIX mode, where session-start's process substitution is a syntax error and
+# nothing is injected. Use $BASH only when it is a bash binary; otherwise
+# /bin/bash, then bash from PATH.
+case "${BASH:-}" in
+  */bash) BASH_BIN="$BASH" ;;
+  *) if [ -x /bin/bash ]; then BASH_BIN=/bin/bash; else BASH_BIN=bash; fi ;;
+esac
+exec "$BASH_BIN" "${SCRIPT_DIR}/${SCRIPT_NAME}" "$@"

@@ -306,6 +306,23 @@ assert_command_output \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" KDD_SPEC_GRAPH="$fake_cli" \
     bash -c "cd '$proj' && exec bash '$HOOK_UNDER_TEST'"
 
+# --- how Claude Code runs the hook: the command line goes through /bin/sh (bash in POSIX mode
+# on macOS, BASH=/bin/sh). The wrapper must still run session-start under a non-POSIX bash: in
+# POSIX mode its process substitution is a syntax error and nothing is injected (0.7.0 regression,
+# found by the batch-1 measurement, decision log U-18).
+sh_out="$TEST_ROOT/sh.json"; sh_rc=0
+(cd "$REPO_ROOT/tests/scripts/fixtures" && env -i PATH="${PATH:-}" HOME="$(make_home shrun)" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    /bin/sh -c "\"$WRAPPER_UNDER_TEST\" session-start") > "$sh_out" 2>"$TEST_ROOT/sh.err" || sh_rc=$?
+if [[ "$sh_rc" -eq 0 ]] && node -e '
+const c = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).hookSpecificOutput.additionalContext;
+if (!c.includes("name: using-superpowers") || !c.includes("<KDD-ENVIRONMENT>")) process.exit(1);
+' "$sh_out"; then
+    pass "run through /bin/sh (as Claude Code does), the wrapper injects using-superpowers and the KDD block"
+else
+    fail "run through /bin/sh (as Claude Code does), the wrapper injects using-superpowers and the KDD block"
+    echo "    exit: $sh_rc"; head -5 "$TEST_ROOT/sh.err" | sed 's/^/      /'
+fi
+
 # --- broken PATH (WRK-SPEC-FORK-UPSTREAM-002 AC6): the injection survives, the probe says it could not run ---
 nopath_out="$TEST_ROOT/nopath.json"; nopath_rc=0
 /usr/bin/env -i PATH= HOME="$(make_home nopath)" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
