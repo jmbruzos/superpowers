@@ -44,4 +44,12 @@ hits="$(cd "$REPO_ROOT" && grep -rln 'knowledge-driven-development' CLAUDE.md do
 hits="$(grep -nE '\| *grep -[a-zA-Z]*q' "$REPO_ROOT/tests/claude-code/test-kdd-flow.sh")"
 [[ -z "$hits" ]] && pass "test-kdd-flow.sh pipes into no grep -q" || { fail "test-kdd-flow.sh pipes into no grep -q"; echo "$hits" | sed 's/^/    /'; }
 
+# every headless run pins the model (DOC-FORK-UPSTREAM-001 §4: --model opus); the account default
+# moved from Opus to Sonnet between FRAG-FORK-TOKENS-003 and the batch-0 baseline
+n_runs="$(grep -c 'claude -p ' "$REPO_ROOT/tests/claude-code/test-kdd-flow.sh")"
+n_pinned="$(grep 'claude -p ' "$REPO_ROOT/tests/claude-code/test-kdd-flow.sh" | grep -c -- '--model "$KDD_FLOW_MODEL"')"
+[[ "$n_runs" -ge 2 && "$n_pinned" -eq "$n_runs" ]] && pass "every claude -p in test-kdd-flow.sh passes --model \$KDD_FLOW_MODEL" \
+  || fail "every claude -p in test-kdd-flow.sh passes --model \$KDD_FLOW_MODEL ($n_pinned of $n_runs)"
+grep -q 'KDD_FLOW_MODEL="${KDD_FLOW_MODEL:-opus}"' "$REPO_ROOT/tests/claude-code/test-kdd-flow.sh" && pass "KDD_FLOW_MODEL defaults to opus" || fail "KDD_FLOW_MODEL defaults to opus"
+
 finish
