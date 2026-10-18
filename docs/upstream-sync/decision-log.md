@@ -71,3 +71,13 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   - measured at level 1 only, decided on "no check regresses"; cost reported.
   — Cost if wrong: a reworded section or one more release. —
   WRK-SPEC-FORK-UPSTREAM-002.
+- **U-7 · 2026-10-18 · 0** — Two harness defects found by the baseline,
+  fixed after the 0.6.1 tag: the scenario-4 fixture contradiction (`16bc221`,
+  H-6) and piped `grep -q` under `pipefail` (`40e4673`), which scored
+  scenario 5's task-ID and execution-log checks as failures although the
+  project had both commits (checked by hand in the run-1 project). The
+  protocol copies the current harness into every before arm, so the fixes
+  apply to both sides; scenarios 4 and 5 of the baseline are re-run (n=2) on
+  the fixed harness, and the first runs' figures for them are kept in the
+  FRAG as superseded, not averaged. — Precision over speed. — About $5.
+  — FRAG-FORK-UPSTREAM-001.
