@@ -181,3 +181,13 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
     cost. Implementation and level 1 proceed; the release does not.
   — Cost if wrong: rework of one script or one skill section. —
   WRK-SPEC-FORK-UPSTREAM-004.
+- **U-15 · 2026-10-18 · 3** — WRK-PLAN-FORK-UPSTREAM-004 (5 tasks) written;
+  gate A2 26/31 BROKEN, all accepted as binding amendments in the tasks
+  (table in the plan). Key call: **batch-3 execution waits for batch 2's
+  release** (`kdd-superpowers--v0.8.0`), so that tag, the before arm of
+  batch 3, holds no batch-3 commit. Also: SDD's resume rule moves to the
+  frontmatter signal as Native's; the Native handoff sentence is adapted
+  (per-task gates where a rule or ruling calls for them), not upstream's
+  "no independent review until the end"; scenario 8's checks are a script
+  tested deterministically before any paid run. — Cost if wrong: idle time
+  until 0.8.0. — WRK-PLAN-FORK-UPSTREAM-004.
