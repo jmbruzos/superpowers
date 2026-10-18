@@ -1,0 +1,18 @@
+# source: .kdd/abtest3/prompt-neutral-K4K5.txt (FRAG-FORK-GATES-004)
+You write neutral technical summaries. Work read-only: no subagents. Write output only where told.
+
+Summarise two design-and-plan bundles for a change in a Java codebase (recompute the golden record that loses a member):
+- /Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest2/bundles/K4.md → write /Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest2/neutral/N6.md
+- /Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest2/bundles/K5.md → write /Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest2/neutral/N7.md
+
+Match the style exactly. Earlier summaries of other bundles use a fixed structure, headings and level of detail. Read two of them first and copy their headings and depth; do not copy their content:
+/Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest2/neutral/N2.md
+/Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest2/neutral/N5.md
+
+Rules:
+- Keep only substance, under these headings: Scope, Recomputation mechanism, Field lineage and `previous`, Losing the last member, Pins/overrides/ForceRules on the departed record, Locking/concurrency/retries, Events and cache invalidation, Quality score and tier, Downstream propagation, Tests planned, Migrations, Task breakdown.
+- The spec comes first in each bundle and is the authority. Where the plan or tasks contradict it, say so in one line.
+- Drop every format and process marker: IDs (WRK-*, FRAG-*, DOM-*, ADR-* and the like; keep a rule only as "a project rule says …" with its content), section names, frontmatter, "Code Premises", "Adversarial Review", "activation", "verified", gate names, rulings, confidence, statuses, "contested rule" and "knowledge gap" labels.
+- Keep class and method names from the codebase.
+- Aim for 800–950 words each. If a bundle is silent on a topic, write "not addressed". Never infer.
+- Return only "done" and the two word counts.
