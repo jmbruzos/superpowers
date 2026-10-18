@@ -248,3 +248,17 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   DOC-FORK-TOKENS-001 gains FRAG-FORK-UPSTREAM-001 as its latest source;
   DOC-FORK-LEDGER-001 and -GATES-001 per batch 3. `completed` WRK-SPECs show
   as "pending consolidation" in the session-start probe until then.
+- **U-20 · 2026-10-18 · 1** — **"Declined to judge" removed from
+  code-reviewer.md.** At your request ("asegura que no es un fallo
+  permanente") the scenario-6 failure was investigated: the safety
+  classifier cut the reviewer's report (`stop_reason: refusal`) in 4 of 11
+  runs at 0.7.1 and 0 of 8 at 0.6.1; bisection, 5 runs each: that section
+  alone 5/5 cut, the vision-document section alone 0/5. Not a permanent
+  failure, but a systematic one caused by the batch-1 change. Upstream's
+  section is dropped (`d7c4d11`; 0.7.2 = 0.7.1 + this fix, `6f457a7`);
+  "the spec is a vision document" stays. Batch 3's Native port must drop
+  upstream's "Declined to judge" handling too. Pre-registrations amended
+  (batch 1: scenarios 5–6 re-run at 0.7.2; batch 2: cut runs set aside and
+  repeated — written before batch-2 after-run 1's result was read). — Cost
+  if wrong: the reviewer loses an explicit list of what it skipped. —
+  `d7c4d11`, `6f457a7`.

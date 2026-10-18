@@ -71,3 +71,20 @@ Fixed in `a37a90c`, released as `kdd-superpowers--v0.7.1`. Therefore:
 - Deciding metric and reading rule unchanged.
 
 (Note: the tag `kdd-superpowers--v0.7.1` is `45ce7e0` on `release/0.7.1` = `v0.7.0` + the fix + the bump only; a first tag at `b97cfef` on the feature branch also carried batch-2 commits and was deleted before any run used it.)
+
+## Amendment 3 — after the 0.7.1 after-runs (2026-10-18)
+
+The 0.7.1 after-runs failed scenario 6 in run 1 (passed in run 2). Cause,
+measured: the reviewer's report is cut by the safety classifier
+(`stop_reason: refusal`) when `code-reviewer.md` carries upstream's
+"Declined to judge" section — 4 of 11 scenario-6 runs at 0.7.1, 0 of 8 at
+0.6.1; bisection 5/5 with that section alone, 0/5 with the vision-document
+section alone (`scratchpad` diagnostics, reported in the FRAG). Removed in
+`d7c4d11`, released as `kdd-superpowers--v0.7.2` (`6f457a7`). Therefore:
+
+- **After** for scenarios 1–4 and 7 stays the two 0.7.1 passes: the files
+  those scenarios load are identical in 0.7.2 (the only change is
+  `code-reviewer.md`, loaded by scenarios 5 and 6).
+- **After** for scenarios 5 and 6 is re-run at 0.7.2, n=2.
+- Deciding rule unchanged; the 0.7.1 scenario-5/6 runs and the diagnostics
+  are reported as the evidence for the fix.

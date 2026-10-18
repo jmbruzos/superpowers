@@ -71,3 +71,15 @@ so it cannot be a before arm. Therefore:
   `4838e16` + `a37a90c`). The release, if any, is cut the same way as 0.7.1:
   only these changes on top of the before tag.
 - Everything else above stands.
+
+## Amendment 2 — written after after-run 1 had executed, before its result was read (2026-10-18)
+
+Both arms (0.7.1 and the candidate) still carry the reviewer's "Declined
+to judge" section, which makes the safety classifier cut the reviewer in
+about a third of scenario-5/6 runs (batch-1 FRAG, amendment 3). The batch-2
+comparison stays valid (the same section in both arms), but a cut is not a
+batch-2 effect. Therefore: a scenario-5 or -6 run whose reviewer transcript
+has `stop_reason: refusal` is classified **cut**, set aside by name like a
+network loss, and repeated on the same arm until each arm has two uncut runs
+of that scenario. Scenario 4 and the level-2 runs are unaffected. The
+release, if any, is built on `kdd-superpowers--v0.7.2`.
