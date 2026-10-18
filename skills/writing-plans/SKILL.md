@@ -244,20 +244,17 @@ Dispatch [plan-adversary-prompt.md](plan-adversary-prompt.md) when **any** of th
 
 After saving and self-reviewing the plan (and after Gate A2, when it ran), link it for your human partner to read and ask them to review it before anything runs: no choice is acted on, and nothing is activated, until they have reviewed the plan or approved it in advance as below. Approving the spec or the scope is not approving a plan your human partner has not seen. An approval given in advance that names the plan itself ("I approve … the plan in advance") counts, and is quoted in the activation commit message; an approval of the design or the scope does not. Then offer the execution choice:
 
-**"Plan complete: `specs/work/<WRK-PLAN file>` with <N> tasks. Please review the plan. Two execution options:**
+**"Plan complete: `specs/work/<WRK-PLAN file>` with <N> tasks. Please review the plan. Which execution approach would you prefer?**
 
-**1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
+- **Subagent-driven** - A fresh subagent implements each task and a fresh reviewer checks it before the next one starts, then a whole-branch review at the end. Most thorough; costs a fresh context per task and per review.
+- **Native** - I implement every task myself in this session; the gates SDD gives a task run only where a rule or a ruling calls for them (A4, a knowledge check), then one fresh reviewer on the most capable model checks the whole branch. Cheapest and fastest. Runs well with a mid-tier session model, since the plan carries the design.
 
-**2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
-
-**Which approach?"**
+**For this plan I recommend <one of the two>, because <one sentence from the plan: how much the tasks depend on each other's interfaces, how many there are, what a shipped mistake would cost>. Does the plan capture what you want, and which approach should we use?"**
 
 When your human partner chooses, set `status: active` and `updated` on the plan and every task, re-validate, commit (`plan(<WRK-PLAN-ID>): activate`) — `kdd-conventions/scripts/transition --no-commit <file> active` on the plan and on each task, then that one commit. The SDD workspace for this plan will be `.kdd/sdd/<WRK-PLAN-ID>/`.
 
-**If Subagent-Driven chosen:**
+**If Subagent-driven chosen:**
 - **REQUIRED SUB-SKILL:** Use kdd-superpowers:subagent-driven-development
-- Fresh subagent per task + two-stage review
 
-**If Inline Execution chosen:**
+**If Native chosen:**
 - **REQUIRED SUB-SKILL:** Use kdd-superpowers:executing-plans
-- Batch execution with checkpoints for review

@@ -126,6 +126,30 @@ must_not_contain $EP "Declined to judge" "Native: no Declined-to-judge handling 
 must_contain skills/executing-plans/knowledge-check-prompt.md "[RULING_LINE]" "knowledge check takes the ruling line"
 must_contain skills/executing-plans/knowledge-check-prompt.md "Knowledge compliance" "knowledge check returns knowledge compliance"
 
+# --- SDD and handoff (WRK-TASK-FORK-UPSTREAM-004-003) ---
+SDD=skills/subagent-driven-development/SKILL.md
+WP=skills/writing-plans/SKILL.md
+must_contain $SDD "\"Partner chose Native?\" [shape=diamond]" "SDD: when-to-use asks whether the partner chose Native (§3.8: no no-subagent branch)"
+must_not_contain $SDD "or no subagent tool?" "SDD: Claude Code only (DOC-FORK-UPSTREAM-001 §3.8)"
+must_contain $SDD "vs. Executing Plans (inline)" "SDD: vs. Executing Plans (inline) bullets"
+must_not_contain $SDD "parallel session" "SDD: executing-plans is not a parallel session any more"
+must_contain $SDD "names your plan's ID" "SDD: ledger identity compared by plan ID"
+must_not_contain $SDD "names your plan file" "SDD: identity not compared by file"
+must_contain $SDD "a task whose frontmatter says \`completed\` is DONE" "SDD: frontmatter resume rule shared with Native"
+must_contain $SDD "review-package\` exits 3" "SDD: rules on review-package exit 3"
+must_contain $SDD "claude-code-orchestrator.md" "SDD: points at the opt-in orchestrator"
+must_contain skills/subagent-driven-development/test-adversary-prompt.md "after a clean A3 (SDD) or after the task's steps (Native)" "A4 prompt serves both modes"
+must_contain skills/subagent-driven-development/claude-code-orchestrator.md "Rulings I made" "orchestrator relays the rulings verbatim"
+must_contain skills/subagent-driven-development/claude-code-orchestrator.md "kdd-superpowers:subagent-driven-development" "orchestrator names the fork's skill"
+must_contain $WP "**Subagent-driven**" "handoff: Subagent-driven option"
+must_contain $WP "**Native**" "handoff: Native option"
+must_contain $WP "For this plan I recommend" "handoff: per-plan recommendation (batch 3)"
+must_contain $WP "the gates SDD gives a task run only where a rule or a ruling calls for them" "handoff: Native cost sentence names its gates (§3.4)"
+must_not_contain $WP "no independent review until the end" "handoff: Native keeps per-task gates (§3.4)"
+must_contain $WP "**If Native chosen:**" "handoff: Native branch"
+must_not_contain $WP "Inline Execution" "handoff: no Inline Execution option"
+must_not_contain $WP "Subagent-Driven (recommended)" "handoff: no fixed recommendation"
+
 # --- verification-before-completion (Task 017) ---
 must_contain skills/verification-before-completion/SKILL.md "spec-graph validate" "validate as evidence"
 must_contain skills/verification-before-completion/SKILL.md "frag-cite-check" "cite-check as evidence"
@@ -310,8 +334,6 @@ must_contain skills/writing-plans/SKILL.md "An input an activated rule already n
 must_contain skills/writing-plans/SKILL.md "none — every input class the spec implies is tested:" "Review Focus per-class none form"
 must_contain skills/writing-plans/SKILL.md "up to five input classes" "Review Focus capped at five"
 must_contain skills/kdd-conventions/references/artifact-templates.md "**Step 3: Implement \`function(input: InputType) -> ResultType\` in \`exact/path/to/file.py\`**" "templates share Step 3 wording"
-must_contain skills/writing-plans/SKILL.md "**1. Subagent-Driven (recommended)**" "Subagent-Driven stays the recommendation (batch 3 decides otherwise)"
-must_not_contain skills/writing-plans/SKILL.md "For this plan I recommend" "no per-plan recommendation before Native (DOC-FORK-UPSTREAM-001 §3.4)"
 must_contain skills/writing-plans/SKILL.md "Please review the plan" "handoff asks for the plan review"
 must_contain skills/writing-plans/SKILL.md "is not approving a plan your human partner has not seen" "scope approval is not plan approval"
 must_not_contain skills/writing-plans/SKILL.md "2-5 minutes" "no minute-sized steps"
