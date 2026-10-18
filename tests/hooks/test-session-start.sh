@@ -306,6 +306,51 @@ assert_command_output \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" KDD_SPEC_GRAPH="$fake_cli" \
     bash -c "cd '$proj' && exec bash '$HOOK_UNDER_TEST'"
 
+# --- broken PATH (WRK-SPEC-FORK-UPSTREAM-002 AC6): the injection survives, the probe says it could not run ---
+nopath_out="$TEST_ROOT/nopath.json"; nopath_rc=0
+/usr/bin/env -i PATH= HOME="$(make_home nopath)" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    /bin/bash -c "cd '$REPO_ROOT/tests/scripts/fixtures' && exec /bin/bash '$WRAPPER_UNDER_TEST' session-start" \
+    > "$nopath_out" 2>"$TEST_ROOT/nopath.err" || nopath_rc=$?
+if [[ "$nopath_rc" -eq 0 ]] && node -e '
+const p = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+const c = p.hookSpecificOutput && p.hookSpecificOutput.additionalContext || "";
+const env = (c.match(/\n<KDD-ENVIRONMENT>\n[\s\S]*<\/KDD-ENVIRONMENT>$/) || [""])[0];
+const n = (env.match(/unavailable \(no PATH at session start\)/g) || []).length;
+if (!c.includes("name: using-superpowers")) { console.error("no using-superpowers content"); process.exit(1); }
+if (n !== 4) { console.error("unavailable lines in the block: " + n); process.exit(1); }
+if (env.includes("NOT FOUND")) { console.error("the block says NOT FOUND"); process.exit(1); }
+' "$nopath_out"; then
+    pass "with an empty PATH the hook exits 0, injects using-superpowers and marks the probe unavailable"
+else
+    fail "with an empty PATH the hook exits 0, injects using-superpowers and marks the probe unavailable"
+    echo "    exit: $nopath_rc"; head -c 400 "$nopath_out" | sed 's/^/      /'; head -5 "$TEST_ROOT/nopath.err" | sed 's/^/      /'
+fi
+
+# --- the KDD-ENVIRONMENT block is the 0.6.0 hook's, byte for byte (toolkit TUI contract; AC7) ---
+if git -C "$REPO_ROOT" rev-parse -q --verify 'refs/tags/kdd-superpowers--v0.6.0' >/dev/null; then
+    old_root="$TEST_ROOT/hook-0.6.0"; mkdir -p "$old_root/hooks"
+    git -C "$REPO_ROOT" archive kdd-superpowers--v0.6.0 hooks skills/using-superpowers | tar -x -C "$old_root"
+    done_proj="$TEST_ROOT/done-proj"; cp -R "$REPO_ROOT/tests/scripts/fixtures" "$done_proj"
+    f="$(grep -rl '^layer: work-spec' "$done_proj/specs/work" | head -1)"
+    sed -i.bak 's/^status: active$/status: completed/' "$f" && rm -f "$f.bak"
+    envblock() { # ROOT DIR
+        env -i PATH="${PATH:-}" HOME="$TEST_ROOT" CLAUDE_PLUGIN_ROOT="$1" bash -c "cd '$2' && exec bash '$1/hooks/session-start'" \
+          | node -e 'const c=JSON.parse(require("fs").readFileSync(0,"utf8")).hookSpecificOutput.additionalContext; const m=c.match(/<KDD-ENVIRONMENT>[\s\S]*<\/KDD-ENVIRONMENT>/); process.stdout.write(m ? m[0] : "NO BLOCK")'
+    }
+    for d in "$REPO_ROOT/tests/scripts/fixtures" "$done_proj"; do
+        if [[ "$(envblock "$REPO_ROOT" "$d")" == "$(envblock "$old_root" "$d")" ]]; then
+            pass "KDD-ENVIRONMENT block identical to 0.6.0 in $(basename "$d")"
+        else
+            fail "KDD-ENVIRONMENT block identical to 0.6.0 in $(basename "$d")"
+            diff <(envblock "$old_root" "$d") <(envblock "$REPO_ROOT" "$d") | sed 's/^/      /'
+        fi
+    done
+    [[ "$(envblock "$REPO_ROOT" "$done_proj")" == *"completed, pending consolidation"* ]] \
+        && pass "a completed WRK-SPEC shows as pending consolidation" || fail "a completed WRK-SPEC shows as pending consolidation"
+else
+    echo "  [SKIP] tag kdd-superpowers--v0.6.0 not present: 0.6.0 comparison skipped"
+fi
+
 if [[ "$FAILURES" -gt 0 ]]; then
     echo "STATUS: FAILED ($FAILURES failure(s))"
     exit 1
