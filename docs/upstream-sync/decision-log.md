@@ -151,3 +151,17 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
     threshold); level 2 cannot show lean plans execute as well — batch 3's
     level 2b is that check and can reopen batch 2.
   — Cost if wrong: one more batch-2 iteration. — WRK-SPEC-FORK-UPSTREAM-003.
+- **U-13 · 2026-10-18 · 2** — WRK-PLAN-FORK-UPSTREAM-003 (4 tasks) written;
+  gate A2 20/22 BROKEN, all accepted (table in the plan). Calls:
+  - the release follows the measurement: the after arm is the candidate
+    commit, 0.8.0 is tagged only when the batch is not worse and the cost
+    rule is met (AC5 over the spec's "after this batch's release");
+  - scenario 4's prompt, in both arms, now also says "I approve the saved
+    plan in advance and will not review it", so the new plan-review rule
+    does not stop headless runs; activation and commit become checks;
+  - level 1 runs scenarios 4–6 (5–6 load the changed code-reviewer.md);
+  - Review Focus says "Up to five" where 6.4.1 says "The five" — a recorded
+    deviation from verbatim.
+  Execution mode: Subagent-Driven (the only mode with gates today); the
+  plan was reviewed by me, not by you — this entry is that record.
+  — Cost if wrong: a re-run of scenario 4. — WRK-PLAN-FORK-UPSTREAM-003.
