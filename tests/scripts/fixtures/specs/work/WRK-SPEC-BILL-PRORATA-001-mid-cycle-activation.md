@@ -50,7 +50,7 @@ Compute the pro-rata amount per DOM-BILL-PRORATA-001.
 
 ## Acceptance Criteria
 
-- [ ] Activation on day 15 of a 30-day month charges half the fee.
+- [ ] Activation on day 15 of a 30-day month charges 16/30 of the fee (the activation day is billed).
 
 ## Open Questions
 

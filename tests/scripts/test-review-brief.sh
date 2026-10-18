@@ -14,7 +14,7 @@ b="$(cat "$path" 2>/dev/null)"
 for h in "# Review brief — WRK-SPEC-BILL-PRORATA-001" "## 1. Acceptance criteria (WRK-SPEC-BILL-PRORATA-001)" "## 2. Constraints (WRK-SPEC-BILL-PRORATA-001)" "## 3. Architecture Impact (WRK-PLAN-BILL-PRORATA-001)" "## 4. Activated knowledge" "### DOM-BILL-PRORATA-001 @1.0.0" "## 5. Evidence (fragments cited in sources)" "### FRAG-BILL-ROUNDING-001"; do
   [[ "$b" == *"$h"* ]] && pass "contains '$h'" || fail "contains '$h'"
 done
-[[ "$b" == *"Activation on day 15 of a 30-day month charges half the fee."* ]] && pass "acceptance criteria inlined" || fail "acceptance criteria inlined"
+[[ "$b" == *"Activation on day 15 of a 30-day month charges 16/30 of the fee (the activation day is billed)."* ]] && pass "acceptance criteria inlined" || fail "acceptance criteria inlined"
 [[ "$b" == *"Round to 2 decimal places, half-up (DOM-BILL-PRORATA-001, Rule 3)."* ]] && pass "constraints inlined" || fail "constraints inlined"
 [[ "$b" != *"PIN DRIFT"* ]] && pass "no drift for the spec's pins" || fail "no drift for the spec's pins"
 
