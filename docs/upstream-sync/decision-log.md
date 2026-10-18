@@ -81,3 +81,27 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   the fixed harness, and the first runs' figures for them are kept in the
   FRAG as superseded, not averaged. — Precision over speed. — About $5.
   — FRAG-FORK-UPSTREAM-001.
+- **U-8 · 2026-10-18 · 1** — Rulings on the batch-1 code review (opus
+  reviewer, `98ad282..2c44b96`, verdict "With fixes", 0 Critical):
+  - Important 1 (empty PATH runs `./cat` and friends from the project) —
+    fixed in `8279228`: an empty, `.` or relative PATH element marks the PATH
+    broken and no command is looked up. Consequence, accepted: a user whose
+    real PATH contains `.` or `::` gets `unavailable` lines instead of the
+    probe (security over convenience; your PATH has neither).
+  - Minor 1 (probe guard list differs from the spec: `node` dropped,
+    `grep sed head dirname` added) — ruling: the code is right. The probe
+    never runs node (`kdd-cli --path` only resolves a path), and it does run
+    the four added commands; a missing node then means the toolkit cannot
+    run, so `NOT FOUND` is honest. The spec text stays as approved; this line
+    is the correction.
+  - Minors 2–4 — fixed in `8279228`.
+  - Declined to judge: what SDD does on `review-package` exit 3 → batch 3
+    (execution modes); `unavailable` guidance → batch 4 (as specified);
+    `kdd-cli`'s `sort -V` and `env bash` shebang under a partial PATH →
+    dropped: the guard checks every command the probe uses, and a PATH
+    without `bash` cannot start the hook at all.
+  - Capture candidates (`review-package` exit-3 contract, create-only
+    `.kdd/sdd/.gitignore`) → proposed at batch-1 consolidation for
+    DOC-FORK-LEDGER-001 (the workspace contract), not written now.
+  — Cost if wrong: a reworded probe line or one more release. —
+  `8279228`, WRK-SPEC-FORK-UPSTREAM-002.
