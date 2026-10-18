@@ -117,7 +117,9 @@ step still names the rule that binds it.
    data structure); a code block only for an algorithm they do not
    determine." artifact-templates' Step 3 loses "(code block)".
 4. **"## No Placeholders" → "## What a Step Contains"** (6.4.2 text) with
-   two KDD adaptations:
+   two KDD adaptations (and, after the measurement, a third: a test step's
+   code must compile where it lands, except the name its own code step
+   creates — decision log U-22, U-23):
    - 6.4.2's "A reference to another task: that task's Interfaces block says
      what to use" becomes "**A reference to another task:** this task's own
      *Consumes* line repeats the exact signature it uses — the implementer
@@ -127,7 +129,8 @@ step still names the rule that binds it.
      line binds it)" is kept **verbatim**, in 6.4.2's list of lines that
      decide nothing.
 5. **Self-review**, seven items: 1 Spec coverage (unchanged); 2 Step scan
-   (6.4.2, replaces Placeholder scan); 3 Type consistency (unchanged);
+   (6.4.2, replaces Placeholder scan); 3 Type consistency (unchanged, plus
+   one sentence from the post-measurement rework, decision log U-22);
    4 Activation coverage (fork, unchanged); 5 Roll-up (fork, unchanged);
    6 Review Focus (6.4.1); 7 Proportion — the bodies (frontmatter excluded)
    of the WRK-PLAN and its WRK-TASKs against the WRK-SPEC's body (6.4.2).

@@ -286,3 +286,20 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   (n=2, counts of 1–2), the rework adds two sentences for nothing; if the
   cause is elsewhere, the re-measure shows it and the batch is reverted. —
   `c2f6dbd`, `60bfc23`.
+- **U-23 · 2026-10-18 · batch 2** — The SDD review of the rework `60bfc23`
+  (I ran it as controller, so it had skipped the reviewer seat) returned
+  "with fixes": the new test-step sentence contradicted the template's own
+  red step (`function not defined` is the expected failure), item 3's
+  upstream sentences had no anchor, the decides-nothing line disagreed with
+  item 3, and the spec still said item 3 was unchanged. Fixed: the subject
+  the task's own code step creates is the one absent name a test step may
+  use; anchors for all three; spec components 4 and 5 note the rework. The
+  observed behaviour of `60bfc23` is FRAG-FORK-UPSTREAM-003's `l1-reworked-*`
+  and level-2 A3/A4 rows (its commit said "to be measured"). The fix only
+  narrows the rule to what the template already did, so level 2 is not
+  repeated; scenario 4 is run twice on it as a check (below), and 0.8.0 —
+  tagged locally, never published — is re-cut with it. Kept as is: "compile"
+  (the reviewer's "resolve" for interpreted languages is cosmetic; the list
+  of names that follows fixes the meaning). — Cost if wrong: a level-2
+  difference the two fixture runs cannot show; batch 3's level 2b plans run
+  on this text.
