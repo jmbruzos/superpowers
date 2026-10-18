@@ -22,6 +22,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$SCRIPT_DIR/test-helpers.sh"
 source "$SCRIPT_DIR/usage-lib.sh"   # KDD_FLOW_USAGE=<dir> → per-scenario token usage (WRK-SPEC-FORK-TOKENS-001)
 TIMEOUT="${CLAUDE_PROMPT_TIMEOUT:-900}"
+KDD_FLOW_MODEL="${KDD_FLOW_MODEL:-opus}"   # pinned: the account default model is not a fixed condition (DOC-FORK-UPSTREAM-001 §4)
 # portable timeout: GNU timeout, Homebrew gtimeout, or perl's alarm (macOS ships perl, not timeout)
 if command -v timeout >/dev/null; then TIMEOUT_CMD=(timeout "$TIMEOUT")
 elif command -v gtimeout >/dev/null; then TIMEOUT_CMD=(gtimeout "$TIMEOUT")
@@ -47,7 +48,7 @@ run_scenario() { # DIR PROMPT [extra env…] — runs claude headless in DIR wit
       -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CODE_MESSAGING_SOCKET -u CLAUDE_CODE_MESSAGING_TOKEN \
       -u CLAUDE_CODE_SESSION_ATTENDED -u CLAUDE_CODE_EXECPATH \
       CLAUDE_CONFIG_DIR="$CONFIG_DIR" KDD_SPEC_GRAPH="$KDD_SPEC_GRAPH" "$@" \
-      "${TIMEOUT_CMD[@]}" claude -p "$prompt" --plugin-dir "$REPO_ROOT" --plugin-dir "$KDD_TOOLKIT_DIR" \
+      "${TIMEOUT_CMD[@]}" claude -p "$prompt" --model "$KDD_FLOW_MODEL" --plugin-dir "$REPO_ROOT" --plugin-dir "$KDD_TOOLKIT_DIR" \
       --allowed-tools=all --permission-mode bypassPermissions $(usage_args) 2>&1 ) > "$raw"
   usage_record "$raw" "$CONFIG_DIR"   # prints the result text; with KDD_FLOW_USAGE also saves the JSON
   rm -f "$raw"
@@ -63,7 +64,7 @@ out="$(cd "$p1" && env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT -u CLAUDE_CODE_CH
       -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CODE_MESSAGING_SOCKET -u CLAUDE_CODE_MESSAGING_TOKEN \
       -u CLAUDE_CODE_SESSION_ATTENDED -u CLAUDE_CODE_EXECPATH \
       CLAUDE_CONFIG_DIR="$CONFIG_DIR" KDD_SPEC_GRAPH=/nonexistent HOME="$CONFIG_DIR" \
-      "${TIMEOUT_CMD[@]}" claude -p "Let's make a react todo list" --plugin-dir "$REPO_ROOT" --allowed-tools=all --permission-mode bypassPermissions 2>&1)"
+      "${TIMEOUT_CMD[@]}" claude -p "Let's make a react todo list" --model "$KDD_FLOW_MODEL" --plugin-dir "$REPO_ROOT" --allowed-tools=all --permission-mode bypassPermissions 2>&1)"
 assert_contains "$out" "kdd" "mentions the kdd toolkit" || FAILURES=$((FAILURES+1))
 assert_contains "$out" "install\|KDD_SPEC_GRAPH" "gives an install instruction" || FAILURES=$((FAILURES+1))
 [[ ! -d "$p1/specs/work" ]] && pass "no work artifact written" || fail "no work artifact written"
