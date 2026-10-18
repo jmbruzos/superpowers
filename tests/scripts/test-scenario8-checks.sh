@@ -91,10 +91,36 @@ impl="$( { dispatch $((BASE + 100)) claude-opus-5-5 "Adversary: A4 x" "$A4_PROMP
 cp "$WORK/good.result" "$WORK/impl.result"
 out="$(run "$P" "$impl" native)"
 expect "implementer present: Native fails" "$out" "[FAIL]" "Native: no implementer dispatched"
+IMPL1_PROMPT='You are implementing Task WRK-TASK-DEMO-MONEY-001-001: roundMoney'
+# sdd arm: an implementer for every task (001 missing here), the Opus final review and "Rulings I made" are checked too
 out="$(run "$P" "$impl" sdd)"
-has "$out" "implementer" && fail "the sdd arm has no implementer check" || pass "the sdd arm has no implementer check"
-expect "sdd arm still checks A4 order" "$out" "[PASS]" "the first A4 dispatch is earlier"
-has "$out" "Opus" && fail "the sdd arm has no Opus final-review check" || pass "the sdd arm has no Opus final-review check"
+expect "sdd: no implementer for task 001 fails" "$out" "[FAIL]" "sdd: an implementer dispatched for WRK-TASK-DEMO-MONEY-001-001"
+expect "sdd: the implementer of task 002 (short id in the description) passes" "$out" "[PASS]" "sdd: an implementer dispatched for WRK-TASK-DEMO-MONEY-001-002"
+expect "sdd: the Opus final review is checked" "$out" "[PASS]" "sdd: a final review dispatched with an Opus model"
+expect 'sdd: "Rulings I made" is checked' "$out" "[PASS]" 'sdd: the result text contains "Rulings I made"'
+sddgood="$( { dispatch $((BASE + 50)) claude-opus-5-5 "Implement WRK-TASK-001 roundMoney" "$IMPL1_PROMPT" haiku
+              dispatch $((BASE + 100)) claude-opus-5-5 "Adversary: A4 x" "$A4_PROMPT" sonnet
+              dispatch $((BASE + 150)) claude-opus-5-5 "Build it" "$IMPL_PROMPT" haiku
+              dispatch $((BASE + 300)) claude-opus-5-5 "Final whole-branch code review" "$FINAL_PROMPT" opus; } | mk sddgood)"
+cp "$WORK/good.result" "$WORK/sddgood.result"
+out="$(run "$P" "$sddgood" sdd)"; rc=$?
+[[ $rc -eq 0 ]] && pass "a satisfying sdd run exits 0" || { fail "a satisfying sdd run exits 0"; echo "$out" | sed 's/^/    /'; }
+expect "sdd: implementers for both tasks (by id in the prompt opening) pass" "$out" "[PASS]" "sdd: an implementer dispatched for WRK-TASK-DEMO-MONEY-001-001"
+sddson="$( { dispatch $((BASE + 50)) claude-opus-5-5 "Implement 001" "$IMPL1_PROMPT" haiku
+             dispatch $((BASE + 100)) claude-opus-5-5 "Adversary: A4 x" "$A4_PROMPT" sonnet
+             dispatch $((BASE + 150)) claude-opus-5-5 "Implement 002" "$IMPL_PROMPT" haiku
+             dispatch $((BASE + 300)) claude-opus-5-5 "Final whole-branch code review" "$FINAL_PROMPT" sonnet; } | mk sddson)"
+printf 'no rulings here\n' > "$WORK/sddson.result"
+out="$(run "$P" "$sddson" sdd)"
+expect "sdd: a non-Opus final review fails" "$out" "[FAIL]" "sdd: a final review dispatched with an Opus model"
+expect 'sdd: "Rulings I made" absent fails' "$out" "[FAIL]" 'sdd: the result text contains "Rulings I made"'
+# inline-old: no implementer (present fails, absent passes); no Opus or Rulings check
+out="$(run "$P" "$impl" inline-old)"
+expect "inline-old: an implementer dispatch fails" "$out" "[FAIL]" "inline-old: no implementer dispatched"
+has "$out" "Opus" || has "$out" "Rulings" && fail "inline-old has no Opus or Rulings check" || pass "inline-old has no Opus or Rulings check"
+inl="$( { dispatch $((BASE + 100)) claude-opus-5-5 "Adversary: A4 x" "$A4_PROMPT" sonnet; } | mk inl)"
+out="$(run "$P" "$inl" inline-old)"
+expect "inline-old: no implementer passes" "$out" "[PASS]" "inline-old: no implementer dispatched"
 
 # implementer recognised by the prompt opening line under a paraphrased description
 impl2="$( { dispatch $((BASE + 100)) claude-opus-5-5 "Adversary: A4 x" "$A4_PROMPT" sonnet

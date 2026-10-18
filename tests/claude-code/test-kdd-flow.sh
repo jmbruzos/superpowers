@@ -240,6 +240,7 @@ esac
 p8="$(new_project)"; cp -R "$SCRIPT_DIR/fixtures/rounding-plan/specs" "$p8/specs"; cp "$SCRIPT_DIR/fixtures/rounding-plan/package.json" "$p8/package.json"
 git -C "$p8" add -A; git -C "$p8" -c user.email=t@e -c user.name=t commit -qm plan
 USAGE_SCENARIO="8-$arm8"
+rm -rf "$KDD_FLOW_USAGE/scenario-8-$arm8.transcripts"   # usage_record only adds to it: a rerun must not read the last run
 out="$(run_scenario "$p8" "$prompt8")"
 # the checks read this run's own copied transcripts only, never the shared config dir's projects,
 # so scenarios 4-5 of the same invocation cannot leak into them
