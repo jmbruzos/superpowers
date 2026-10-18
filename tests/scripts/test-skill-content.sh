@@ -286,4 +286,8 @@ must_not_contain skills/writing-plans/SKILL.md "questionable taste" "reader is c
 must_not_contain skills/writing-plans/SKILL.md "code blocks required for code steps" "no code-block requirement"
 must_not_contain skills/kdd-conventions/references/artifact-templates.md "**Step 3: Minimal implementation** (code block)" "template Step 3 is a signature"
 
+must_contain skills/requesting-code-review/code-reviewer.md "Review Focus (when the brief has one): for each line, name the test that pins it or give the input that breaks it" "code reviewer checks each Review Focus line"
+must_contain skills/requesting-code-review/SKILL.md "Review Focus" "requesting-code-review lists Review Focus"
+must_contain skills/writing-plans/plan-adversary-prompt.md "A step that gives a signature and no body is not a violation by itself" "A2 attack 1 reads signature-only steps"
+
 finish
