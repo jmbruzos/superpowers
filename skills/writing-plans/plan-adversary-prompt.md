@@ -24,7 +24,7 @@ Subagent (general-purpose):
     You have read access to the repository: the code the tasks modify is evidence too.
 
     ## Attacks to attempt (at least one row each)
-    1. Letter vs rule: find a task that can be completed exactly as written while violating a rule in an activated spec or a row of Architecture Impact. Quote the step and the rule. A step that gives a signature and no body is not a violation by itself: attack it only when the interface, the Expected line or a rule in force leaves a reading that breaks the rule.
+    1. Letter vs rule: find a task that can be completed exactly as written while violating a rule in an activated spec or a row of Architecture Impact. Quote the step and the rule. A step that gives a signature and no body is not a violation by itself: attack whether the task's tests pin the rule — a rule its tests would let an implementation break is BROKEN.
     2. Interface mismatch: find two tasks where what one Produces does not match what the other Consumes (name, type, order, error behaviour).
     3. Uncovered criterion: find a WRK-SPEC acceptance criterion that no task's acceptance criteria cover.
     4. Out-of-set activation: find a task whose `activates` names a spec the WRK-SPEC does not activate, or a task that needs a rule from a spec it does not activate.
