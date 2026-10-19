@@ -3,11 +3,11 @@ id: WRK-PLAN-FORK-UPSTREAM-005
 type: spec
 layer: work-plan
 scope: ephemeral
-status: active
+status: completed
 confidence: low
 version: 0.1.0
 created: 2026-10-18
-updated: 2026-10-18
+updated: 2026-10-19
 owner: jmbruzos
 title: "Upstream sync batch 4 — brainstorming ideas and routing — implementation plan"
 parent: WRK-SPEC-FORK-UPSTREAM-005
