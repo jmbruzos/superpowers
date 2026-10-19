@@ -1,0 +1,4 @@
+0b6e4ea plan(WRK-PLAN-MDM-LOSING-MEMBER-001): plan y 6 WRK-TASK; E1 en la WRK-SPEC tras gate A2
+a5494e7 spec(RFC-PIPE-039): accepted — activado por WRK-SPEC-MDM-LOSING-MEMBER-001
+e06f7dc spec(WRK-SPEC-MDM-LOSING-MEMBER-001): approved — active, human-verified
+5de3a3d spec(WRK-SPEC-MDM-LOSING-MEMBER-001): la ficha que pierde un miembro se recalcula (RFC-PIPE-039)

@@ -1,0 +1,4 @@
+9b5cd0b plan(WRK-PLAN-MDM-MEMBER-LOSS-001): plan y 4 tareas para RFC-PIPE-039
+28b9fed spec(RFC-PIPE-039): accepted — WRK-SPEC-MDM-MEMBER-LOSS-001 active
+7785b2e spec(WRK-SPEC-MDM-MEMBER-LOSS-001): approved — active, human-verified
+4ef91bb spec(WRK-SPEC-MDM-MEMBER-LOSS-001): la ficha que pierde un miembro se recalcula (RFC-PIPE-039)

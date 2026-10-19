@@ -1,0 +1,4 @@
+a7f38be plan(WRK-PLAN-MDM-MEMBER-DEPARTURE-001): plan y 6 tareas; gate A2 adjudicado
+9eb3255 spec(RFC-PIPE-039): accepted — activado por WRK-SPEC-MDM-MEMBER-DEPARTURE-001 (ADR-011)
+b35f10b spec(WRK-SPEC-MDM-MEMBER-DEPARTURE-001): approved — active, human-verified
+5195cbe spec(WRK-SPEC-MDM-MEMBER-DEPARTURE-001): la ficha que pierde un miembro se recalcula
