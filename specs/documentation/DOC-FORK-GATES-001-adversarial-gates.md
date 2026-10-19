@@ -5,9 +5,9 @@ layer: documentation
 scope: persistent
 status: draft
 confidence: low
-version: 0.4.0
+version: 0.5.0
 created: 2026-09-28
-updated: 2026-09-30
+updated: 2026-10-19
 owner: jmbruzos
 domain: kdd-superpowers
 subdomain: Quality gates
@@ -37,6 +37,24 @@ sources:
   - id: WRK-SPEC-FORK-GATES-002
     resource: specs/work/WRK-SPEC-FORK-GATES-002-gates-hold-their-findings.md
     title: The work that made dispatched gates synchronous, required a permitting quote to reject a spec-rule finding, and had the verifier check unlisted claims
+  - id: WRK-SPEC-FORK-UPSTREAM-003
+    resource: specs/work/WRK-SPEC-FORK-UPSTREAM-003-batch-2-lean-plans.md
+    title: The work that added the plan's Review Focus and had both reviewers check it
+  - id: WRK-SPEC-FORK-UPSTREAM-004
+    resource: specs/work/WRK-SPEC-FORK-UPSTREAM-004-batch-3-native.md
+    title: The work that added Native execution with the SDD gates before task completion and the knowledge-check prompt (gate b)
+  - id: FRAG-FORK-UPSTREAM-002
+    resource: specs/_capture/FRAG-FORK-UPSTREAM-002-batch-1-fixes-measurement/
+    title: Batch 1 — the reviewer's "Declined to judge" section cut by the safety classifier, removed in 0.7.2
+  - id: FRAG-FORK-UPSTREAM-003
+    resource: specs/_capture/FRAG-FORK-UPSTREAM-003-batch-2-lean-plans-measurement/
+    title: Batch 2 — Review Focus present in lean plans; executability defects and false claims at level 2
+  - id: FRAG-FORK-UPSTREAM-004
+    resource: specs/_capture/FRAG-FORK-UPSTREAM-004-batch-3-native-measurement/
+    title: Batch 3 — Native passes A4-before-completion and the final-review checks; the old inline stub fails them
+  - id: FRAG-FORK-UPSTREAM-005
+    resource: specs/_capture/FRAG-FORK-UPSTREAM-005-batch-4-brainstorming-measurement/
+    title: Batch 4 — gate A1 left as the builder check; false claims and executability defects not worse
 dependencies:
   - id: FRAG-FORK-GATES-001
     relation: distilled-from
@@ -48,11 +66,15 @@ dependencies:
     relation: distilled-from
   - id: FRAG-FORK-GATES-005
     relation: distilled-from
+  - id: FRAG-FORK-UPSTREAM-002
+    relation: distilled-from
+  - id: FRAG-FORK-UPSTREAM-004
+    relation: distilled-from
   - id: DOC-FORK-TOKENS-001
     relation: relates-to
 generated:
   by: claude-code/claude-opus-5-5
-  at: 2026-09-30T09:30:00Z
+  at: 2026-10-19T01:30:56Z
 stale_after: 2027-03-27T12:00:00Z
 tags: [kdd, fork, gates, adversarial, quality, measurement]
 ---
@@ -299,6 +321,85 @@ brownfield work of 4-13 tasks; the after samples are headless fixtures.
 - **The comparison says little about a repository without KDD history.**
   There, the plugin is the only source of the method. That arm is untested.
 
+### Execution modes and the gates (0.9.0)
+
+Since WRK-SPEC-FORK-UPSTREAM-004 the fork has two execution modes with the
+same gates. The rule (DOC-FORK-UPSTREAM-001 §3.4, human decision H-2): a
+mode keeps every gate SDD gives a task, **before the task is marked
+complete**.
+
+| Gate | Subagent-driven (SDD) | Native (executing-plans) |
+|---|---|---|
+| Final test run of the task | the implementer's report, checked by the task reviewer | `task-done` runs it; the task is not recorded unless it passes |
+| A3 rule → test or counterexample | per task, inside the task reviewer | once, for the whole branch, in the final review |
+| A4 break the tests (its condition) | dispatched after a clean A3, before completion | gate (a): dispatched after the task's steps, before `task-done`; each BROKEN row fixed by TDD, then one re-dispatch, a row still BROKEN parked with a ruling |
+| Knowledge compliance after a `Knowledge gap:` ruling on an activated rule | inside every task review | gate (b): `executing-plans/knowledge-check-prompt.md`, mid tier, on the task's range, once per such ruling, before `task-done`; a violation is blocking |
+| A5 acceptance attack | final whole-branch review | final whole-branch review, gate (c) |
+| Review Focus | final review, through the review brief | final review, through the review brief and verbatim in the dispatch |
+
+- **Native gives up the per-task reviewer, not the gates.** What it loses
+  is a second pair of eyes per task on code quality and spec compliance;
+  A3 moves to the end. What it never does is let a knowledge ruling reach
+  the next task unchecked: that is why gate (b) exists, and why it replaced
+  the stub's old stop "a task cannot be completed without violating a rule
+  of an activated spec".
+- **Gate (b)'s prompt is trimmed on purpose:** knowledge compliance only —
+  every rule in the brief the diff touches, and the rule the ruling names
+  (guarding test or counterexample input). A ruling that narrows,
+  reinterprets or sets aside a rule is not permission; only a quote from an
+  activated spec that explicitly scopes the rule makes the change compliant
+  (the permitting-quote rule above). Known gap (deferred minor of
+  WRK-TASK-FORK-UPSTREAM-004-002): the prompt omits "or a `constrained-by`
+  principle" as a source of the quote. Gate (b) is not re-dispatched after
+  its violation is fixed: TDD verifies the fix, and the final review's A3
+  checks every touched rule again. The scenario-8 fixture cannot trigger
+  gate (b); it was observed only in a pressure test (FRAG-FORK-UPSTREAM-004).
+- **Measured (FRAG-FORK-UPSTREAM-004, level 1, n=2):** Native passed every
+  scenario-8 check, including "A4 dispatched before task 001's complete
+  commit" and a final review on the most capable model; 0.8.0's inline stub
+  failed exactly the two A4 checks. Native cost about 20 % less than SDD on
+  the fixture with the same gates passing (DOC-FORK-TOKENS-001).
+- **Dispatched gates stay synchronous in Native:** each of (a), (b) and the
+  final review is waited for before `task-done`, a fix or the final
+  message.
+
+### Review Focus (0.8.0)
+
+Since WRK-SPEC-FORK-UPSTREAM-003 a WRK-PLAN carries `## Review Focus`: up
+to five input classes or failure modes the spec implies that no task's
+tests exercise (or `none — every input class the spec implies is
+tested: …`). `review-brief` copies it into the final reviewer's brief
+(section 3b), and `code-reviewer.md` asks, for each line, the test that
+pins it or the input that breaks it — a line with neither is Important. It
+is not a gate of its own: it points A5's and the reviewer's attention at
+what the plan admits it does not test. Level 1 found it in every lean plan
+and in no 0.7.1 plan (FRAG-FORK-UPSTREAM-003).
+
+### The code reviewer after batch 1 (0.7.2)
+
+Upstream 7.0 added two sections to `code-reviewer.md`. "The spec is a
+vision document" stays, with a KDD sentence: an activated spec's rules bind
+exactly as written, and a reasonable person's expectation fills only the
+spec's silence. **"Declined to judge" was removed** (decision log U-20):
+with it, the safety classifier cut the reviewer's report (`stop_reason:
+refusal`) in 4 of 11 scenario-6 runs at 0.7.1 and 0 of 8 at 0.6.1; with
+only that section added, 5 of 5; with only the vision-document section, 0
+of 5 (FRAG-FORK-UPSTREAM-002). Native's port dropped upstream's handling of
+that list too. The cost of the removal: the reviewer no longer lists
+explicitly what it skipped. A reviewer report cut by the classifier is not
+a review: measurements set such runs aside and repeat them
+(DOC-FORK-UPSTREAM-001 §4).
+
+### Gate A1 stands for 7.0's builder check (0.10.0)
+
+Upstream 7.0's brainstorming asks a "builder check" before review. The fork
+did not take it (decision log U-16): A1's attacks already ask what a builder
+would ask, and the check's "theirs" pile would stop a headless run that
+says it will not answer questions. Batch 4 was not worse on false claims
+about code (+1.5 per run, below the threshold of 2, inside a within-arm
+spread of 2–9) or executability defects (0.5 per run both arms) at level 2
+(FRAG-FORK-UPSTREAM-005).
+
 ### Reading an attack table
 
 - **Many `code-reality` rows:** the author did not verify premises. Look at
@@ -323,7 +424,9 @@ quality, not only claims about code, repeat the FRAG-FORK-GATES-003 method:
 pre-registered hard points, neutral summaries, and one blind pass over every
 arm's summaries together. After a change to how gates are adjudicated, also
 count the rulings: rejected `spec-rule` findings, and contested-rule and
-conflict gaps. Owner: jmbruzos.
+conflict gaps. After a change to an execution mode, re-run scenario 8 with
+every mode it is compared with, and keep the modes-and-gates table true.
+Owner: jmbruzos.
 
 ## Status
 
@@ -335,3 +438,6 @@ Draft, `confidence: low`:
 - The quality comparison is one task with 2–3 runs per arm, scored by one
   blind judge. The bare-Claude arm ran only in a repository that already
   carries KDD work artifacts.
+- The modes-and-gates mapping rests on one fixture (two tasks, n=2 per
+  mode); gate (b) has run only in a pressure test; Native has not executed
+  a plan from a real task (level 2b was dropped, decision log H-8).

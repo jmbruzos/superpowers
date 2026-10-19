@@ -3,7 +3,7 @@ id: FRAG-FORK-UPSTREAM-004
 type: fragment
 layer: capture
 scope: persistent
-status: ingested
+status: distilled
 confidence: low
 version: 1.0.0
 created: 2026-10-18
