@@ -1,8 +1,9 @@
 # kdd-superpowers — Working in this repository
 
 This is a Claude Code plugin: skills (Markdown), a session-start hook (bash),
-and a handful of scripts (bash, Node ESM). It is derived from superpowers 6.3.0
-and adapted to Knowledge-Driven Development (KDD). It depends on the `kdd`
+and a handful of scripts (bash, Node ESM). It is derived from superpowers 6.3.0,
+with selected changes through 7.0.0, and adapted to Knowledge-Driven
+Development (KDD). It depends on the `kdd`
 toolkit plugin at runtime and never re-implements it.
 
 ## The design is a spec
