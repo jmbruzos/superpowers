@@ -324,3 +324,11 @@ Each entry: **id · date · batch** — decision — why — what it costs if wr
   lines:5 / lines:5; proportion 9.68 / 9.11; cost 1.49 / 1.57 USD — in line
   with FRAG-FORK-UPSTREAM-003's reworked rows. Data in
   `.kdd/upstream-sync/measure/v080-l1/` (git-ignored).
+- **U-24 · 2026-10-19 · all** — Published under H-9: `main` merged from
+  `feat/upstream-7-integration` (`5b3efc0`) and pushed with tags 0.6.1, 0.7.1,
+  0.7.2, 0.8.0, 0.9.0 and 0.10.0. Tag 0.7.0 stays local: that release injected
+  nothing at session start and was replaced by 0.7.1 before anyone used it.
+  Release branches stay local (the tags carry the release commits).
+  Still open for the human: U-22 (batch 2 rework vs revert;
+  WRK-SPEC-FORK-UPSTREAM-003 stays active), batch 5 go/no-go, the review of
+  every U-* entry, and the follow-ups in `docs/upstream-sync/consolidation-report.md`.
