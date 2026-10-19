@@ -1,5 +1,28 @@
 # Release notes
 
+## 0.10.0 — brainstorming ideas and routing (upstream sync batch 4)
+
+Implements WRK-SPEC-FORK-UPSTREAM-005 (batch 4 of DOC-FORK-UPSTREAM-001),
+ideas from superpowers 7.0, adapted to KDD; the three paths, the HARD-GATE,
+the compact WRK-SPEC and gate A1 are unchanged:
+- `brainstorming`: find out early which choices about medium, platform,
+  language and libraries your human partner wants to make and which they
+  hand over — a choice you make goes in the design as your call; open
+  questions come before menus; guesses are marked as guesses; the visual
+  companion offer loses its cost warning.
+- `using-superpowers`: a question about what the knowledge says, asked
+  outside a workflow, goes to `kdd:spec-ask`; browsing the graph goes to
+  `kdd:spec-tui` (your human partner runs the viewer); a session whose
+  probe lines read `unavailable` runs the absolute `kdd-cli --path` the
+  hook now prints and checks `specs/` itself.
+- Harness: opt-in scenario 9 (knowledge question → spec-ask); scenario 2
+  checks discovery goes through `kdd:spec-context`.
+
+Measured (FRAG-FORK-UPSTREAM-005, opus, toolkit 1.13.0): not worse — level 1
+35/35 checks; on RFC-PIPE-039 false claims about code +1.5 per plan (under
+the threshold of 2, within the arms' own spread) and executability defects
+unchanged; cost +14 %.
+
 ## 0.9.0 — Native execution (upstream sync batch 3)
 
 Implements WRK-SPEC-FORK-UPSTREAM-004 (batch 3 of DOC-FORK-UPSTREAM-001),
