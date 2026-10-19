@@ -3,11 +3,11 @@ id: WRK-TASK-FORK-UPSTREAM-004-005
 type: spec
 layer: work-task
 scope: ephemeral
-status: completed
+status: archived
 confidence: low
 version: 0.1.0
 created: 2026-10-18
-updated: 2026-10-18
+updated: 2026-10-19
 owner: jmbruzos
 title: "Pre-register, measure level 1 after 0.8.0, hold for level 2b"
 parent: WRK-PLAN-FORK-UPSTREAM-004

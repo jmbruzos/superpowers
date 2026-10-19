@@ -3,11 +3,11 @@ id: WRK-SPEC-FORK-UPSTREAM-001
 type: spec
 layer: work-spec
 scope: ephemeral
-status: completed
+status: archived
 confidence: low
 version: 0.2.0
 created: 2026-10-18
-updated: 2026-10-18
+updated: 2026-10-19
 owner: jmbruzos
 title: "Upstream sync batch 0 — measurement harness and baseline: pinned toolkit paths, the A/B study under version control, a numeric-rule fixture, fork 0.6.0 measured on toolkit 1.13.0"
 activates:

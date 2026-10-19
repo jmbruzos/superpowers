@@ -3,11 +3,11 @@ id: WRK-SPEC-FORK-UPSTREAM-004
 type: spec
 layer: work-spec
 scope: ephemeral
-status: completed
+status: archived
 confidence: low
 version: 0.1.0
 created: 2026-10-18
-updated: 2026-10-18
+updated: 2026-10-19
 owner: jmbruzos
 title: "Upstream sync batch 3 — Native execution: executing-plans as a real inline mode over WRK-TASKs that keeps every SDD gate before a task completes, with task-start / task-done, a handoff that recommends a mode per plan, SDD's when-to-use and the opt-in nested orchestrator"
 activates:
