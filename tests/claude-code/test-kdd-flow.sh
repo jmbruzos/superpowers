@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Headless Claude Code scenarios for the kdd-superpowers flow.
-# Assumptions: `claude` on PATH; the kdd toolkit at $KDD_TOOLKIT_DIR (default
-# ../knowledge-driven-development/kdd-toolkit relative to the repo); credentials via
+# Assumptions: `claude` on PATH; the kdd toolkit resolved by toolkit-env.sh (the installed
+# plugin kdd-cli finds, or KDD_SPEC_GRAPH / KDD_TOOLKIT_DIR when set); credentials via
 # ~/.claude/.credentials.json (copied into an isolated CLAUDE_CONFIG_DIR so user-scope
 # plugins — e.g. upstream superpowers — do not load), or CLAUDE_CODE_OAUTH_TOKEN
 # (a long-lived token from `claude setup-token`, useful when login lives only in the
@@ -21,9 +21,8 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 source "$SCRIPT_DIR/test-helpers.sh"
 source "$SCRIPT_DIR/usage-lib.sh"   # KDD_FLOW_USAGE=<dir> → per-scenario token usage (WRK-SPEC-FORK-TOKENS-001)
-KDD_TOOLKIT_DIR="${KDD_TOOLKIT_DIR:-$REPO_ROOT/../knowledge-driven-development/kdd-toolkit}"
-KDD_SPEC_GRAPH="${KDD_SPEC_GRAPH:-$KDD_TOOLKIT_DIR/cli/spec-graph.mjs}"
 TIMEOUT="${CLAUDE_PROMPT_TIMEOUT:-900}"
+KDD_FLOW_MODEL="${KDD_FLOW_MODEL:-opus}"   # pinned: the account default model is not a fixed condition (DOC-FORK-UPSTREAM-001 §4)
 # portable timeout: GNU timeout, Homebrew gtimeout, or perl's alarm (macOS ships perl, not timeout)
 if command -v timeout >/dev/null; then TIMEOUT_CMD=(timeout "$TIMEOUT")
 elif command -v gtimeout >/dev/null; then TIMEOUT_CMD=(gtimeout "$TIMEOUT")
@@ -33,7 +32,7 @@ pass() { echo "  [PASS] $1"; }
 fail() { echo "  [FAIL] $1"; FAILURES=$((FAILURES + 1)); }
 
 command -v claude >/dev/null || { echo "SKIP: claude not found"; exit 0; }
-[[ -f "$KDD_SPEC_GRAPH" ]] || { echo "SKIP: kdd toolkit not found at $KDD_TOOLKIT_DIR"; exit 0; }
+source "$SCRIPT_DIR/toolkit-env.sh" || { echo "SKIP: kdd toolkit not found"; exit 0; }   # KDD_SPEC_GRAPH + KDD_TOOLKIT_DIR (DOC-FORK-UPSTREAM-001 §4)
 
 CONFIG_DIR="$(mktemp -d)"
 [[ -f "$HOME/.claude/.credentials.json" ]] && cp "$HOME/.claude/.credentials.json" "$CONFIG_DIR/"
@@ -49,7 +48,7 @@ run_scenario() { # DIR PROMPT [extra env…] — runs claude headless in DIR wit
       -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CODE_MESSAGING_SOCKET -u CLAUDE_CODE_MESSAGING_TOKEN \
       -u CLAUDE_CODE_SESSION_ATTENDED -u CLAUDE_CODE_EXECPATH \
       CLAUDE_CONFIG_DIR="$CONFIG_DIR" KDD_SPEC_GRAPH="$KDD_SPEC_GRAPH" "$@" \
-      "${TIMEOUT_CMD[@]}" claude -p "$prompt" --plugin-dir "$REPO_ROOT" --plugin-dir "$KDD_TOOLKIT_DIR" \
+      "${TIMEOUT_CMD[@]}" claude -p "$prompt" --model "$KDD_FLOW_MODEL" --plugin-dir "$REPO_ROOT" --plugin-dir "$KDD_TOOLKIT_DIR" \
       --allowed-tools=all --permission-mode bypassPermissions $(usage_args) 2>&1 ) > "$raw"
   usage_record "$raw" "$CONFIG_DIR"   # prints the result text; with KDD_FLOW_USAGE also saves the JSON
   rm -f "$raw"
@@ -57,6 +56,7 @@ run_scenario() { # DIR PROMPT [extra env…] — runs claude headless in DIR wit
 new_project() { local d; d="$(mktemp -d)"; git -C "$d" init -q -b main; printf 'node_modules/\n' > "$d/.gitignore"; git -C "$d" add -A; git -C "$d" -c user.email=t@e -c user.name=t commit -qm init; echo "$d"; }
 validate() { node "$KDD_SPEC_GRAPH" --specs "$1/specs" validate 2>&1; }
 want() { [[ -z "${KDD_FLOW_SCENARIOS:-}" || " $KDD_FLOW_SCENARIOS " == *" $1 "* ]]; }   # KDD_FLOW_SCENARIOS="5 6" runs only those
+want_explicit() { [[ " ${KDD_FLOW_SCENARIOS:-} " == *" $1 "* ]]; }   # opt-in scenarios: an empty list never selects them
 
 if want 1; then
 echo "=== Scenario 1: toolkit missing → brainstorming stops with install instruction ==="
@@ -65,7 +65,7 @@ out="$(cd "$p1" && env -u CLAUDECODE -u CLAUDE_CODE_ENTRYPOINT -u CLAUDE_CODE_CH
       -u CLAUDE_CODE_SESSION_ID -u CLAUDE_CODE_MESSAGING_SOCKET -u CLAUDE_CODE_MESSAGING_TOKEN \
       -u CLAUDE_CODE_SESSION_ATTENDED -u CLAUDE_CODE_EXECPATH \
       CLAUDE_CONFIG_DIR="$CONFIG_DIR" KDD_SPEC_GRAPH=/nonexistent HOME="$CONFIG_DIR" \
-      "${TIMEOUT_CMD[@]}" claude -p "Let's make a react todo list" --plugin-dir "$REPO_ROOT" --allowed-tools=all --permission-mode bypassPermissions 2>&1)"
+      "${TIMEOUT_CMD[@]}" claude -p "Let's make a react todo list" --model "$KDD_FLOW_MODEL" --plugin-dir "$REPO_ROOT" --allowed-tools=all --permission-mode bypassPermissions 2>&1)"
 assert_contains "$out" "kdd" "mentions the kdd toolkit" || FAILURES=$((FAILURES+1))
 assert_contains "$out" "install\|KDD_SPEC_GRAPH" "gives an install instruction" || FAILURES=$((FAILURES+1))
 [[ ! -d "$p1/specs/work" ]] && pass "no work artifact written" || fail "no work artifact written"
@@ -86,6 +86,12 @@ if [[ -n "$spec" ]]; then
   out2v="$(validate "$p2")"; [[ "$out2v" == *"Validation passed"* ]] && pass "validates" || fail "validates: $out2v"
   grep -q "^## Problem Statement" "$spec" && ! grep -q "^## Open Questions" "$spec" && pass "compact body" || fail "compact body"
 fi
+# in-workflow boundary (DOC-FORK-UPSTREAM-001 batch 4): discovery inside brainstorming goes through kdd:spec-context,
+# never kdd:spec-ask. Only this run's transcripts count: the config dir's project folder is named after the temp dir.
+tx2="$(find "$CONFIG_DIR/projects" -path "*${p2##*.}*" -name '*.jsonl' 2>/dev/null)"
+skills2=""; [[ -n "$tx2" ]] && skills2="$(grep -hE '"name": ?"Skill"' $tx2 2>/dev/null)"
+[[ "$(grep -cE '"skill": ?"kdd:spec-context"' <<<"$skills2")" -gt 0 ]] && pass "discovery invokes kdd:spec-context" || fail "discovery invokes kdd:spec-context"
+[[ "$(grep -cE '"skill": ?"kdd:spec-ask"' <<<"$skills2")" -eq 0 ]] && pass "discovery does not invoke kdd:spec-ask" || fail "discovery does not invoke kdd:spec-ask"
 
 fi
 if want 3; then
@@ -108,17 +114,28 @@ if want 4; then
 echo "=== Scenario 4: writing-plans from an active WRK-SPEC → plan + task files ==="
 p4="$(new_project)"; cp -R "$REPO_ROOT/tests/scripts/fixtures/specs" "$p4/specs"; rm -f "$p4"/specs/work/WRK-PLAN-* "$p4"/specs/work/WRK-TASK-*; git -C "$p4" add -A; git -C "$p4" -c user.email=t@e -c user.name=t commit -qm specs
 USAGE_SCENARIO=4
-out="$(run_scenario "$p4" "Use kdd-superpowers:writing-plans for WRK-SPEC-BILL-PRORATA-001 (specs/work). Two tasks are enough. Write the WRK-PLAN and the WRK-TASK files, validate, and when you offer the execution choice assume I chose Subagent-Driven: activate them and commit. Do not execute the plan.")"
+out="$(run_scenario "$p4" "Use kdd-superpowers:writing-plans for WRK-SPEC-BILL-PRORATA-001 (specs/work). Two tasks are enough. I approve the saved plan in advance and will not review it. Write the WRK-PLAN and the WRK-TASK files, validate, and when you offer the execution choice assume I chose Subagent-Driven: activate them and commit. Do not execute the plan.")"
 plan="$(ls "$p4"/specs/work/WRK-PLAN-BILL-PRORATA-*.md 2>/dev/null | head -1)"
 [[ -n "$plan" ]] && pass "WRK-PLAN written" || fail "WRK-PLAN written"
 n="$(ls "$p4"/specs/work/WRK-TASK-BILL-PRORATA-001-*.md 2>/dev/null | wc -l | tr -d ' ')"
 [[ "$n" -ge 1 ]] && pass "WRK-TASK files written ($n)" || fail "WRK-TASK files written"
 for t in "$p4"/specs/work/WRK-TASK-*.md; do
   [[ -f "$t" ]] || continue
-  awk '/^activates:/{f=1; next} f && /^[[:space:]]+- /{print; next} f{exit}' "$t" | grep -vq "DOM-BILL-PRORATA-001@1.0.0" && fail "task activations ⊆ spec ($(basename "$t"))" || pass "task activations ⊆ spec ($(basename "$t"))"
+  awk '/^activates:/{f=1; next} f && /^[[:space:]]+- /{print; next} f{exit}' "$t" | grep -vc "DOM-BILL-PRORATA-001@1.0.0" >/dev/null && fail "task activations ⊆ spec ($(basename "$t"))" || pass "task activations ⊆ spec ($(basename "$t"))"
 done
 [[ -n "$plan" ]] && grep -q "^## Architecture Impact" "$plan" && grep -q "DOM-BILL-PRORATA-001" "$plan" && pass "Architecture Impact cites the DOM" || fail "Architecture Impact cites the DOM"
 out4v="$(validate "$p4")"; [[ "$out4v" == *"Validation passed"* ]] && pass "plan + tasks validate" || fail "plan + tasks validate: $out4v"
+inactive4=0
+for f in "$p4"/specs/work/WRK-PLAN-BILL-PRORATA-*.md "$p4"/specs/work/WRK-TASK-*.md; do
+  [[ -f "$f" ]] || continue
+  grep -c "^status: active" "$f" >/dev/null || { inactive4=$((inactive4+1)); echo "    not active: $(basename "$f")"; }
+done
+[[ -n "$plan" && "$inactive4" -eq 0 ]] && pass "plan and every task are status: active" || fail "plan and every task are status: active"
+git -C "$p4" log --format=%s | grep -c "^plan(WRK-PLAN-BILL-PRORATA-" >/dev/null && pass "activation committed (plan(WRK-PLAN-BILL-PRORATA-…))" || fail "activation committed (plan(WRK-PLAN-BILL-PRORATA-…))"
+plan4="$(ls "$p4"/specs/work/WRK-PLAN-BILL-PRORATA-*.md 2>/dev/null | head -1)"
+metrics4="$(node "$SCRIPT_DIR/plan-metrics.mjs" "$plan4" 2>&1)"
+echo "  plan-metrics: $metrics4"
+if [[ -n "${KDD_FLOW_USAGE:-}" ]]; then mkdir -p "$KDD_FLOW_USAGE"; echo "  plan-metrics: $metrics4" > "$KDD_FLOW_USAGE/scenario-4.plan-metrics.txt"; fi
 
 fi
 if want 5; then
@@ -129,7 +146,7 @@ out="$(run_scenario "$p5" "Use kdd-superpowers:subagent-driven-development to ex
 (cd "$p5" && npm test >/dev/null 2>&1) && pass "hello library tests pass" || fail "hello library tests pass"
 if [[ -f "$p5/.kdd/sdd/WRK-PLAN-DEMO-HELLO-001/progress.md" ]]; then
   pass "ledger under .kdd/sdd/<plan id>/"
-elif git -C "$p5" log --format=%s | grep -qi "WRK-PLAN-DEMO-HELLO-001.*execution log"; then
+elif git -C "$p5" log --format=%s | grep -ci "WRK-PLAN-DEMO-HELLO-001.*execution log" >/dev/null; then
   pass "ledger under .kdd/sdd/<plan id>/ (deleted by finishing after the execution log commit; git log shows the execution log commit)"
 else
   fail "ledger under .kdd/sdd/<plan id>/ (deleted by finishing after the execution log commit, and no execution-log commit found in git log)"
@@ -137,7 +154,7 @@ fi
 grep -q "^status: completed" "$p5"/specs/work/WRK-TASK-DEMO-HELLO-001-001-*.md && pass "task 001 completed" || fail "task 001 completed"
 grep -q "^status: completed" "$p5"/specs/work/WRK-TASK-DEMO-HELLO-001-002-*.md && pass "task 002 completed" || fail "task 002 completed"
 grep -q "^status: completed" "$p5"/specs/work/WRK-PLAN-DEMO-HELLO-001-*.md && pass "plan completed" || fail "plan completed"
-git -C "$p5" log --format=%s | grep -q "WRK-TASK-DEMO-HELLO-001-001" && pass "commits carry task IDs" || fail "commits carry task IDs"
+git -C "$p5" log --format=%s | grep -c "WRK-TASK-DEMO-HELLO-001-001" >/dev/null && pass "commits carry task IDs" || fail "commits carry task IDs"
 grep -q "^## Execution Log" "$p5"/specs/work/WRK-PLAN-DEMO-HELLO-001-*.md && pass "execution log persisted by finishing" || fail "execution log persisted by finishing"
 grep -q "^status: completed\|^status: archived" "$p5"/specs/work/WRK-SPEC-DEMO-HELLO-001-*.md && pass "spec closed" || fail "spec closed"
 
@@ -167,7 +184,7 @@ spec7wt="$(ls "$p7"/specs/work/WRK-SPEC-*.md 2>/dev/null | head -1)"
 [[ -n "$spec7wt" ]] && pass "WRK-SPEC written under specs/work" || fail "WRK-SPEC written under specs/work"
 if [[ -n "$spec7wt" ]]; then
   rel7="specs/work/$(basename "$spec7wt")"
-  git -C "$p7" log --format=%s -- "$rel7" | grep -q "^spec(" && pass "WRK-SPEC committed" || fail "WRK-SPEC committed"
+  git -C "$p7" log --format=%s -- "$rel7" | grep -c "^spec(" >/dev/null && pass "WRK-SPEC committed" || fail "WRK-SPEC committed"
   git -C "$p7" diff --quiet HEAD -- "$rel7" && pass "committed WRK-SPEC equals the working tree" || fail "committed WRK-SPEC equals the working tree (review appended after the commit?)"
   spec7="$(mktemp)"; git -C "$p7" show "HEAD:$rel7" > "$spec7" 2>/dev/null   # every check below reads the committed version
   grep -q "^## Code Premises" "$spec7" && pass "Code Premises section" || fail "Code Premises section"
@@ -209,6 +226,50 @@ if [[ -n "$a1_line" ]]; then
   [[ -n "$write_line" && "$write_line" -lt "$a1_line" ]] && pass "WRK-SPEC written before gate A1" || fail "WRK-SPEC written before gate A1 (write line:$write_line A1 line:$a1_line)"
 fi
 rm -f "${spec7:-}"
+
+fi
+if want_explicit 8 && [[ -z "${KDD_FLOW_USAGE:-}" ]]; then
+echo "=== Scenario 8: SKIP — it reads the run's own transcripts; set KDD_FLOW_USAGE=<dir> ==="
+
+fi
+if want_explicit 8 && [[ -n "${KDD_FLOW_USAGE:-}" ]]; then
+arm8="${KDD_FLOW_ARM8:-native}"   # native | inline-old | sdd — the execution mode compared (DOC-FORK-UPSTREAM-001 §4)
+echo "=== Scenario 8 ($arm8): the rounding plan executed in one mode (opt-in, paid) ==="
+plan8="specs/work/WRK-PLAN-DEMO-MONEY-001-money-library.md"
+base8="to execute $plan8 on this branch (I consent). Run through the final review and its fixes, then stop: do not start finishing-a-development-branch."
+case "$arm8" in
+  native)    prompt8="Use kdd-superpowers:executing-plans $base8" ;;
+  inline-old) prompt8="Use kdd-superpowers:executing-plans $base8 Execute every task yourself in this session; do not dispatch subagents." ;;
+  sdd)       prompt8="Use kdd-superpowers:subagent-driven-development $base8" ;;
+  *) echo "unknown KDD_FLOW_ARM8='$arm8' (native | inline-old | sdd)"; exit 2 ;;
+esac
+p8="$(new_project)"; cp -R "$SCRIPT_DIR/fixtures/rounding-plan/specs" "$p8/specs"; cp "$SCRIPT_DIR/fixtures/rounding-plan/package.json" "$p8/package.json"
+git -C "$p8" add -A; git -C "$p8" -c user.email=t@e -c user.name=t commit -qm plan
+USAGE_SCENARIO="8-$arm8"
+rm -rf "$KDD_FLOW_USAGE/scenario-8-$arm8.transcripts"   # usage_record only adds to it: a rerun must not read the last run
+out="$(run_scenario "$p8" "$prompt8")"
+# the checks read this run's own copied transcripts only, never the shared config dir's projects,
+# so scenarios 4-5 of the same invocation cannot leak into them
+checks8="$("$SCRIPT_DIR/scenario8-checks.sh" "$p8" "$KDD_FLOW_USAGE/scenario-8-$arm8.transcripts" "$arm8" 2>&1)"; rc8=$?
+echo "$checks8"
+[[ "$rc8" -eq 0 ]] || FAILURES=$((FAILURES + $(grep -c '^  \[FAIL\]' <<<"$checks8")))
+
+fi
+if want_explicit 9 && [[ -z "${KDD_FLOW_USAGE:-}" ]]; then
+echo "=== Scenario 9: SKIP — it reads the run's own transcripts; set KDD_FLOW_USAGE=<dir> ==="
+
+fi
+if want_explicit 9 && [[ -n "${KDD_FLOW_USAGE:-}" ]]; then
+echo "=== Scenario 9: a knowledge question outside a workflow → kdd:spec-ask, not brainstorming (opt-in, paid) ==="
+p9="$(new_project)"; cp -R "$REPO_ROOT/tests/scripts/fixtures/specs" "$p9/specs"; rm -rf "$p9/specs/work"; git -C "$p9" add -A; git -C "$p9" -c user.email=t@e -c user.name=t commit -qm specs
+USAGE_SCENARIO=9
+rm -rf "$KDD_FLOW_USAGE/scenario-9.transcripts"   # usage_record only adds to it: a rerun must not read the last run
+out="$(run_scenario "$p9" "What do our specs say about rounding pro-rata amounts?")"
+# the checks read this run's own copied transcripts only, never the shared config dir's projects
+skills9="$(find "$KDD_FLOW_USAGE/scenario-9.transcripts" -name '*.jsonl' -exec grep -hE '"name": ?"Skill"' {} + 2>/dev/null)"
+[[ "$(grep -cE '"skill": ?"kdd:spec-ask"' <<<"$skills9")" -gt 0 ]] && pass "invokes kdd:spec-ask" || fail "invokes kdd:spec-ask"
+[[ "$(grep -cE '"skill": ?"kdd-superpowers:brainstorming"' <<<"$skills9")" -eq 0 ]] && pass "does not invoke brainstorming" || fail "does not invoke brainstorming"
+[[ -z "$(find "$p9/specs/work" -type f 2>/dev/null)" ]] && pass "no file under specs/work written" || fail "no file under specs/work written"
 
 fi
 echo ""

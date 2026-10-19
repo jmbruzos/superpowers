@@ -5,10 +5,29 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# No PATH lookups before the context is built: a SessionStart hook can start with a
+# broken or empty PATH (anthropics/claude-code#43127, upstream #2310). $0 is split on
+# its last / or \ instead of calling dirname, and the skill is read with $(<file).
+case "$0" in
+  */*|*\\*) SCRIPT_DIR="$(cd "${0%[/\\]*}" && pwd)" ;;
+  *) SCRIPT_DIR="$(pwd)" ;;
+esac
 PLUGIN_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-using_superpowers_content=$(cat "${PLUGIN_ROOT}/skills/using-superpowers/SKILL.md" 2>&1 || echo "Error reading using-superpowers skill")
+# A PATH that is empty or has an empty, "." or relative element makes bash look up
+# commands in the current directory — the project being opened. Such a PATH is
+# treated as broken: no command is looked up at all (the Windows half refuses a
+# bash or where from the current directory for the same reason).
+# (patterns only, no array: bash 3.2 with set -u rejects an empty one)
+path_broken=0
+case ":${PATH-}:" in *::*|*:[!/:]*) path_broken=1 ;; esac
+
+skill_md="${PLUGIN_ROOT}/skills/using-superpowers/SKILL.md"
+if [ -r "$skill_md" ]; then
+  using_superpowers_content="$(<"$skill_md")"
+else
+  using_superpowers_content="Error reading using-superpowers skill"
+fi
 
 # --- KDD environment probe ---------------------------------------------------
 # The whole probe below runs inside $(kdd_environment); bash does not enforce
@@ -16,7 +35,21 @@ using_superpowers_content=$(cat "${PLUGIN_ROOT}/skills/using-superpowers/SKILL.m
 # grep/awk pipelines are safe here only because this function guards or
 # tolerates them explicitly — do not assume that elsewhere in the script.
 kdd_environment() {
-  local toolkit specs_line open_line okf_line
+  local toolkit specs_line open_line okf_line tool na="unavailable (no PATH at session start)"
+  # The toolkit line also names the absolute kdd-cli path, so the session can probe once itself.
+  local na_toolkit="unavailable (no PATH at session start; check with ${PLUGIN_ROOT}/skills/using-superpowers/scripts/kdd-cli --path)"
+  if [ "$path_broken" -eq 1 ]; then
+    printf '<KDD-ENVIRONMENT>\ntoolkit: %s\nspecs_dir: %s\nopen_work: %s\nokf_bundles: %s\n</KDD-ENVIRONMENT>' "$na_toolkit" "$na" "$na" "$na"
+    return 0
+  fi
+  # The probe needs these; without them (broken PATH) it says so instead of guessing.
+  # `toolkit: NOT FOUND` is printed only when kdd-cli actually ran and failed.
+  for tool in find awk mktemp wc tr sort rm grep sed head dirname; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+      printf '<KDD-ENVIRONMENT>\ntoolkit: %s\nspecs_dir: %s\nopen_work: %s\nokf_bundles: %s\n</KDD-ENVIRONMENT>' "$na_toolkit" "$na" "$na" "$na"
+      return 0
+    fi
+  done
   toolkit="$("${PLUGIN_ROOT}/skills/using-superpowers/scripts/kdd-cli" --path 2>/dev/null || true)"
   [ -n "$toolkit" ] || toolkit="NOT FOUND"
 
@@ -127,6 +160,16 @@ kdd_env_escaped=$(escape_for_json "$kdd_env_content")
 session_context="<EXTREMELY_IMPORTANT>\nYou have kdd-superpowers.\n\n**Below is the full content of your 'kdd-superpowers:using-superpowers' skill - your introduction to using skills. For all other skills, use the 'Skill' tool:**\n\n${using_superpowers_escaped}\n</EXTREMELY_IMPORTANT>\n\n${kdd_env_escaped}"
 
 # Claude Code hook output. Uses printf instead of a heredoc (bash 5.3+ heredoc hang, upstream #571).
-printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context" | cat
+# Piped through cat when cat exists, to absorb EPIPE on Windows (upstream #1612); printf
+# alone when PATH is broken, so the context still gets out.
+emit_json() {
+  # shellcheck disable=SC2059 # every caller passes a literal format string
+  if [ "$path_broken" -eq 0 ] && command -v cat >/dev/null 2>&1; then
+    printf "$@" | cat
+  else
+    printf "$@"
+  fi
+}
+emit_json '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$session_context"
 
 exit 0

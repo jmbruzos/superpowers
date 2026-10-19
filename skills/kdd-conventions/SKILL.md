@@ -68,6 +68,12 @@ human-verified` with `--verified`). It refuses any move the table does not list
 and restores the file when validate is red. Run it instead of editing the
 frontmatter by hand.
 
+`scripts/transition --verify-only --verified human:<id> FILE` records a human's
+`verified` entry with no status move — for an artifact your human partner
+confirmed after it was already `active`, or a knowledge spec they reviewed — and
+commits `spec(<ID>): verified by human:<id>`. It needs the kdd toolkit 1.13 or
+later. The writer ≠ confirmer rule below applies unchanged.
+
 ## Trust family — on everything you write
 
 ```yaml

@@ -1,0 +1,4 @@
+cde4396 plan(WRK-PLAN-MDM-LOSING-MEMBER-001): plan y 5 WRK-TASK; gate A2 adjudicado
+d27daf9 spec(RFC-PIPE-039): accepted — activado por WRK-SPEC-MDM-LOSING-MEMBER-001 (ADR-011)
+cbbe74c spec(WRK-SPEC-MDM-LOSING-MEMBER-001): approved — active, human-verified
+b537a41 spec(WRK-SPEC-MDM-LOSING-MEMBER-001): la ficha que pierde un miembro se recalcula (RFC-PIPE-039)

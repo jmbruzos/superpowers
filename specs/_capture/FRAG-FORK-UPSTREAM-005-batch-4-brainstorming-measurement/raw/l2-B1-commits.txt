@@ -1,0 +1,4 @@
+507a897 plan(WRK-PLAN-MDM-LOSING-MEMBER-001): la ficha que pierde un miembro se recalcula — plan y 6 tareas
+1fbcb81 spec(RFC-PIPE-039): accepted — lo activa WRK-SPEC-MDM-LOSING-MEMBER-001 (ADR-011)
+b24abac spec(WRK-SPEC-MDM-LOSING-MEMBER-001): approved — active, human-verified
+dcf06c1 spec(WRK-SPEC-MDM-LOSING-MEMBER-001): la ficha que pierde un miembro se recalcula (RFC-PIPE-039)

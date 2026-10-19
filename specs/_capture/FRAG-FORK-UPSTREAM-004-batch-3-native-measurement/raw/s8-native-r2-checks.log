@@ -1,0 +1,48 @@
+=== Scenario 8 (native): the rounding plan executed in one mode (opt-in, paid) ===
+  [PASS] npm test is green
+  [PASS] WRK-TASK-DEMO-MONEY-001-001 is status: completed
+  [PASS] WRK-TASK-DEMO-MONEY-001-002 is status: completed
+  [PASS] kdd-status reports the ledger of WRK-PLAN-DEMO-MONEY-001 as used
+  [PASS] the ledger holds the completion line of WRK-TASK-DEMO-MONEY-001-001
+  [PASS] the ledger holds the completion line of WRK-TASK-DEMO-MONEY-001-002
+  [PASS] A4 dispatched
+  [PASS] the first A4 dispatch is earlier than the commit of chore(WRK-TASK-DEMO-MONEY-001-001): complete
+  [PASS] Native: no implementer dispatched
+  [PASS] Native: a final review dispatched with an Opus model
+  [PASS] Native: the result text contains "Rulings I made"
+
+scenario         turns   cache_w   cache_r      out   cost$    dur
+scenario-8-native    34     73.4k   1705.2k    26.7k    2.07   435s
+    claude-opus-5-5                cache_w=102.5k cache_r=1770.7k out=35.2k cost=1.79
+    claude-sonnet-5-5              cache_w=54.0k cache_r=244.2k out=11.5k cost=0.27
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             69        138     65,311  3,671,126 $  12.49
+    a781c9e9ac713b31d Working directory: /private/var/folders/dz/zwzb_csn0rqc9szkv     1          2      1,088     20,148 $   0.08
+    a9d87bbd5b3d94905 Working directory: /private/var/folders/dz/zwzb_csn0rqc9szkv     1          2      3,976     27,428 $   0.15
+    aabb1b301bb16e1b8 Working directory: /private/var/folders/dz/zwzb_csn0rqc9szkv     1          2        942     17,663 $   0.07
+    ac5b8a14bbb19f74b Working directory: /private/var/folders/dz/zwzb_csn0rqc9szkv     1          2      1,068     19,271 $   0.08
+    ae23cc613c00e47d8 Working directory: /private/var/folders/dz/zwzb_csn0rqc9szkv     1          2      1,476     18,143 $   0.08
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         74
+      Input tokens:           148
+      Output tokens:          73,861
+      Cache creation tokens:  170,255
+      Cache read tokens:      3,773,779
+    
+      Total input (incl cache): 3,944,182
+      Total tokens:             4,018,043
+    
+      Estimated cost: $12.94
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+PASS

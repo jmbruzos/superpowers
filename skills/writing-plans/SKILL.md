@@ -7,9 +7,7 @@ description: Use when you have an approved WRK-SPEC for a multi-step task, befor
 
 ## Overview
 
-Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable taste. Document everything they need to know: which files to touch for each task, code, testing, docs they might need to check, how to test it. Give them the whole plan as bite-sized tasks. DRY. YAGNI. TDD. Frequent commits.
-
-Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they don't know good test design very well.
+Write implementation plans for an engineer who has not seen this codebase or this spec. Assume they write idiomatic code in the project's language once they know the exact interface and the exact test, and that they will make a reasonable choice wherever the plan leaves one open. What they cannot know is what you decided: which files, which names and signatures, which values from the spec, which tests prove each task. Document those. Give them the whole plan as bite-sized tasks. DRY. YAGNI. TDD. Frequent commits.
 
 **Announce at start:** "I'm using the writing-plans skill to create the implementation plan."
 
@@ -50,9 +48,9 @@ deliverable needs them; split only where a reviewer could meaningfully
 reject one task while approving its neighbor. Each task ends with an
 independently testable deliverable.
 
-## Bite-Sized Task Granularity
+## Step Granularity
 
-**Each step is one action (2-5 minutes):**
+**Each step is one action with a checkable result:**
 - "Write the failing test" - step
 - "Run it to make sure it fails" - step
 - "Implement the minimal code to make the test pass" - step
@@ -97,6 +95,18 @@ Frontmatter per the kdd-conventions template: `layer: work-plan`, `parent: <WRK-
 | Constraint | Source | Impact on plan |
 |---|---|---|
 [Every rule from an activated spec that binds this work, **copied verbatim** with its spec ID and rule number; every FRAG-observed behaviour with its anchor. Every task's requirements implicitly include this table — it is what reviewers hold the diff against.]
+
+## Review Focus
+
+[Up to five input classes or failure modes the spec implies but no task's
+tests exercise that are most likely to bite a person using this software
+— one line each, naming the input or condition and the behavior a
+reasonable person would expect, most likely first. The spec is a vision
+document: it says what the software must do, not everything it will
+meet, and its silence on an input is not permission for that input to
+break the program. Write the list here, once, with the spec in front of
+you. Then, for each line, add the test that pins it to the task that
+owns the code, in that task's own step style. An input an activated rule already names is not Review Focus: the rule requires its test, and Architecture Impact carries it. When none is left uncovered, the section reads `none — every input class the spec implies is tested:` followed by one `- <input class> → <task ID>: <test name>` line per class checked; a bare `none` is a skipped check.]
 
 ## Risk Assessment
 
@@ -149,12 +159,10 @@ def test_specific_behavior():
 Run: `pytest tests/path/test.py::test_name -v`
 Expected: FAIL with "function not defined"
 
-- [ ] **Step 3: Write minimal implementation**
+- [ ] **Step 3: Implement `function(input: InputType) -> ResultType` in `exact/path/to/file.py`**
 
-```python
-def function(input):
-    return expected
-```
+One line on the approach when the signature and the test leave a choice (which library call, which data structure);
+a code block only for an algorithm they do not determine.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -177,15 +185,31 @@ git commit -m "feat(<WRK-TASK-ID>): add specific feature"
 [the tests above, and any integration/regression check]
 ````
 
-## No Placeholders
+## What a Step Contains
 
-Every step must contain the actual content an engineer needs. These are **plan failures** — never write them:
-- "TBD", "TODO", "implement later", "fill in details"
-- "Add appropriate error handling" / "add validation" / "handle edge cases"
-- "Write tests for the above" (without actual test code)
-- "Similar to Task N" (repeat the code — the engineer may be reading tasks out of order)
-- Steps that describe what to do without showing how (code blocks required for code steps)
-- References to types, functions, or methods not defined in any task
+A step is done when the implementer can write exactly one reasonable thing
+from it. That is the whole requirement: unambiguous, not complete. Each kind
+of step carries what makes it unambiguous and nothing more:
+
+- **A test step:** the test's name and its assertions, as code, with the
+  spec's exact values in them. Whatever code the step shows must compile
+  where it lands: every type, method, overload, accessor and variable it
+  names exists in the code today or is created by an earlier step. A test
+  that does not compile fails for the wrong reason. The one exception is
+  the name this task's own code step creates: its absence is the failure
+  the red step expects.
+- **A code step:** the exact signature (name, parameters, return type), the
+  file it lives in, and the specific values the spec pins. The implementer
+  writes the body. A body appears only for an algorithm the signature and
+  tests do not determine, or for exact copy the spec fixes.
+- **A verification step:** the command to run and the output that means it
+  passed.
+- **A reference to another task:** this task's own *Consumes* line repeats the exact signature it uses — the implementer sees only this task's brief.
+
+A plan is the set of decisions the implementer cannot make alone. A plan
+longer than the code it describes has written the code instead. Lines that
+decide nothing are the opposite failure, and the self-review catches both:
+- "TBD", "handle edge cases", "add appropriate validation", "write tests for the above", a type or function no task defines and the code does not have
 - "Follow DOM-X" without the rule's text (copy the rule; the implementer's brief carries the spec, but the step must say which line binds it)
 
 ## Validate
@@ -198,13 +222,17 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 **1. Spec coverage:** Skim each section/requirement in the spec. Can you point to a task that implements it? List any gaps.
 
-**2. Placeholder scan:** Search your plan for red flags — any of the patterns from the "No Placeholders" section above. Fix them.
+**2. Step scan:** Every step must let the implementer write exactly one reasonable thing, and no step may carry more than that: a line that decides nothing is a gap, a function body the signature and tests already determine is a transcript. Fix both.
 
-**3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
+**3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug. A name no task defines must exist in the code today with that exact signature: open the file and check it, do not recall it.
 
 **4. Activation coverage:** Does every row of *Architecture Impact* cite a spec or a FRAG? Does every task's `activates` stay inside the spec's set? Does every activated spec bind at least one task (otherwise why activate it)?
 
 **5. Roll-up:** Do the tasks' acceptance criteria, taken together, cover every acceptance criterion of the WRK-SPEC?
+
+**6. Review Focus:** For each input class or failure mode the spec implies, is there a task whose tests exercise it? The uncovered ones most likely to bite a person go in the Review Focus section (up to five input classes), and each line there gets its test added to the owning task. A section with nothing uncovered uses the per-class `none` form, which shows you checked, not that you skipped the check.
+
+**7. Proportion:** Compare the bodies (frontmatter excluded) of the WRK-PLAN and its WRK-TASKs to the WRK-SPEC's body. A plan several times longer than the spec it implements is a transcript of the program, not a plan. If code blocks are most of the document, replace bodies with signatures, test names and assertions, and check that each step is still unambiguous.
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
@@ -214,22 +242,19 @@ Dispatch [plan-adversary-prompt.md](plan-adversary-prompt.md) when **any** of th
 
 ## Execution Handoff
 
-After saving the plan, offer execution choice:
+After saving and self-reviewing the plan (and after Gate A2, when it ran), link it for your human partner to read and ask them to review it before anything runs: no choice is acted on, and nothing is activated, until they have reviewed the plan or approved it in advance as below. Approving the spec or the scope is not approving a plan your human partner has not seen. An approval given in advance that names the plan itself ("I approve … the plan in advance") counts, and is quoted in the activation commit message; an approval of the design or the scope does not. Then offer the execution choice:
 
-**"Plan complete: `specs/work/<WRK-PLAN file>` with <N> tasks. Two execution options:**
+**"Plan complete: `specs/work/<WRK-PLAN file>` with <N> tasks. Please review the plan. Which execution approach would you prefer?**
 
-**1. Subagent-Driven (recommended)** - I dispatch a fresh subagent per task, review between tasks, fast iteration
+- **Subagent-driven** - A fresh subagent implements each task and a fresh reviewer checks it before the next one starts, then a whole-branch review at the end. Most thorough; costs a fresh context per task and per review.
+- **Native** - I implement every task myself in this session; the gates SDD gives a task run only where a rule or a ruling calls for them (A4, a knowledge check), then one fresh reviewer on the most capable model checks the whole branch. Cheapest and fastest. Runs well with a mid-tier session model, since the plan carries the design.
 
-**2. Inline Execution** - Execute tasks in this session using executing-plans, batch execution with checkpoints
-
-**Which approach?"**
+**For this plan I recommend <one of the two>, because <one sentence from the plan: how much the tasks depend on each other's interfaces, how many there are, what a shipped mistake would cost>. Does the plan capture what you want, and which approach should we use?"**
 
 When your human partner chooses, set `status: active` and `updated` on the plan and every task, re-validate, commit (`plan(<WRK-PLAN-ID>): activate`) — `kdd-conventions/scripts/transition --no-commit <file> active` on the plan and on each task, then that one commit. The SDD workspace for this plan will be `.kdd/sdd/<WRK-PLAN-ID>/`.
 
-**If Subagent-Driven chosen:**
+**If Subagent-driven chosen:**
 - **REQUIRED SUB-SKILL:** Use kdd-superpowers:subagent-driven-development
-- Fresh subagent per task + two-stage review
 
-**If Inline Execution chosen:**
+**If Native chosen:**
 - **REQUIRED SUB-SKILL:** Use kdd-superpowers:executing-plans
-- Batch execution with checkpoints for review

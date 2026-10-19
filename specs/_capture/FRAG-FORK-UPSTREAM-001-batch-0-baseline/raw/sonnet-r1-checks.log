@@ -1,0 +1,222 @@
+=== Scenario 1: toolkit missing → brainstorming stops with install instruction ===
+  [PASS] mentions the kdd toolkit
+  [PASS] gives an install instruction
+  [PASS] no work artifact written
+=== Scenario 2: brainstorming with a knowledge base → frozen WRK-SPEC ===
+  [PASS] WRK-SPEC written under specs/work
+  [PASS] activation frozen
+  [PASS] activates the pinned DOM
+  [PASS] status active
+  [PASS] human verified entry
+  [PASS] validates
+  [PASS] compact body
+=== Scenario 3: brainstorming without specs/ → specs/work created, activates [], FRAG anchored ===
+  [PASS] specs/work created
+  [PASS] activates: [] stated
+  [PASS] FRAG captured
+  [PASS] FRAG anchors verify
+  [PASS] FRAG born low confidence
+=== Scenario 4: writing-plans from an active WRK-SPEC → plan + task files ===
+  [FAIL] WRK-PLAN written
+  [FAIL] WRK-TASK files written
+  [FAIL] Architecture Impact cites the DOM
+  [PASS] plan + tasks validate
+=== Scenario 5: subagent-driven-development executes the hello plan ===
+  [PASS] hello library tests pass
+  [FAIL] ledger under .kdd/sdd/<plan id>/ (deleted by finishing after the execution log commit, and no execution-log commit found in git log)
+  [PASS] task 001 completed
+  [PASS] task 002 completed
+  [PASS] plan completed
+  [FAIL] commits carry task IDs
+  [PASS] execution log persisted by finishing
+  [PASS] spec closed
+=== Scenario 6: code review flags an activated-rule violation as Critical ===
+  [PASS] report has a knowledge compliance section
+  [PASS] violation is Critical
+  [PASS] names the violated rule
+=== Scenario 7: brainstorming, architectural path → code premises verified, gate A1 on the written spec ===
+  [PASS] WRK-SPEC written under specs/work
+  [PASS] WRK-SPEC committed
+  [PASS] committed WRK-SPEC equals the working tree
+  [PASS] Code Premises section
+  [PASS] Code Premises carry the Listed column
+  [PASS] Adversarial Review section
+  [PASS] closing line parses (16 attempted, 15 BROKEN (code-reality 2 · spec-rule 2 · ambiguity 6 · knowledge-gap 3 · internal 3))
+  [FAIL] BROKEN table has M rows (closing M=15, table rows=19)
+  [PASS] validates
+  [PASS] gate A1 dispatched
+  [PASS] premise verifier dispatched
+  [PASS] design file written before the verifier
+  [PASS] verifier returned the Listed column
+  [PASS] A1 prompt names the WRK-SPEC file
+  [PASS] WRK-SPEC written before gate A1
+
+scenario         turns   cache_w   cache_r      out   cost$    dur
+scenario-2          11     32.2k    325.3k     6.1k    0.22   107s
+    claude-sonnet-5-5              cache_w=32.2k cache_r=325.3k out=6.1k cost=0.22
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             19         38     12,052    626,469 $   2.25
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         19
+      Input tokens:           38
+      Output tokens:          12,052
+      Cache creation tokens:  63,849
+      Cache read tokens:      626,469
+    
+      Total input (incl cache): 690,356
+      Total tokens:             702,408
+    
+      Estimated cost: $2.25
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+scenario-3          11     31.6k    291.5k     4.1k    0.20    37s
+    claude-sonnet-5-5              cache_w=31.6k cache_r=291.5k out=4.1k cost=0.20
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             16         32      7,554    519,840 $   1.85
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         16
+      Input tokens:           32
+      Output tokens:          7,554
+      Cache creation tokens:  58,257
+      Cache read tokens:      519,840
+    
+      Total input (incl cache): 578,129
+      Total tokens:             585,683
+    
+      Estimated cost: $1.85
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+scenario-4           9     23.6k    156.1k     2.8k    0.14    27s
+    claude-sonnet-5-5              cache_w=23.6k cache_r=156.1k out=2.8k cost=0.14
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             10         20      5,030    265,570 $   0.98
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         10
+      Input tokens:           20
+      Output tokens:          5,030
+      Cache creation tokens:  35,931
+      Cache read tokens:      265,570
+    
+      Total input (incl cache): 301,521
+      Total tokens:             306,551
+    
+      Estimated cost: $0.98
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+scenario-5           6     10.6k    257.3k     2.1k    0.78    19s
+    claude-sonnet-5-5              cache_w=83.5k cache_r=1207.3k out=11.0k cost=0.53
+    claude-haiku-5-5               cache_w=34.7k cache_r=222.9k out=7.8k cost=0.01
+    claude-opus-5-5                cache_w=22.1k cache_r=82.7k out=5.8k cost=0.24
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             31         76     12,394  1,494,695 $   4.89
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         31
+      Input tokens:           76
+      Output tokens:          12,394
+      Cache creation tokens:  72,357
+      Cache read tokens:      1,494,695
+    
+      Total input (incl cache): 1,567,128
+      Total tokens:             1,579,522
+    
+      Estimated cost: $4.89
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+scenario-6           6     20.0k    113.0k     3.5k    0.20    44s
+    claude-sonnet-5-5              cache_w=38.2k cache_r=161.7k out=5.9k cost=0.20
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)              5         10      3,478    113,001 $   0.45
+    a3d86b97f63bcdcd2 a Senior Code Reviewer with expertise in software architectu     1          2      1,361     17,607 $   0.08
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         6
+      Input tokens:           12
+      Output tokens:          4,839
+      Cache creation tokens:  20,563
+      Cache read tokens:      130,608
+    
+      Total input (incl cache): 151,183
+      Total tokens:             156,022
+    
+      Estimated cost: $0.53
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+scenario-7          21     70.7k    931.8k    30.1k    0.83   278s
+    claude-sonnet-5-5              cache_w=93.7k cache_r=1047.5k out=38.5k cost=0.83
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             36         72     67,263  1,855,476 $   7.01
+    a9308b6f1f4ff4d9e You verify statements about how existing code behaves today.     1          2      2,046     16,107 $   0.08
+    ad887f45cb2b9db25 an adversary. Your job is to break a work specification befo     1          2      3,065     20,140 $   0.11
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         38
+      Input tokens:           76
+      Output tokens:          72,374
+      Cache creation tokens:  148,053
+      Cache read tokens:      1,891,723
+    
+      Total input (incl cache): 2,039,852
+      Total tokens:             2,112,226
+    
+      Estimated cost: $7.21
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+FAILED: 6 assertion(s).

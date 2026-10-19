@@ -306,6 +306,93 @@ assert_command_output \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" KDD_SPEC_GRAPH="$fake_cli" \
     bash -c "cd '$proj' && exec bash '$HOOK_UNDER_TEST'"
 
+# --- how Claude Code runs the hook: the command line goes through /bin/sh (bash in POSIX mode
+# on macOS, BASH=/bin/sh). The wrapper must still run session-start under a non-POSIX bash: in
+# POSIX mode its process substitution is a syntax error and nothing is injected (0.7.0 regression,
+# found by the batch-1 measurement, decision log U-18).
+sh_out="$TEST_ROOT/sh.json"; sh_rc=0
+(cd "$REPO_ROOT/tests/scripts/fixtures" && env -i PATH="${PATH:-}" HOME="$(make_home shrun)" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    /bin/sh -c "\"$WRAPPER_UNDER_TEST\" session-start") > "$sh_out" 2>"$TEST_ROOT/sh.err" || sh_rc=$?
+if [[ "$sh_rc" -eq 0 ]] && node -e '
+const c = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).hookSpecificOutput.additionalContext;
+if (!c.includes("name: using-superpowers") || !c.includes("<KDD-ENVIRONMENT>")) process.exit(1);
+' "$sh_out"; then
+    pass "run through /bin/sh (as Claude Code does), the wrapper injects using-superpowers and the KDD block"
+else
+    fail "run through /bin/sh (as Claude Code does), the wrapper injects using-superpowers and the KDD block"
+    echo "    exit: $sh_rc"; head -5 "$TEST_ROOT/sh.err" | sed 's/^/      /'
+fi
+
+# --- broken PATH (WRK-SPEC-FORK-UPSTREAM-002 AC6): the injection survives, the probe says it could not run ---
+nopath_out="$TEST_ROOT/nopath.json"; nopath_rc=0
+/usr/bin/env -i PATH= HOME="$(make_home nopath)" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    /bin/bash -c "cd '$REPO_ROOT/tests/scripts/fixtures' && exec /bin/bash '$WRAPPER_UNDER_TEST' session-start" \
+    > "$nopath_out" 2>"$TEST_ROOT/nopath.err" || nopath_rc=$?
+if [[ "$nopath_rc" -eq 0 ]] && node -e '
+const p = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+const c = p.hookSpecificOutput && p.hookSpecificOutput.additionalContext || "";
+const env = (c.match(/\n<KDD-ENVIRONMENT>\n[\s\S]*<\/KDD-ENVIRONMENT>$/) || [""])[0];
+const n = (env.match(/unavailable \(no PATH at session start[;)]/g) || []).length;
+const tl = (env.match(/\ntoolkit: unavailable[^\n]*/) || [""])[0];
+const want = "check with " + process.argv[2] + "/skills/using-superpowers/scripts/kdd-cli --path)";
+if (!tl.includes(want)) { console.error("toolkit line lacks the absolute kdd-cli path: " + tl); process.exit(1); }
+if (!c.includes("name: using-superpowers")) { console.error("no using-superpowers content"); process.exit(1); }
+if (n !== 4) { console.error("unavailable lines in the block: " + n); process.exit(1); }
+if (env.includes("NOT FOUND")) { console.error("the block says NOT FOUND"); process.exit(1); }
+' "$nopath_out" "$REPO_ROOT"; then
+    pass "with an empty PATH the hook exits 0, injects using-superpowers and marks the probe unavailable"
+else
+    fail "with an empty PATH the hook exits 0, injects using-superpowers and marks the probe unavailable"
+    echo "    exit: $nopath_rc"; head -c 400 "$nopath_out" | sed 's/^/      /'; head -5 "$TEST_ROOT/nopath.err" | sed 's/^/      /'
+fi
+
+# --- broken PATH never runs a command from the current directory (review of batch 1, Important 1) ---
+for broken in "" "." "/nonexistent::/also-missing"; do
+    planted="$TEST_ROOT/planted-$RANDOM"; mkdir -p "$planted/specs"
+    for t in cat find awk mktemp wc tr sort rm grep sed head dirname; do
+        printf '#!/bin/sh\necho PLANTED-%s-RAN >> "%s/ran"\n' "$t" "$planted" > "$planted/$t"; chmod +x "$planted/$t"
+    done
+    p_rc=0
+    p_out="$(/usr/bin/env -i PATH="$broken" HOME="$(make_home planted)" CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+        /bin/bash -c "cd '$planted' && exec /bin/bash '$WRAPPER_UNDER_TEST' session-start" 2>/dev/null)" || p_rc=$?
+    if [[ "$p_rc" -eq 0 && ! -e "$planted/ran" && "$p_out" == *"unavailable (no PATH at session start)"* ]]; then
+        pass "PATH='$broken': no planted command runs, probe unavailable"
+    else
+        fail "PATH='$broken': no planted command runs, probe unavailable"
+        echo "    exit: $p_rc; ran: $(cat "$planted/ran" 2>/dev/null | tr '\n' ' ')"
+    fi
+done
+
+# --- the KDD-ENVIRONMENT block is the 0.6.0 hook's, byte for byte (toolkit TUI contract; AC7) ---
+if git -C "$REPO_ROOT" rev-parse -q --verify 'refs/tags/kdd-superpowers--v0.6.0' >/dev/null; then
+    old_root="$TEST_ROOT/hook-0.6.0"; mkdir -p "$old_root/hooks"
+    git -C "$REPO_ROOT" archive kdd-superpowers--v0.6.0 hooks skills/using-superpowers | tar -x -C "$old_root"
+    done_proj="$TEST_ROOT/done-proj"; cp -R "$REPO_ROOT/tests/scripts/fixtures" "$done_proj"
+    f="$(grep -rl '^layer: work-spec' "$done_proj/specs/work" | head -1)"
+    sed -i.bak 's/^status: active$/status: completed/' "$f" && rm -f "$f.bak"
+    envblock() { # ROOT DIR [VAR=value…]
+        local root="$1" dir="$2"; shift 2
+        env -i PATH="${PATH:-}" HOME="$TEST_ROOT" CLAUDE_PLUGIN_ROOT="$root" "$@" bash -c "cd '$dir' && exec bash '$root/hooks/session-start'" \
+          | node -e 'const c=JSON.parse(require("fs").readFileSync(0,"utf8")).hookSpecificOutput.additionalContext; const m=c.match(/\n<KDD-ENVIRONMENT>\n[\s\S]*<\/KDD-ENVIRONMENT>$/); process.stdout.write(m ? m[0].slice(1) : "NO BLOCK")'
+    }
+    found_cli="$("$REPO_ROOT/skills/using-superpowers/scripts/kdd-cli" --path 2>/dev/null || true)"
+    for d in "$REPO_ROOT/tests/scripts/fixtures" "$done_proj"; do
+        for tk in "toolkit not found" "toolkit found"; do
+            extra=(); [[ "$tk" == "toolkit found" ]] && { [[ -n "$found_cli" ]] || continue; extra=(KDD_SPEC_GRAPH="$found_cli"); }
+            if [[ "$(envblock "$REPO_ROOT" "$d" "${extra[@]+"${extra[@]}"}")" == "$(envblock "$old_root" "$d" "${extra[@]+"${extra[@]}"}")" ]]; then
+                pass "KDD-ENVIRONMENT block identical to 0.6.0 in $(basename "$d"), $tk"
+            else
+                fail "KDD-ENVIRONMENT block identical to 0.6.0 in $(basename "$d"), $tk"
+                diff <(envblock "$old_root" "$d" "${extra[@]+"${extra[@]}"}") <(envblock "$REPO_ROOT" "$d" "${extra[@]+"${extra[@]}"}") | sed 's/^/      /'
+            fi
+        done
+    done
+    [[ "$(envblock "$REPO_ROOT" "$done_proj")" == *"completed, pending consolidation"* ]] \
+        && pass "a completed WRK-SPEC shows as pending consolidation" || fail "a completed WRK-SPEC shows as pending consolidation"
+else
+    echo "  [SKIP] tag kdd-superpowers--v0.6.0 not present: 0.6.0 comparison skipped"
+fi
+
 if [[ "$FAILURES" -gt 0 ]]; then
     echo "STATUS: FAILED ($FAILURES failure(s))"
     exit 1

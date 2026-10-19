@@ -1,0 +1,116 @@
+=== Scenario 4: writing-plans from an active WRK-SPEC → plan + task files ===
+  [PASS] WRK-PLAN written
+  [PASS] WRK-TASK files written (2)
+  [PASS] task activations ⊆ spec (WRK-TASK-BILL-PRORATA-001-001-money-helpers.md)
+  [PASS] task activations ⊆ spec (WRK-TASK-BILL-PRORATA-001-002-prorata-amount.md)
+  [PASS] Architecture Impact cites the DOM
+  [PASS] plan + tasks validate
+  [PASS] plan and every task are status: active
+  [PASS] activation committed (plan(WRK-PLAN-BILL-PRORATA-…))
+  plan-metrics: {"plan":"WRK-PLAN-BILL-PRORATA-001","tasks":2,"impl_code_share":0.206,"proportion":12.5,"review_focus":"absent"}
+=== Scenario 5: subagent-driven-development executes the hello plan ===
+  [PASS] hello library tests pass
+  [PASS] ledger under .kdd/sdd/<plan id>/ (deleted by finishing after the execution log commit; git log shows the execution log commit)
+  [PASS] task 001 completed
+  [PASS] task 002 completed
+  [PASS] plan completed
+  [PASS] commits carry task IDs
+  [PASS] execution log persisted by finishing
+  [PASS] spec closed
+=== Scenario 6: code review flags an activated-rule violation as Critical ===
+  [PASS] report has a knowledge compliance section
+  [PASS] violation is Critical
+  [PASS] names the violated rule
+
+scenario         turns   cache_w   cache_r      out   cost$    dur
+scenario-4          27     65.8k   1177.3k    35.8k    1.85   463s
+    claude-opus-5-5                cache_w=92.0k cache_r=1285.6k out=46.5k cost=1.85
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             56        112     99,240  2,782,423 $  10.30
+    a7b1a3bff9c7a4cdc an adversary. Your job is to break an implementation plan be     1          2      4,263     32,208 $   0.16
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         57
+      Input tokens:           114
+      Output tokens:          103,503
+      Cache creation tokens:  157,283
+      Cache read tokens:      2,814,631
+    
+      Total input (incl cache): 2,972,028
+      Total tokens:             3,075,531
+    
+      Estimated cost: $10.47
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+scenario-5          31     79.0k   1449.1k    20.4k    1.60   382s
+    claude-opus-5-5                cache_w=93.5k cache_r=1507.5k out=24.0k cost=1.49
+    claude-haiku-5-5               cache_w=34.5k cache_r=182.3k out=6.0k cost=0.01
+    claude-sonnet-5-5              cache_w=29.8k cache_r=37.0k out=2.4k cost=0.10
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             57        114     46,884  3,374,584 $  11.38
+    a16c97e1ab9807430 reviewing one task's implementation: whether it matches its      1          2        774     14,607 $   0.07
+    a27e3371a35ab4106 implementing Task WRK-TASK-DEMO-HELLO-001-002: goodbye funct     1          2        424     20,075 $   0.07
+    a737b6c8a7e8b9806 implementing Task WRK-TASK-DEMO-HELLO-001-001: hello functio     1          2        253     19,639 $   0.07
+    aa20898c53a24cd9c reviewing one task's implementation: whether it matches its      1          2        713     14,536 $   0.07
+    aee54d40b280f0896 a Senior Code Reviewer with expertise in software architectu     1          2      2,527     20,010 $   0.10
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         62
+      Input tokens:           124
+      Output tokens:          51,575
+      Cache creation tokens:  198,869
+      Cache read tokens:      3,463,451
+    
+      Total input (incl cache): 3,662,444
+      Total tokens:             3,714,019
+    
+      Estimated cost: $11.76
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+scenario-6           6     23.7k    112.5k     7.0k    0.50    96s
+    claude-opus-5-5                cache_w=37.5k cache_r=174.4k out=10.4k cost=0.50
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)              7         14     13,296    169,284 $   0.80
+    a57c6a05c83597e88 a Senior Code Reviewer with expertise in software architectu     1          2      2,727     20,715 $   0.10
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         8
+      Input tokens:           16
+      Output tokens:          16,023
+      Cache creation tokens:  30,747
+      Cache read tokens:      189,999
+    
+      Total input (incl cache): 220,762
+      Total tokens:             236,785
+    
+      Estimated cost: $0.90
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+PASS

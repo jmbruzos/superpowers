@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# Begin one WRK-TASK of a Native plan execution in a single call: write the
+# task's brief (via subagent-driven-development's task-brief, so both skills
+# share one workspace), make sure the plan's ledger exists and belongs to this
+# plan, and record BASE, the commit the task's review range is cut from. One
+# tool call instead of three, because every call in an inline session is a
+# turn that re-reads the whole context.
+#
+# Usage: task-start PLAN_FILE TASK_FILE
+# Prints:
+#   brief: <path to the task's brief file>
+#   base: <full SHA of HEAD>
+# Exit 2: usage; the task's `parent:` is not the plan's `id:`; or the ledger's
+# first line does not name this plan.
+# The ledger (<workspace>/progress.md) is created with
+#   # SDD ledger — plan: <WRK-PLAN-ID> (<plan path relative to the repo root>)
+# when absent.
+set -euo pipefail
+
+if [ $# -ne 2 ]; then
+  echo "usage: task-start PLAN_FILE TASK_FILE" >&2
+  exit 2
+fi
+
+plan=$1
+task=$2
+here="$(cd "$(dirname "$0")" && pwd)"
+kit="$(cd "$here/../../.." && pwd)"
+[ -f "$plan" ] || { echo "no such plan file: $plan" >&2; exit 2; }
+[ -f "$task" ] || { echo "no such task file: $task" >&2; exit 2; }
+
+fm() { awk -v k="$2" 'NR==1&&$0!="---"{exit} /^---$/{c++; if(c==2) exit; next} c==1&&$1==k":"{sub(/^[^:]*:[[:space:]]*/,""); sub(/[[:space:]]+$/,""); print; exit}' "$1"; }
+plan_id=$(fm "$plan" id)
+parent=$(fm "$task" parent)
+[ -n "$plan_id" ] || { echo "no frontmatter id in $plan" >&2; exit 2; }
+[ "$parent" = "$plan_id" ] || { echo "$task belongs to ${parent:-no plan}, not to $plan_id" >&2; exit 2; }
+
+top=$(git -C "$(dirname "$plan")" rev-parse --show-toplevel)
+absdir=$(cd "$(dirname "$plan")" && pwd -P)
+rel=$(basename "$plan")
+[ "$absdir" = "$top" ] || rel="${absdir#"$top"/}/$rel"
+
+dir=$(bash "$kit/skills/subagent-driven-development/scripts/sdd-workspace" "$plan")
+ledger="$dir/progress.md"
+if [ -f "$ledger" ]; then
+  first=$(head -n 1 "$ledger")
+  case "$first" in
+    "# SDD ledger — plan: $plan_id "*) ;;
+    *) echo "$ledger is another plan's ledger (line 1: $first)" >&2; exit 2 ;;
+  esac
+else
+  printf '# SDD ledger — plan: %s (%s)\n' "$plan_id" "$rel" > "$ledger"
+fi
+
+out=$(node "$kit/skills/subagent-driven-development/scripts/task-brief" "$task")
+brief=$(printf '%s\n' "$out" | sed -n 's/^wrote \(.*\): [0-9][0-9]* lines$/\1/p')
+[ -n "$brief" ] || { echo "task-brief did not report a path: $out" >&2; exit 1; }
+
+echo "brief: $brief"
+echo "base: $(git rev-parse HEAD)"

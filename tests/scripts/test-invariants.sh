@@ -25,7 +25,7 @@ hits=$(grep -rn -E '(\.superpowers/|docs/superpowers/)' skills hooks scripts tes
 if [[ -z "$hits" ]]; then pass "no upstream paths"; else fail "no upstream paths"; echo "$hits" | sed 's/^/    /'; fi
 
 # 3. harness assets
-for p in .agents .codex-plugin .cursor-plugin .devin-plugin .hermes-plugin .kimi-plugin .opencode .pi \
+for p in .agents .antigravity-plugin .muse-plugin index.js .codex-plugin .cursor-plugin .devin-plugin .hermes-plugin .kimi-plugin .opencode .pi \
          AGENTS.md GEMINI.md gemini-extension.json hooks/hooks-cursor.json \
          scripts/package-codex-plugin.sh scripts/sync-to-codex-plugin.sh \
          docs/README.kimi.md docs/README.opencode.md docs/porting-to-a-new-harness.md docs/windows \

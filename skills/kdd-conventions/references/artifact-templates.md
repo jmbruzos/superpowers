@@ -141,6 +141,8 @@ Body:
 | Constraint | Source | Impact on plan |
 |---|---|---|
 (rules copied verbatim from activated specs)
+## Review Focus
+(up to five input classes the spec implies but no task's tests exercise, one line each; each line's pinning test goes into the owning WRK-TASK. An input an activated rule already names is not Review Focus. When none is left uncovered: `none — every input class the spec implies is tested:` and one `- <input class> → <task ID>: <test name>` line per class checked; a bare `none` is a skipped check)
 ## Risk Assessment
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
@@ -196,7 +198,7 @@ Body:
 **Premises:** existing behaviour relied on beyond the WRK-SPEC's Code Premises, each with how it was verified
 - [ ] **Step 1: Write the failing test** (code block)
 - [ ] **Step 2: Run it to verify it fails** (command + expected)
-- [ ] **Step 3: Minimal implementation** (code block)
+- [ ] **Step 3: Implement `function(input: InputType) -> ResultType` in `exact/path/to/file.py`** (a code block only for an algorithm the signature and test do not determine)
 - [ ] **Step 4: Run to verify it passes**
 - [ ] **Step 5: Commit** (`<type>(<TASK-ID>): …`)
 ## Acceptance Criteria

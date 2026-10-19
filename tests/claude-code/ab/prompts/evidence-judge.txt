@@ -1,0 +1,22 @@
+# source: .kdd/abtest3/prompt-evidence-K4.txt (FRAG-FORK-GATES-004; reused verbatim by -005)
+You are an evidence judge. Work read-only: no edits, no commits, no subagents.
+
+Artifact under judgement: /Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest2/bundles/K4.md. It is a design spec, an implementation plan and its tasks, concatenated, for this change in the mdm-platform repository: when a source record leaves a golden record (unmerge, ForceRule, or a resolution closes its xref span), recompute the golden record that lost it and fix its field lineage.
+
+Code: /Users/josemanuelbruzospereiro/projects/software/mdm-platform at commit aacdae5 (its HEAD, main, clean). Read it with Read/Grep or `git -C <repo> show aacdae5:<path>`. Do not modify it. The project's knowledge specs are under specs/ in that repo: domain/, architecture/, feature/, product/, governance/ (ADRs).
+
+Report three things:
+
+1. Claims about current code. List every factual claim the artifact makes about how today's code behaves, in any section, the tasks included (existing files, methods, signatures, line ranges, behaviours). Verify each against aacdae5:
+   - TRUE, with `path:line` and the literal;
+   - FALSE, with what the code does instead and `path:line`;
+   - UNVERIFIABLE, with what you searched.
+   Mark each FALSE claim that would make the design or the implementation wrong if believed.
+2. Knowledge violations. List every design or plan choice that contradicts a rule in mdm-platform's specs. Quote the rule with its spec ID and section, and cite where the artifact contradicts it. Report only violations you can quote.
+3. Plan executability. Which tasks lack a runnable test step? Is the task order valid, with no task using what a later task creates?
+
+Return only:
+- `| # | claim (short) | where | verdict | evidence | design-changing? |`
+- `| # | violated rule (ID §) | quote | where in artifact |`
+- executability: a few lines.
+- A summary line: `claims=N TRUE=a FALSE=b UNVERIFIABLE=c design-changing-FALSE=d violations=e tasks-without-runnable-test=f order-valid=yes|no`.

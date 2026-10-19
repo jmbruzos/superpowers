@@ -1,0 +1,35 @@
+=== Scenario 6: code review flags an activated-rule violation as Critical ===
+  [PASS] report has a knowledge compliance section
+  [PASS] violation is Critical
+  [PASS] names the violated rule
+
+scenario         turns   cache_w   cache_r      out   cost$    dur
+scenario-6           6     23.8k    112.7k     6.5k    0.51    94s
+    claude-opus-5-5                cache_w=41.0k cache_r=181.5k out=10.0k cost=0.51
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)              7         14     12,351    169,717 $   0.79
+    ad7479c236b3fefa8 a Senior Code Reviewer with expertise in software architectu     1          2      2,719     22,876 $   0.11
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         8
+      Input tokens:           16
+      Output tokens:          15,070
+      Cache creation tokens:  31,195
+      Cache read tokens:      192,593
+    
+      Total input (incl cache): 223,804
+      Total tokens:             238,874
+    
+      Estimated cost: $0.90
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+PASS

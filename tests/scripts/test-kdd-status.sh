@@ -132,4 +132,41 @@ grep -q "progress.md" "$KDD_STATUS" && pass "the read is the ledger" || fail "th
 ! grep -q "node:fs" "$KDD_STATUS_LIB" && pass "lib does no I/O" || fail "lib does no I/O"
 ! grep -q "spec-graph" "$KDD_STATUS" "$KDD_STATUS_LIB" && pass "no toolkit path" || fail "no toolkit path"
 
+# The ledger the Native scripts (executing-plans task-start / task-done) really write.
+EP="$REPO_ROOT/skills/executing-plans/scripts"
+export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.com GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.com
+export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false
+fresh
+( cd "$repo" && git branch feat && git rm -q "$PLAN" "$T1" "$T2" && git commit -qm "main without the plan" && git worktree add -q "$repo-feat" feat )
+wt="$repo-feat"; TMPS+=("$wt")
+nbase="$(cd "$wt" && bash "$EP/task-start" "$PLAN" "$T1" | sed -n 's/^base: //p')"
+( cd "$wt" && echo x > work.txt && git add work.txt && git commit -qm work )
+( cd "$wt" && bash "$EP/task-done" "$PLAN" "$T1" "$nbase" -- echo ok >/dev/null 2>&1 )
+printf '%s\n' "Final: Ruling: x — y — z" >> "$wt/$LEDGER_DIR/progress.md"
+run "$wt"
+check "native ledger: used" "$P.ledger" 'used'
+check "native ledger: task 001 done" "$P.tasks[0].state" 'done'
+check "native ledger: task 002 not done" "$P.tasks[1].state" 'in-progress'
+check "native ledger: 1/2" "$P.done+'/'+$P.total" '1/2'
+check "native ledger: Final: Ruling: is a ruling" "$P.ledger_tail.join('|')" 'Final: Ruling: x — y — z'
+grep -q "^Task WRK-TASK-BILL-PRORATA-001-001: complete (commits ${nbase:0:7}\.\.[0-9a-f]\{7\}, tests: echo ok → ok)$" "$wt/$LEDGER_DIR/progress.md" \
+  && pass "native ledger holds the completion line" || fail "native ledger holds the completion line"
+[[ "$(head -n 1 "$wt/$LEDGER_DIR/progress.md")" == "$IDENTITY" ]] && pass "native ledger identity line" || fail "native ledger identity line"
+# Final: Ruling: alone never completes a task
+printf '%s\n' "$IDENTITY" "Final: Ruling: x — y — z" > "$wt/$LEDGER_DIR/progress.md"
+( cd "$wt" && git reset -q --hard "$nbase" ); run "$wt"
+check "Final: Ruling: is not a completion" "$P.done" '0'
+# none of the notes Native writes counts as completion
+printf '%s\n' "$IDENTITY" "Pre-flight: no shared interfaces" "Attack: Constant return — Ruling: fixed by test x" \
+  "Final: Ruling: x — y — z" "Final: minor (deferred): m" "Final: fixed f — t RED→GREEN, suite 3/3" > "$wt/$LEDGER_DIR/progress.md"
+run "$wt"
+check "Native note forms are not completion" "$P.done" '0'
+check "Native note forms: ledger used" "$P.ledger" 'used'
+# the ledger is git-ignored state of the checkout that ran the plan
+( cd "$repo" && git worktree add -q --detach "$repo-b" feat ); TMPS+=("$repo-b")
+run "$repo-b"
+check "second worktree on the same commit: ledger none" "$P.ledger" 'none'
+run "$repo"
+check "checkout of main without the plan: no such plan" 'd.open_work[0].plans.length' '0'
+
 finish

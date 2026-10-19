@@ -189,9 +189,10 @@ is the whole process.
 - Before asking detailed questions, assess scope: if the request describes multiple independent subsystems (e.g., "build a platform with chat, file storage, billing, and analytics"), flag this immediately. Don't spend questions refining details of a project that needs to be decomposed first.
 - If the project is too large for a single spec, help the user decompose into sub-projects: what are the independent pieces, how do they relate, what order should they be built? Then brainstorm the first sub-project through the normal design flow. Each sub-project gets its own spec → plan → implementation cycle.
 - For appropriately-scoped projects, ask questions one at a time to refine the idea
-- Prefer multiple choice questions when possible, but open-ended is fine too
+- Get them describing first: open questions come first, a short menu only when they're stuck, and when they say "just guess" or "what do you think?", propose something concrete
 - Only one question per message - if a topic needs more exploration, break it into multiple questions
 - Focus on understanding: purpose, constraints, success criteria
+- Find out early which choices about medium, platform, language and libraries your human partner wants to make, which they hand to you, and what they already have; build on what existing work already uses; a choice you make goes in the design as your call, said in plain words, never as something they agreed to
 
 **Capturing from code (brownfield):**
 
@@ -210,6 +211,7 @@ is the whole process.
 
 - Once you believe you understand what you're building, present the design
 - Scale each section to its complexity: a few sentences if straightforward, up to 200-300 words if nuanced
+- Mark anything you're guessing as your guess; only what they said goes in as theirs
 - Ask after each section whether it looks right so far
 - Cover: architecture, components, data flow, error handling, testing — and, **always last, Knowledge activation**: a table of `activates` / `equips` with `ID@version` pins and the role of each, the FRAGs cited as evidence, the gaps (knowledge that should exist and does not — future capture candidates), and the proposed semantic ID path (`WRK-SPEC-<AREA>-<CONCEPT>`, reusing areas the graph already has). **Approving this section freezes the activation**: nothing downstream reopens it; a task that needs more knowledge records a `Knowledge gap:` ruling instead.
 - **Code premises** comes right before *Knowledge activation*: every statement about how existing code behaves today that the design leans on ("X already locks", "test T is green on main", "manual merge does not recompute"). First make sure `.kdd/` is in `.gitignore` and save every design section approved so far to `.kdd/brainstorm/<topic>-design.md`; then dispatch [premise-verifier-prompt.md](premise-verifier-prompt.md) with the list and that file. Wait for its table before any next step, and present it (`| Premise | Listed | Verified by | Result |`): the verifier also extracts and checks the claims about today's code that you did not list. A `false` or `unverifiable` premise — listed or `unlisted` — changes the design before gate A1 — resolve it or stop relying on it; when it does, dispatch the verifier again on the changed statements only. One that contradicts an activated spec is also a `Knowledge gap:`. The WRK-SPEC's Code Premises carry every listed premise and every unlisted claim that came back `false` or `unverifiable`, then the line `unlisted claims verified: <N> hold`. Greenfield: the section reads "none — no existing code" and nothing is dispatched. A premise is not a FRAG: it is a checked fact for this work and does not enter the graph.
@@ -293,7 +295,7 @@ Wait for the response. If they request changes, make them, re-validate and re-ru
 A browser-based companion for showing mockups, diagrams, and visual options during brainstorming. Available as a tool — not a mode. Accepting the companion means it's available for questions that benefit from visual treatment; it does NOT mean every question goes through the browser.
 
 **Offering the companion (just-in-time):** Do NOT offer it upfront. Wait until a question would genuinely be clearer shown than told — a real mockup / layout / diagram question, not merely a UI *topic*. The first time that happens, offer it then, as its own message:
-> "This next part might be easier if I show you — I can put together mockups, diagrams, and comparisons in a browser tab as we go. It's still new and can be token-intensive. Want me to? I'll open it for you."
+> "This next part might be easier if I show you — I can put together mockups, diagrams, and comparisons in a browser tab as we go. Want me to? I'll open it for you."
 
 **This offer MUST be its own message.** Only the offer — no clarifying question, summary, or other content. Wait for the user's response. If they accept, start the server with `--open` so their browser opens to the first screen automatically. If they decline, continue text-only and don't offer again unless they raise it.
 

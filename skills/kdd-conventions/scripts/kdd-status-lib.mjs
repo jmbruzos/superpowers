@@ -4,6 +4,13 @@
 // a task is done on a line starting `Task <WRK-TASK-ID>: complete` or `Task <n>: complete`
 // (n = position, the id's TTT suffix); rulings and gaps are lines containing `Ruling:` /
 // `Knowledge gap:`. A leading list bullet (`- ` / `* `) is ignored.
+//
+// Writers (executing-plans, Native mode): `scripts/task-start` creates the ledger with the identity
+// form; `scripts/task-done` appends, after the task's `transition … completed`, the completion form
+// `Task <WRK-TASK-ID>: complete (commits <base7>..<head7>, tests: <cmd> → <last output line>)`.
+// Subagent-driven-development writes the same two forms by hand (suffix `review clean`).
+// Native also writes notes that are never completion: `Pre-flight: …`, `Attack: … — Ruling: …`,
+// `Final: Ruling: …`, `Final: minor (deferred): …`, `Final: fixed …`.
 
 const DONE = new Set(['completed', 'archived']);
 const OPEN = new Set(['draft', 'active', 'completed']);

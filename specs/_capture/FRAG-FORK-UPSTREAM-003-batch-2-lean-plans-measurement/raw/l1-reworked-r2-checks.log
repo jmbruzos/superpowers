@@ -1,0 +1,41 @@
+=== Scenario 4: writing-plans from an active WRK-SPEC → plan + task files ===
+  [PASS] WRK-PLAN written
+  [PASS] WRK-TASK files written (2)
+  [PASS] task activations ⊆ spec (WRK-TASK-BILL-PRORATA-001-001-exact-cents.md)
+  [PASS] task activations ⊆ spec (WRK-TASK-BILL-PRORATA-001-002-pro-rata-amount.md)
+  [PASS] Architecture Impact cites the DOM
+  [PASS] plan + tasks validate
+  [PASS] plan and every task are status: active
+  [PASS] activation committed (plan(WRK-PLAN-BILL-PRORATA-…))
+  plan-metrics: {"plan":"WRK-PLAN-BILL-PRORATA-001","tasks":2,"impl_code_share":0,"proportion":9.36,"review_focus":"lines:2"}
+
+scenario         turns   cache_w   cache_r      out   cost$    dur
+scenario-4          25     63.8k    804.1k    28.8k    1.65   425s
+    claude-opus-5-5                cache_w=97.8k cache_r=936.8k out=39.3k cost=1.65
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             44         88    106,716  2,128,517 $   8.50
+    a9179a0916c6fe339 an adversary. Your job is to break an implementation plan be     1          2      3,053     32,106 $   0.15
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         45
+      Input tokens:           90
+      Output tokens:          109,769
+      Cache creation tokens:  173,621
+      Cache read tokens:      2,160,623
+    
+      Total input (incl cache): 2,334,334
+      Total tokens:             2,444,103
+    
+      Estimated cost: $8.65
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+PASS

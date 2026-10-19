@@ -1,0 +1,2 @@
+# source: PROMPT_EXTRA of K3-K5, quoted in specs/_capture/FRAG-FORK-GATES-004-gates-hold-findings-quality/report.md:16-18
+This is a non-interactive run: never end your turn while a subagent you dispatched is still running — wait for its result and act on it before you continue or stop.

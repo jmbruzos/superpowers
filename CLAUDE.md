@@ -1,8 +1,9 @@
 # kdd-superpowers — Working in this repository
 
 This is a Claude Code plugin: skills (Markdown), a session-start hook (bash),
-and a handful of scripts (bash, Node ESM). It is derived from superpowers 6.3.0
-and adapted to Knowledge-Driven Development (KDD). It depends on the `kdd`
+and a handful of scripts (bash, Node ESM). It is derived from superpowers 6.3.0,
+with selected changes through 7.0.0, and adapted to Knowledge-Driven
+Development (KDD). It depends on the `kdd`
 toolkit plugin at runtime and never re-implements it.
 
 ## The design is a spec
@@ -28,10 +29,11 @@ edit here:
 ## Testing
 
 ```bash
-export KDD_SPEC_GRAPH=/path/to/spec-graph.mjs   # e.g. ../knowledge-driven-development/apps/spec-graph/spec-graph.mjs
+export KDD_SPEC_GRAPH=/path/to/spec-graph.mjs   # optional: default is the installed kdd plugin; a checkout: ../spec-driven/kdd-toolkit/cli/spec-graph.mjs
 bash tests/scripts/run.sh
 bash tests/hooks/test-session-start.sh
 bash tests/claude-code/test-sdd-workspace.sh
+bash tests/claude-code/test-executing-plans-scripts.sh   # also run by run.sh
 (cd tests/brainstorm-server && npm test)
 bash tests/claude-code/test-kdd-flow.sh          # headless Claude; slow
 KDD_FLOW_USAGE=/tmp/usage bash tests/claude-code/test-kdd-flow.sh   # same, plus a token-usage table

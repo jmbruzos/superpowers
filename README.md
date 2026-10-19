@@ -8,7 +8,8 @@ against it, is reviewed against it, and returns what it learned to the
 knowledge base.
 
 `kdd-superpowers` is derived from [superpowers](https://github.com/obra/superpowers)
-v6.3.0 by Jesse Vincent (MIT). Claude Code is the only supported harness.
+v6.3.0 by Jesse Vincent (MIT), with selected changes through 7.0.0
+(see `specs/documentation/DOC-FORK-UPSTREAM-001-upstream-policy.md`). Claude Code is the only supported harness.
 
 ## Requirements
 

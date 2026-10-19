@@ -1,5 +1,149 @@
 # Release notes
 
+## 0.10.0 — brainstorming ideas and routing (upstream sync batch 4)
+
+Implements WRK-SPEC-FORK-UPSTREAM-005 (batch 4 of DOC-FORK-UPSTREAM-001),
+ideas from superpowers 7.0, adapted to KDD; the three paths, the HARD-GATE,
+the compact WRK-SPEC and gate A1 are unchanged:
+- `brainstorming`: find out early which choices about medium, platform,
+  language and libraries your human partner wants to make and which they
+  hand over — a choice you make goes in the design as your call; open
+  questions come before menus; guesses are marked as guesses; the visual
+  companion offer loses its cost warning.
+- `using-superpowers`: a question about what the knowledge says, asked
+  outside a workflow, goes to `kdd:spec-ask`; browsing the graph goes to
+  `kdd:spec-tui` (your human partner runs the viewer); a session whose
+  probe lines read `unavailable` runs the absolute `kdd-cli --path` the
+  hook now prints and checks `specs/` itself.
+- Harness: opt-in scenario 9 (knowledge question → spec-ask); scenario 2
+  checks discovery goes through `kdd:spec-context`.
+
+Measured (FRAG-FORK-UPSTREAM-005, opus, toolkit 1.13.0): not worse — level 1
+35/35 checks; on RFC-PIPE-039 false claims about code +1.5 per plan (under
+the threshold of 2, within the arms' own spread) and executability defects
+unchanged; cost +14 %.
+
+## 0.9.0 — Native execution (upstream sync batch 3)
+
+Implements WRK-SPEC-FORK-UPSTREAM-004 (batch 3 of DOC-FORK-UPSTREAM-001),
+from superpowers 6.4.1 and 7.0, adapted to KDD:
+- `executing-plans` is Native: the session implements every WRK-TASK itself
+  under SDD's workspace and ledger, with every gate SDD gives a task run
+  before the task is marked complete — the final test run, A4 when its
+  condition holds, a knowledge check after a `Knowledge gap:` ruling on an
+  activated rule — and one fresh whole-branch review on the most capable
+  model (A3, A5, Review Focus). New scripts `task-start` and `task-done`
+  keep the ledger honest; `task-done` transitions a task only after a
+  passing run and recovers the task's own range on a re-run.
+- `subagent-driven-development`: when-to-use offers Native; the ledger is
+  matched by plan ID; a task whose frontmatter says `completed` is done;
+  `review-package` exit 3 is ruled on; an opt-in nested orchestrator for
+  Claude Code (`claude-code-orchestrator.md`).
+- `writing-plans` handoff offers Subagent-driven and Native with a per-plan
+  recommendation; the plan-review rule is unchanged.
+- Harness: opt-in scenario 8 (Native vs the old inline stub vs SDD on the
+  rounding fixture) with deterministic checks.
+
+Measured (FRAG-FORK-UPSTREAM-004, opus, toolkit 1.13.0): Native passes every
+scenario-8 check in both runs and costs about 20 % less than SDD on the
+fixture; scenarios 4–5 do not regress.
+
+## 0.8.0 — lean plans (upstream sync batch 2)
+
+Implements WRK-SPEC-FORK-UPSTREAM-003 (batch 2 of DOC-FORK-UPSTREAM-001),
+from superpowers 6.4.1–6.4.2, adapted to KDD:
+- `writing-plans`: a plan records the decisions the implementer cannot make
+  alone — files, names and signatures, the spec's values, the tests — not
+  the code. A code step carries the exact signature and file; a body only for
+  an algorithm the signature and tests do not determine. Self-review gains a
+  step scan, a Review Focus check and a proportion check; the plan is
+  reviewed by your human partner (or approved in advance by name) before
+  anything runs.
+- Fork addition after measurement: a test step's code must compile where it
+  lands, and self-review checks every name no task defines against the code.
+  Without it the lean plans of the first measurement named overloads,
+  accessors and variables that do not exist (FRAG-FORK-UPSTREAM-003).
+- WRK-PLAN gains `## Review Focus`: up to five input classes the spec implies
+  and no task tests, each pinned by a test in the owning task; the review
+  brief carries it and the reviewer checks each line.
+- Harness: `test-kdd-flow.sh` pins the model (`KDD_FLOW_MODEL`, default
+  opus); scenario 4 reports plan metrics (`plan-metrics.mjs`).
+
+Measured (FRAG-FORK-UPSTREAM-003, opus, toolkit 1.13.0): on the fixture,
+implementation code in plans 0.20 → 0.01 and every check passes; on a real
+task (RFC-PIPE-039), false claims about the code per plan 4.5 → 3.5,
+executability defects 1 → 0, cost per run 17.4 → 14.2 USD.
+
+## 0.7.2 — the code reviewer's report is no longer cut
+
+Fixes a regression in 0.7.0 (never published): upstream 7.0's "Declined to
+judge" section in `code-reviewer.md` made the safety classifier stop the
+reviewer's report mid-way in about a third of runs (5/5 with that section
+alone, 0/5 without it, scenario 6). The section is removed; "the spec is a
+vision document" stays.
+
+## 0.7.1 — the SessionStart hook runs again under Claude Code
+
+Fixes a regression in 0.7.0 (never published): Claude Code runs the hook
+command through `/bin/sh`, which on macOS is bash in POSIX mode with
+`BASH=/bin/sh`. 0.7.0's wrapper (upstream 7.0's `exec "${BASH:-bash}"`) then
+ran `session-start` in POSIX mode, where it fails with a syntax error, so no
+session got using-superpowers or `<KDD-ENVIRONMENT>`. The wrapper now uses
+`$BASH` only when it is a bash binary, else `/bin/bash`, else `bash` from
+PATH. Found by the batch-1 measurement; a new test runs the wrapper through
+`/bin/sh`.
+
+## 0.7.0 — upstream fixes (upstream sync batch 1)
+
+Implements WRK-SPEC-FORK-UPSTREAM-002 (batch 1 of DOC-FORK-UPSTREAM-001),
+fixes taken from superpowers 6.4.1–7.0.0:
+- `requesting-code-review`: the base-SHA example no longer uses `$1`
+  (Claude Code replaced it with a skill argument); the multi-commit base is
+  `git merge-base origin/main HEAD`.
+- `systematic-debugging`: the multi-layer example reports whether the
+  signing identity is set without printing it.
+- Visual companion: screen content is inserted literally (`$&`, `$'` and
+  similar no longer expand).
+- `test-driven-development`: the project's suite, not the task's test file,
+  defines green; every failure that run shows goes in the report.
+- `code-reviewer.md`: behaviour the spec is silent on is judged by what a
+  reasonable person would expect — an activated rule still binds as written —
+  and the reviewer lists what it declined to judge for the dispatching
+  session to rule on.
+- `review-package` refuses an empty range or a HEAD that does not descend
+  from BASE (exit 3); `sdd-workspace` keeps a repository's own
+  `.kdd/sdd/.gitignore`.
+- Hooks: `run-hook.cmd` is upstream 7.0's (per-user Git for Windows, no WSL
+  launchers, no `bash`/`where` from the current directory, exit codes kept).
+  `session-start` survives a broken `PATH`: it still injects
+  using-superpowers, never looks a command up in the project directory, and
+  marks the KDD probe `unavailable (no PATH at session start)`.
+- `kdd-conventions/scripts/transition --verify-only --verified human:<id>
+  FILE` records a human `verified` entry with no status move (toolkit 1.13).
+- `test-invariants.sh` rejects the upstream 7.0 assets `.antigravity-plugin`,
+  `.muse-plugin`, `index.js`.
+
+## 0.6.1 — measurement harness (upstream sync batch 0)
+
+Implements WRK-SPEC-FORK-UPSTREAM-001 (batch 0 of DOC-FORK-UPSTREAM-001). No
+skill, hook or script the plugin ships changes; this release is the before
+arm of batch 1.
+- `tests/claude-code/toolkit-env.sh`: headless runs find the kdd toolkit
+  through `kdd-cli` (CLI and plugin root from one install); `KDD_SPEC_GRAPH`
+  and `KDD_TOOLKIT_DIR` still win. `test-kdd-flow.sh` no longer skips on the
+  non-existent `../knowledge-driven-development` default.
+- `tests/claude-code/ab/`: the RFC-PIPE-039 real-task study under version
+  control — a portable `run-one.sh` and the K, wait, evidence-judge,
+  neutral-summary and blind-pass prompts, byte for byte.
+- `tests/claude-code/fixtures/rounding-plan/`: an execution fixture whose
+  first task activates a numeric rule (half-even rounding), so gate A4 can
+  fire in a measured run.
+- The `tests/scripts/` fixture's WRK-SPEC criterion no longer contradicts
+  its DOM rule (scenario 4 stopped to ask about it).
+- `.gitignore` restored (an accidental commit had reduced it to one line).
+- New tests: `test-flow-harness.sh`, `test-ab-harness.sh`,
+  `test-rounding-fixture.sh`.
+
 ## 0.6.0 — activation pins
 
 Implements WRK-TASK-TOOLKIT-FEDERATION-003-009 (WRK-SPEC-TOOLKIT-FEDERATION-001, AC8; RFC-KDD-006 Part E):

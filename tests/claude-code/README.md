@@ -155,9 +155,11 @@ present (otherwise `CLAUDE_CODE_OAUTH_TOKEN` — a long-lived token from
 and the credentials file may not exist — or `ANTHROPIC_API_KEY` must be set
 in the environment; `run_scenario`'s `env -u …` passes either through
 unchanged), so no user-scope plugins (e.g. upstream `superpowers`) load — only the two
-`--plugin-dir`s under test. Requires `KDD_TOOLKIT_DIR` (default
-`../knowledge-driven-development/kdd-toolkit`) and `KDD_SPEC_GRAPH` (default
-`$KDD_TOOLKIT_DIR/cli/spec-graph.mjs`); the test skips itself if either
+`--plugin-dir`s under test. The toolkit comes from `toolkit-env.sh`:
+`KDD_SPEC_GRAPH` (default: what `kdd-cli --path` finds, normally the newest
+installed kdd plugin) and `KDD_TOOLKIT_DIR` (default: the plugin root above
+that CLI); set either to pin another toolkit, e.g. a checkout's
+`../spec-driven/kdd-toolkit`. The test skips itself if either
 `claude` or the kdd toolkit is not found. When run from inside a Claude Code
 session, it strips the inherited `CLAUDECODE` / `CLAUDE_CODE_*` env vars
 before launching the nested headless `claude -p` calls (otherwise they

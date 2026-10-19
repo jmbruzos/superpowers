@@ -1,0 +1,84 @@
+=== Scenario 4: writing-plans from an active WRK-SPEC → plan + task files ===
+  [PASS] WRK-PLAN written
+  [PASS] WRK-TASK files written (2)
+  [PASS] task activations ⊆ spec (WRK-TASK-BILL-PRORATA-001-001-cent-arithmetic.md)
+  [PASS] task activations ⊆ spec (WRK-TASK-BILL-PRORATA-001-002-pro-rata-amount.md)
+  [PASS] Architecture Impact cites the DOM
+  [PASS] plan + tasks validate
+  [PASS] plan and every task are status: active
+  [PASS] activation committed (plan(WRK-PLAN-BILL-PRORATA-…))
+  plan-metrics: {"plan":"WRK-PLAN-BILL-PRORATA-001","tasks":2,"impl_code_share":0,"proportion":10,"review_focus":"lines:5"}
+=== Scenario 5: subagent-driven-development executes the hello plan ===
+  [PASS] hello library tests pass
+  [PASS] ledger under .kdd/sdd/<plan id>/ (deleted by finishing after the execution log commit; git log shows the execution log commit)
+  [PASS] task 001 completed
+  [PASS] task 002 completed
+  [PASS] plan completed
+  [PASS] commits carry task IDs
+  [PASS] execution log persisted by finishing
+  [PASS] spec closed
+
+scenario         turns   cache_w   cache_r      out   cost$    dur
+scenario-4          17     48.9k    599.1k    20.5k    1.40   349s
+    claude-opus-5-5                cache_w=85.4k cache_r=740.6k out=33.8k cost=1.40
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             31         62     53,164  1,281,617 $   4.94
+    a1a6cf4df99376835 an adversary. Your job is to break an implementation plan be     1          2      3,229     36,003 $   0.16
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         32
+      Input tokens:           64
+      Output tokens:          56,393
+      Cache creation tokens:  100,132
+      Cache read tokens:      1,317,620
+    
+      Total input (incl cache): 1,417,816
+      Total tokens:             1,474,209
+    
+      Estimated cost: $5.10
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+scenario-5          36     76.5k   1905.8k    19.2k    1.69   376s
+    claude-opus-5-5                cache_w=97.7k cache_r=1956.9k out=22.5k cost=1.56
+    claude-haiku-5-5               cache_w=36.3k cache_r=206.4k out=7.3k cost=0.01
+    claude-sonnet-5-5              cache_w=35.6k cache_r=71.4k out=2.8k cost=0.12
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             68        136     44,340  3,933,651 $  12.98
+    a05ee653daf421bfb the final whole-branch code reviewer. Your full instructions     1          2      2,299     20,345 $   0.10
+    a282f075fc3ffe23f a task reviewer. Your full instructions are in this file — r     1          2        740     18,051 $   0.08
+    a570a02f929134434 implementing Task WRK-TASK-DEMO-HELLO-001-001: hello functio     1          2        282     21,509 $   0.07
+    a5eeca6d18768cfe5 a task reviewer. Your full instructions are in this file — r     1          2        892     18,123 $   0.08
+    abe7dbe5d79d5d45f implementing Task WRK-TASK-DEMO-HELLO-001-002: goodbye funct     1          2        252     19,597 $   0.07
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         73
+      Input tokens:           146
+      Output tokens:          48,805
+      Cache creation tokens:  183,528
+      Cache read tokens:      4,031,276
+    
+      Total input (incl cache): 4,214,950
+      Total tokens:             4,263,755
+    
+      Estimated cost: $13.38
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+PASS

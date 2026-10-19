@@ -25,7 +25,7 @@ Dispatch a code reviewer subagent to catch issues before they cascade. The revie
 
 **1. Get git SHAs:**
 ```bash
-BASE_SHA=$(git rev-parse HEAD~1)  # or origin/main, or the task's recorded BASE
+BASE_SHA=$(git rev-parse HEAD~1)  # or: git merge-base origin/main HEAD, or the task's recorded BASE
 HEAD_SHA=$(git rev-parse HEAD)
 ```
 
@@ -33,7 +33,7 @@ HEAD_SHA=$(git rev-parse HEAD)
 
 | Mode | When | The third layer of authority |
 |---|---|---|
-| **1. KDD work** | a WRK-SPEC (and usually a WRK-PLAN) exists for this change | `scripts/review-brief <WRK-SPEC-or-WRK-PLAN file>` (this skill's directory) writes one file: acceptance criteria, constraints, the plan's Architecture Impact, every activated spec in full with pin check, the cited FRAGs. Pass the printed path. |
+| **1. KDD work** | a WRK-SPEC (and usually a WRK-PLAN) exists for this change | `scripts/review-brief <WRK-SPEC-or-WRK-PLAN file>` (this skill's directory) writes one file: acceptance criteria, constraints, the plan's Architecture Impact, the plan's Review Focus, every activated spec in full with pin check, the cited FRAGs. Pass the printed path. |
 | **2. Knowledge base, no WRK-SPEC** | an external PR, a hotfix, legacy code under review in a project with `specs/` | invoke `kdd:spec-context "<one-line description of the change>"`, confirm with your human partner which surfaced specs apply, and write their paths plus the requirements into a scratch brief file under `.kdd/review/`. Remind them once that a change of their own should have a compact WRK-SPEC (kdd-superpowers:brainstorming, bounded path). |
 | **3. Pure brownfield** | no `specs/` at all | the brief is the requirements you were given, in a scratch file. Capture is mandatory: the reviewer must list the rules the code embodies and the change touches. |
 
@@ -66,7 +66,7 @@ Dispatch a `general-purpose` subagent, filling the template at [code-reviewer.md
 
 You: Let me request code review before proceeding.
 
-BASE_SHA=$(git log --oneline | grep "Task 1" | head -1 | awk '{print $1}')
+BASE_SHA=$(git log --oneline | grep "Task 1" | head -1 | cut -d' ' -f1)
 HEAD_SHA=$(git rev-parse HEAD)
 
 [Dispatch code reviewer subagent]

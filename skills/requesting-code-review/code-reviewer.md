@@ -21,7 +21,7 @@ Subagent (general-purpose):
     Mode: [MODE]
     Read the brief: [KNOWLEDGE_BRIEF]
     In mode `kdd-work` it holds the WRK-SPEC's acceptance criteria and
-    constraints, the plan's Architecture Impact, the activated specs in
+    constraints, the plan's Architecture Impact, the plan's Review Focus, the activated specs in
     full and the cited fragments — the WRK-SPEC is the authority, the plan
     its argument, the activated specs its constraints; verify against all
     three. In the other modes it holds the requirements and, when present,
@@ -37,6 +37,18 @@ Subagent (general-purpose):
     git diff --stat [BASE_SHA]..[HEAD_SHA]
     git diff [BASE_SHA]..[HEAD_SHA]
     ```
+
+    ## The spec is a vision document
+
+    The spec says what the software must do. It does not enumerate every
+    input, environment, or condition the software will meet. For behavior
+    the spec is silent on, judge by what a reasonable person using this
+    software would expect: a reasonable person's expectation is a
+    requirement, and a spec's silence is not permission. Grade such
+    findings by their effect on that person, not by whether the spec
+    mentions the trigger. An activated spec's rules still bind exactly as
+    written; a reasonable person's expectation fills only the spec's
+    silence and never overrides a rule.
 
     ## Read-Only Review
 
@@ -67,6 +79,7 @@ Subagent (general-purpose):
       "missing test for <rule>: <input>".
     - Knowledge findings: rules the surrounding code already contradicted
       before this diff.
+    - Review Focus (when the brief has one): for each line, name the test that pins it or give the input that breaks it — a line with neither is Important.
 
     **Capture candidates (all modes; mandatory in `brownfield`):**
     - Behaviour the code embodies that no spec documents and this diff

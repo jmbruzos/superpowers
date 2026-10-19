@@ -1,0 +1,41 @@
+# source: .kdd/abtest3/prompt-blind9.txt (FRAG-FORK-GATES-005)
+You are a blind judge. Work read-only: no edits, no subagents. Open only the nine summary files named here; ignore any file ending in -stale.md.
+
+Nine neutral summaries describe nine independently produced designs and implementation plans for the same change in the mdm-platform Java repository. The change: when a source record leaves a golden record (unmerge, ForceRule, or a resolution closes its xref span), recompute the golden record that lost it, and stop its field lineage from pointing at the departed record.
+/Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest2/neutral/N1.md
+/Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest2/neutral/N2.md
+/Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest2/neutral/N3.md
+/Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest2/neutral/N4.md
+/Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest2/neutral/N5.md
+/Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest2/neutral/N6.md
+/Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest2/neutral/N7.md
+/Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest3/neutral/N8.md
+/Users/josemanuelbruzospereiro/projects/software/superpowers/.kdd/abtest3/neutral/N9.md
+
+Ground truth is the code and the project's knowledge specs, not the summaries:
+- Code: /Users/josemanuelbruzospereiro/projects/software/mdm-platform at aacdae5 (HEAD, clean). Read-only.
+- Specs: specs/domain, specs/architecture, specs/feature, specs/product, specs/governance.
+
+Score each design on these ten hard points, which were fixed before the designs were produced:
+- H1. The manual-merge survivor's golden_data is not overwritten by the recompute, so the steward's decision is preserved.
+- H2. Field lineage stops pointing at the departed record, and `previous` is not silently lost.
+- H3. The last-member-leaves case (orphaned or empty lifecycle) is defined, including what is emitted downstream.
+- H4. Pins, overrides and ForceRules that reference the departed record are handled.
+- H5. Concurrency: the losing record is locked, and the ordering and retries (optimistic locking, back to Merge) are defined.
+- H6. Events and cache: L1/L2 invalidation for the losing record, and the quality-tier event is computed from the losing record's own score.
+- H7. Triggers: unmerge, ForceRule and resolution are each covered, or scoped out with a reason. Review resolution closes no spans today.
+- H8. Tests reach the ForceRule path. No production code creates SOURCE_TO_GOLDEN rules, so tests must seed them.
+- H9. The quality score is recomputed for the losing record.
+- H10. Downstream propagation of an orphaned record follows the project's rules.
+
+Give each design one score per point:
+- C: addressed correctly, consistent with the code and specs. Cite the code path:line or the rule ID and section that makes it correct.
+- W: addressed wrongly. Cite the conflict.
+- N: not addressed.
+
+Verify against the code and specs wherever correctness depends on them. Use the same bar for all nine.
+
+Return:
+1. For each design, `| H | score | one-line reason | citation |`.
+2. A summary: `| design | C | W | N |`.
+3. Up to 5 lines on which points separate the designs most.

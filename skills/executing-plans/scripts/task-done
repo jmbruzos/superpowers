@@ -1,0 +1,124 @@
+#!/usr/bin/env bash
+# Close one WRK-TASK of a Native plan execution in a single call: run the
+# task's final test command, keep its full output in the workspace, print the
+# tail, and — only if the command succeeded — move the task to `completed`
+# (kdd-conventions `transition`) and append the completion line to the ledger.
+# A failing command records nothing: the task is not complete.
+#
+# Usage: task-done PLAN_FILE TASK_FILE BASE -- TEST_COMMAND [ARGS...]
+#   BASE is the SHA task-start printed; the completion line records BASE..HEAD,
+#   HEAD being the last work commit, before the transition's own commit.
+# Exit: the test command's status when it fails; 2 usage or another plan's
+# task/ledger; 3 no commit since BASE, or — for a completed task — a BASE that
+# disagrees with the task's own range; 4 tests passed but the transition failed
+# (nothing recorded). Re-running is safe: with the completion line present and
+# the task completed it does nothing; a missing line is rewritten with the
+# original range, recovered from git; a line without the transition is followed
+# by the transition only.
+set -euo pipefail
+
+if [ $# -lt 5 ] || [ "$4" != "--" ]; then
+  echo "usage: task-done PLAN_FILE TASK_FILE BASE -- TEST_COMMAND [ARGS...]" >&2
+  exit 2
+fi
+
+plan=$1
+task=$2
+base=$3
+shift 4
+here="$(cd "$(dirname "$0")" && pwd)"
+kit="$(cd "$here/../../.." && pwd)"
+[ -f "$plan" ] || { echo "no such plan file: $plan" >&2; exit 2; }
+[ -f "$task" ] || { echo "no such task file: $task" >&2; exit 2; }
+
+fm() { awk -v k="$2" 'NR==1&&$0!="---"{exit} /^---$/{c++; if(c==2) exit; next} c==1&&$1==k":"{sub(/^[^:]*:[[:space:]]*/,""); sub(/[[:space:]]+$/,""); print; exit}' "$1"; }
+plan_id=$(fm "$plan" id)
+task_id=$(fm "$task" id)
+parent=$(fm "$task" parent)
+status=$(fm "$task" status)
+[ -n "$plan_id" ] && [ -n "$task_id" ] || { echo "no frontmatter id in $plan or $task" >&2; exit 2; }
+[ "$parent" = "$plan_id" ] || { echo "$task_id belongs to ${parent:-no plan}, not to $plan_id" >&2; exit 2; }
+git rev-parse --verify --quiet "$base^{commit}" >/dev/null || { echo "bad BASE: $base" >&2; exit 2; }
+
+top=$(git rev-parse --show-toplevel)
+absdir=$(cd "$(dirname "$plan")" && pwd -P)
+rel=$(basename "$plan")
+[ "$absdir" = "$(cd "$top" && pwd -P)" ] || rel="${absdir#"$(cd "$top" && pwd -P)"/}/$rel"
+
+dir=$(bash "$kit/skills/subagent-driven-development/scripts/sdd-workspace" "$plan")
+log="$dir/$task_id-tests.log"
+ledger="$dir/progress.md"
+if [ -f "$ledger" ]; then
+  case "$(head -n 1 "$ledger")" in
+    "# SDD ledger — plan: $plan_id "*) ;;
+    *) echo "$ledger is another plan's ledger" >&2; exit 2 ;;
+  esac
+fi
+has_line() { [ -f "$ledger" ] && grep -q "^Task $task_id: complete" "$ledger"; }
+
+if [ "$status" = completed ] && has_line; then
+  echo "task-done: $task_id is already complete and recorded"
+  exit 0
+fi
+
+# A completed task without its line keeps its own range, recovered from git:
+# from the parent of its first commit (the oldest whose subject carries the
+# WRK-TASK ID) to the parent of its chore(<WRK-TASK-ID>): complete commit. The
+# BASE passed is only checked against it, since a resumed executor may not hold
+# the one task-start printed.
+if [ "$status" = completed ]; then
+  done_commit=$(git log -n 1 --format=%H --fixed-strings --grep="chore($task_id): complete")
+  [ -n "$done_commit" ] || { echo "task-done: $task_id is completed but no chore($task_id): complete commit found" >&2; exit 1; }
+  first=$(git log --reverse --format='%H %s' "$done_commit" | awk -v id="$task_id" 'index(substr($0, 42), id) { print $1; exit }')
+  recovered=$(git rev-parse --verify --quiet "$first^") || recovered=""
+  [ -n "$recovered" ] && [ "$(git rev-list --count "$recovered..$done_commit^")" -gt 0 ] || {
+    echo "task-done: no commit of $task_id before chore($task_id): complete — its range cannot be recovered" >&2; exit 3; }
+  if ! git merge-base --is-ancestor "$base" "$done_commit^" || [ "$(git rev-list --count "$base..$done_commit^")" -eq 0 ]; then
+    echo "task-done: BASE $base is not the start of $task_id's range; recovered BASE $(git rev-parse --short=7 "$recovered") (parent of its first commit) — nothing recorded" >&2
+    exit 3
+  fi
+  base=$recovered
+else
+  [ "$(git rev-list --count "$base..HEAD")" -gt 0 ] || { echo "task-done: no commit since BASE $base — nothing to close" >&2; exit 3; }
+fi
+
+# Render the command the way a person would type it, for the ledger line.
+cmd=""
+for a in "$@"; do
+  case "$a" in
+    *[[:space:]\"\;\|\&]*) cmd="$cmd '$a'" ;;
+    *) cmd="$cmd $a" ;;
+  esac
+done
+cmd=${cmd# }
+
+rc=0
+"$@" > "$log" 2>&1 || rc=$?
+
+tail -n 5 "$log"
+if [ "$rc" -ne 0 ]; then
+  echo "task-done: test command exited $rc; $task_id NOT recorded (full output: $log)" >&2
+  exit "$rc"
+fi
+
+# The last work commit: HEAD now, or — when the transition already happened —
+# the parent of its commit.
+head7=$(git rev-parse --short=7 HEAD)
+if [ "$status" = completed ]; then
+  head7=$(git rev-parse --short=7 "$done_commit^")
+else
+  bash "$kit/skills/kdd-conventions/scripts/transition" --specs "$top/specs" "$task" completed >&2 || {
+    echo "task-done: tests passed, transition failed — nothing recorded" >&2
+    exit 4
+  }
+fi
+
+if has_line; then
+  echo "task-done: ledger already has the completion line for $task_id"
+  exit 0
+fi
+last=$(grep -v '^[[:space:]]*$' "$log" | tail -n 1) || last="(no output)"
+[ -f "$ledger" ] || printf '# SDD ledger — plan: %s (%s)\n' "$plan_id" "$rel" > "$ledger"
+line="Task $task_id: complete (commits $(git rev-parse --short=7 "$base")..$head7, tests: $cmd → $last)"
+printf '%s\n' "$line" >> "$ledger"
+echo "ledger: $line"

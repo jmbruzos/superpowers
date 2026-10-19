@@ -43,25 +43,29 @@ stop and ask.
 digraph when_to_use {
     "Have implementation plan?" [shape=diamond];
     "Tasks mostly independent?" [shape=diamond];
-    "Stay in this session?" [shape=diamond];
+    "Partner chose Native?" [shape=diamond];
     "subagent-driven-development" [shape=box];
     "executing-plans" [shape=box];
     "Manual execution or brainstorm first" [shape=box];
 
     "Have implementation plan?" -> "Tasks mostly independent?" [label="yes"];
     "Have implementation plan?" -> "Manual execution or brainstorm first" [label="no"];
-    "Tasks mostly independent?" -> "Stay in this session?" [label="yes"];
+    "Tasks mostly independent?" -> "Partner chose Native?" [label="yes"];
     "Tasks mostly independent?" -> "Manual execution or brainstorm first" [label="no - tightly coupled"];
-    "Stay in this session?" -> "subagent-driven-development" [label="yes"];
-    "Stay in this session?" -> "executing-plans" [label="no - parallel session"];
+    "Partner chose Native?" -> "executing-plans" [label="yes"];
+    "Partner chose Native?" -> "subagent-driven-development" [label="no"];
 }
 ```
 
-**vs. Executing Plans (parallel session):**
-- Same session (no context switch)
-- Fresh subagent per task (no context pollution)
-- Review after each task (spec compliance + code quality), broad review at the end
-- Faster iteration (no human-in-loop between tasks)
+**vs. Executing Plans (inline):**
+- Fresh subagent per task (no context pollution) instead of one context doing every task
+- Review after each task (spec + knowledge + quality) instead of only the gates a rule or a ruling calls for (A4, a knowledge check) and one review at the end
+- Costs a fresh context per task and per review; inline costs one context, those gates, plus one final reviewer
+- Both run in this session, share the same plan workspace and ledger, and never pause between tasks
+
+To run this whole loop one layer down, on a cheaper seat than the session
+model, see [claude-code-orchestrator.md](claude-code-orchestrator.md) —
+opt-in, only when your human partner asks for it.
 
 ## The Process
 
@@ -146,10 +150,14 @@ a ledger file, not only in todos.
   artifact for THIS plan: ledger, briefs, reports, review packages.
   Another plan's directory is never yours to read or write.
 - Check for this plan's ledger at `<workspace>/progress.md`. If its first
-  line names your plan file, tasks with a `Task <WRK-TASK-ID>: complete` line are DONE
-  — do not re-dispatch them; resume at the first task without one. A task
-  whose last line is a fix round is mid-loop: resume the loop at the next
-  round. A ledger whose first line names a different plan file is another
+  line names your plan's ID, a task whose frontmatter says `completed` is DONE
+  — the signal both execution modes and `kdd-status` share — do not
+  re-dispatch it; resume at the first task in Task Breakdown order whose
+  file still says `active`. A task with a `Task <WRK-TASK-ID>: complete`
+  line whose file still says `active` was interrupted before its
+  transition: run the transition, do not re-dispatch it. A task whose last
+  ledger line is a fix round is mid-loop: resume the loop at the next
+  round. A ledger whose first line names a different plan ID is another
   plan's progress: leave it in place and start your own, fresh.
 - Create the ledger with its identity as the first line:
   `# SDD ledger — plan: <WRK-PLAN-ID> (<plan file path>)`.
@@ -310,7 +318,7 @@ Template: [implementer-prompt.md](implementer-prompt.md)
 
 Implementer subagents report one of four statuses. Handle each appropriately:
 
-**DONE:** Generate the review package (`scripts/review-package PLAN_FILE BASE HEAD`, from this skill's directory — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), then dispatch the task reviewer with the printed path.
+**DONE:** Generate the review package (`scripts/review-package PLAN_FILE BASE HEAD`, from this skill's directory — it prints the unique file path it wrote; BASE is the commit you recorded before dispatching the implementer — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task), then dispatch the task reviewer with the printed path. If `review-package` exits 3, its message says why — an empty range (no reviewable change) or a HEAD not descended from BASE (wrong branch or worktree): find the task's commits or rule on it, and ledger the ruling before going on.
 
 **DONE_WITH_CONCERNS:** The implementer completed the work but flagged doubts. Read the concerns before proceeding. If the concerns are about correctness or scope, address them before review. If they're observations (e.g., "this file is getting large"), note them and proceed to review.
 

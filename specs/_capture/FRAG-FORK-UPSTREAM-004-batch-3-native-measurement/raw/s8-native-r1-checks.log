@@ -1,0 +1,43 @@
+=== Scenario 8 (native): the rounding plan executed in one mode (opt-in, paid) ===
+  [PASS] npm test is green
+  [PASS] WRK-TASK-DEMO-MONEY-001-001 is status: completed
+  [PASS] WRK-TASK-DEMO-MONEY-001-002 is status: completed
+  [PASS] kdd-status reports the ledger of WRK-PLAN-DEMO-MONEY-001 as used
+  [PASS] the ledger holds the completion line of WRK-TASK-DEMO-MONEY-001-001
+  [PASS] the ledger holds the completion line of WRK-TASK-DEMO-MONEY-001-002
+  [PASS] A4 dispatched
+  [PASS] the first A4 dispatch is earlier than the commit of chore(WRK-TASK-DEMO-MONEY-001-001): complete
+  [PASS] Native: no implementer dispatched
+  [PASS] Native: a final review dispatched with an Opus model
+  [PASS] Native: the result text contains "Rulings I made"
+
+scenario         turns   cache_w   cache_r      out   cost$    dur
+scenario-8-native     4     11.5k    367.9k     8.0k    2.59    90s
+    claude-opus-5-5                cache_w=120.7k cache_r=2488.1k out=44.4k cost=2.25
+    claude-sonnet-5-5              cache_w=66.1k cache_r=267.8k out=14.2k cost=0.33
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             80        190     77,256  4,846,254 $  16.22
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         80
+      Input tokens:           190
+      Output tokens:          77,256
+      Cache creation tokens:  174,519
+      Cache read tokens:      4,846,254
+    
+      Total input (incl cache): 5,020,963
+      Total tokens:             5,098,219
+    
+      Estimated cost: $16.22
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+PASS

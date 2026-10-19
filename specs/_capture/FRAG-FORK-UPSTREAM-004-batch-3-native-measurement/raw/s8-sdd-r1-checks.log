@@ -1,0 +1,54 @@
+=== Scenario 8 (sdd): the rounding plan executed in one mode (opt-in, paid) ===
+  [PASS] npm test is green
+  [PASS] WRK-TASK-DEMO-MONEY-001-001 is status: completed
+  [PASS] WRK-TASK-DEMO-MONEY-001-002 is status: completed
+  [PASS] kdd-status reports the ledger of WRK-PLAN-DEMO-MONEY-001 as used
+  [PASS] the ledger holds the completion line of WRK-TASK-DEMO-MONEY-001-001
+  [PASS] the ledger holds the completion line of WRK-TASK-DEMO-MONEY-001-002
+  [PASS] A4 dispatched
+  [PASS] the first A4 dispatch is earlier than the commit of chore(WRK-TASK-DEMO-MONEY-001-001): complete
+  [PASS] sdd: an implementer dispatched for WRK-TASK-DEMO-MONEY-001-001
+  [PASS] sdd: an implementer dispatched for WRK-TASK-DEMO-MONEY-001-002
+  [PASS] sdd: a final review dispatched with an Opus model
+  [PASS] sdd: the result text contains "Rulings I made"
+
+scenario         turns   cache_w   cache_r      out   cost$    dur
+scenario-8-sdd      18     36.7k   1567.8k    20.3k    2.89   432s
+    claude-opus-5-5                cache_w=133.8k cache_r=2647.8k out=44.4k cost=2.38
+    claude-sonnet-5-5              cache_w=99.0k cache_r=422.0k out=21.4k cost=0.50
+    claude-haiku-5-5               cache_w=26.1k cache_r=165.2k out=5.9k cost=0.01
+    ====================================================================================================
+    TOKEN USAGE ANALYSIS
+    ====================================================================================================
+    
+    Usage Breakdown:
+    ----------------------------------------------------------------------------------------------------
+    Agent           Description                          Msgs      Input     Output      Cache     Cost
+    ----------------------------------------------------------------------------------------------------
+    main            Main session (coordinator)             67        138     60,164  4,667,212 $  15.53
+    a14a3ba23a19f9592 fixing the findings of a final whole-branch review on a smal     1          2        449     20,826 $   0.07
+    a214045cff221657b reviewing one task's implementation: whether it matches its      1          2      1,834     15,483 $   0.09
+    a3f3e41ca6ac4fa69 an adversary. Your job is to show that this task's tests are     1          2      1,555     20,235 $   0.09
+    a61c6351fdd389ad6 re-reviewing one task's fix round. A previous review produce     1          2      1,384     14,725 $   0.08
+    a9c4dd535752c94f5 a Senior Code Reviewer with expertise in software architectu     1          2      4,655     34,262 $   0.18
+    a9e89bed223675e7d implementing Task WRK-TASK-DEMO-MONEY-001-002: formatMoney     1          2        362     23,921 $   0.08
+    aa41efe37d907ab94 re-reviewing a fix wave. A final whole-branch review produce     1          2      1,348     15,024 $   0.08
+    ac16babfee56054aa implementing Task WRK-TASK-DEMO-MONEY-001-001: roundMoney     1          2        374     19,186 $   0.07
+    ac6cdb7cd05a80907 reviewing one task's implementation: whether it matches its      1          2      1,288     15,324 $   0.08
+    ----------------------------------------------------------------------------------------------------
+    
+    TOTALS:
+      Total messages:         76
+      Input tokens:           156
+      Output tokens:          73,413
+      Cache creation tokens:  232,407
+      Cache read tokens:      4,846,198
+    
+      Total input (incl cache): 5,078,761
+      Total tokens:             5,152,174
+    
+      Estimated cost: $16.34
+      (at $3/$15 per M tokens for input/output)
+    
+    ====================================================================================================
+PASS

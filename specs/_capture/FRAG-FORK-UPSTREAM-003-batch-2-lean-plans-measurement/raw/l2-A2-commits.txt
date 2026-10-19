@@ -1,0 +1,4 @@
+dfcce2c plan(WRK-PLAN-MDM-MEMBER-LOSS-001): plan y 6 WRK-TASK para recalcular la ficha que pierde un miembro
+2356db2 spec(RFC-PIPE-039): accepted — activado por WRK-SPEC-MDM-MEMBER-LOSS-001
+6b2533a spec(WRK-SPEC-MDM-MEMBER-LOSS-001): approved — active, human-verified
+9b735a3 spec(WRK-SPEC-MDM-MEMBER-LOSS-001): la ficha que pierde un miembro se recalcula (RFC-PIPE-039)
